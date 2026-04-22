@@ -1,4 +1,9 @@
 export type {
+  AuthSession,
+  AuthUser,
+} from "./auth";
+
+export type {
   AbilitySummary,
   Campaign,
   CampaignRole,
