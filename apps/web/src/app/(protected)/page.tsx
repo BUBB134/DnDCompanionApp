@@ -1,4 +1,3 @@
-import { readPublicEnv } from "@dnd/env";
 import type { Campaign, RuleSnippet, SessionSummary } from "@dnd/types";
 import { CampaignShell } from "@/components/campaign-shell";
 
@@ -35,15 +34,5 @@ const rules: RuleSnippet[] = [
 ];
 
 export default function Home() {
-  const env = readPublicEnv(process.env);
-
-  return (
-    <CampaignShell
-      appEnv={env.NEXT_PUBLIC_APP_ENV}
-      campaign={campaign}
-      latestSession={latestSession}
-      rules={rules}
-    />
-  );
+  return <CampaignShell campaign={campaign} latestSession={latestSession} rules={rules} />;
 }
-
