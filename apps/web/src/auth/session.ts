@@ -3,6 +3,7 @@ import type { AuthSession } from "@dnd/types";
 export const AUTH_COOKIE_NAME = "dnd_local_session";
 export const AUTH_COOKIE_MAX_AGE_SECONDS = 60 * 60 * 24 * 7;
 
+const PROTECTED_RETURN_PATHS = ["/", "/campaigns", "/entities", "/rules", "/sessions"] as const;
 const SESSION_TOKEN_PREFIX = "local-v1.";
 const DEFAULT_USER = {
   email: "dm@local.test",
@@ -14,6 +15,8 @@ type LocalSessionInput = {
   email?: string;
   name?: string;
 };
+
+export type ProtectedReturnPath = (typeof PROTECTED_RETURN_PATHS)[number];
 
 export function createLocalAuthSession(
   input: LocalSessionInput = {},
@@ -63,7 +66,9 @@ export function hasAuthSessionCookie(cookieValue: string | null | undefined) {
   return decodeAuthSession(cookieValue) !== null;
 }
 
-export function getSafeReturnPath(returnPath: string | null | undefined) {
+export function getSafeReturnPath(
+  returnPath: string | null | undefined,
+): ProtectedReturnPath {
   if (!returnPath || !returnPath.startsWith("/") || returnPath.startsWith("//")) {
     return "/";
   }
@@ -72,7 +77,14 @@ export function getSafeReturnPath(returnPath: string | null | undefined) {
     return "/";
   }
 
-  return returnPath;
+  const pathname = returnPath.split(/[?#]/)[0] ?? "/";
+  const matchedPath = PROTECTED_RETURN_PATHS.find(
+    (protectedPath) =>
+      pathname === protectedPath ||
+      (protectedPath !== "/" && pathname.startsWith(`${protectedPath}/`)),
+  );
+
+  return matchedPath ?? "/";
 }
 
 function isAuthSession(value: unknown): value is AuthSession {
