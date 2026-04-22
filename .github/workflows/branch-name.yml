@@ -1,0 +1,23 @@
+name: Branch name check
+
+on:
+  pull_request:
+    types: [opened, edited, synchronize]
+
+jobs:
+  branch-name:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Validate branch name
+        run: |
+          BRANCH_NAME="${{ github.head_ref }}"
+          echo "Checking branch: $BRANCH_NAME"
+
+          if [[ ! $BRANCH_NAME =~ ^dnd-[0-9]+-.*$ ]]; then
+            echo "❌ Branch name must follow: dnd-<ticket-number>-description"
+            echo "Example: dnd-24-session-editor"
+            exit 1
+          fi
+
+          echo "✅ Branch name valid"
