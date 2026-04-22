@@ -6,16 +6,22 @@ const rootDir = dirname(dirname(fileURLToPath(import.meta.url)));
 const failures = [];
 
 const requiredFiles = [
+  "apps/web/src/app/(protected)/campaigns/page.tsx",
+  "apps/web/src/app/(protected)/entities/page.tsx",
   "apps/web/src/app/(protected)/layout.tsx",
   "apps/web/src/app/(protected)/page.tsx",
+  "apps/web/src/app/(protected)/rules/page.tsx",
+  "apps/web/src/app/(protected)/sessions/page.tsx",
   "apps/web/src/app/api/auth/session/route.ts",
   "apps/web/src/app/sign-in/page.tsx",
   "apps/web/src/auth/actions.ts",
   "apps/web/src/auth/provider.tsx",
+  "apps/web/src/auth/redirect.ts",
   "apps/web/src/auth/server.ts",
   "apps/web/src/auth/session.ts",
   "apps/web/src/auth/status-notice.tsx",
   "apps/web/src/components/protected-app-shell.tsx",
+  "apps/web/src/components/protected-scaffold-page.tsx",
   "apps/web/src/middleware.ts",
   "packages/types/src/auth.ts",
 ];
@@ -57,6 +63,7 @@ expect(
 );
 
 const actions = readText("apps/web/src/auth/actions.ts");
+expect(actions.includes("getSafeReturnPath"), "Sign-in must honor the safe return path.");
 expect(actions.includes("setAuthSessionCookie"), "Sign-in must set a session cookie.");
 expect(actions.includes("clearAuthSessionCookie"), "Sign-out must clear the session cookie.");
 

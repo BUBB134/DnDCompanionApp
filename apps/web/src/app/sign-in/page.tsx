@@ -1,6 +1,6 @@
 import Image from "next/image";
-import { redirect } from "next/navigation";
 import { signInAction } from "@/auth/actions";
+import { redirectToProtectedPath } from "@/auth/redirect";
 import { getSafeReturnPath } from "@/auth/session";
 import { getAuthSession } from "@/auth/server";
 
@@ -16,7 +16,7 @@ export default async function SignInPage({ searchParams }: SignInPageProps) {
   const session = await getAuthSession();
 
   if (session) {
-    redirect("/");
+    redirectToProtectedPath(nextPath);
   }
 
   return (

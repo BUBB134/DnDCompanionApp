@@ -13,10 +13,10 @@ type ProtectedAppShellProps = {
 
 const navigationItems = [
   { href: "/", label: "Dashboard" },
-  { href: null, label: "Campaigns" },
-  { href: null, label: "Sessions" },
-  { href: null, label: "Rules" },
-  { href: null, label: "Entities" },
+  { href: "/campaigns", label: "Campaigns" },
+  { href: "/sessions", label: "Sessions" },
+  { href: "/rules", label: "Rules" },
+  { href: "/entities", label: "Entities" },
 ] as const;
 
 const navItemClasses =
@@ -113,22 +113,9 @@ function NavItem({
 }) {
   const className = isMobile ? mobileNavItemClasses : navItemClasses;
 
-  if (item.href) {
-    return (
-      <Link className={`${className} hover:bg-[#e7f5f6]`} href={item.href}>
-        {item.label}
-      </Link>
-    );
-  }
-
   return (
-    <button
-      aria-disabled="true"
-      className={`${className} cursor-not-allowed text-[#4b4657]/70`}
-      disabled
-      type="button"
-    >
+    <Link className={`${className} hover:bg-[#e7f5f6]`} href={item.href}>
       {item.label}
-    </button>
+    </Link>
   );
 }

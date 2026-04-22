@@ -3,7 +3,7 @@ import type { AuthSession } from "@dnd/types";
 export const AUTH_COOKIE_NAME = "dnd_local_session";
 export const AUTH_COOKIE_MAX_AGE_SECONDS = 60 * 60 * 24 * 7;
 
-const PROTECTED_RETURN_PATHS = ["/"] as const;
+const PROTECTED_RETURN_PATHS = ["/", "/campaigns", "/entities", "/rules", "/sessions"] as const;
 const SESSION_TOKEN_PREFIX = "local-v1.";
 const DEFAULT_USER = {
   email: "dm@local.test",

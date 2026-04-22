@@ -1,7 +1,8 @@
 "use server";
 
 import { redirect } from "next/navigation";
-import { createLocalAuthSession } from "@/auth/session";
+import { redirectToProtectedPath } from "@/auth/redirect";
+import { createLocalAuthSession, getSafeReturnPath } from "@/auth/session";
 import { clearAuthSessionCookie, setAuthSessionCookie } from "@/auth/server";
 
 export async function signInAction(formData: FormData) {
@@ -9,9 +10,10 @@ export async function signInAction(formData: FormData) {
     email: getStringField(formData, "email"),
     name: getStringField(formData, "displayName"),
   });
+  const nextPath = getSafeReturnPath(getStringField(formData, "next"));
 
   await setAuthSessionCookie(session);
-  redirect("/");
+  redirectToProtectedPath(nextPath);
 }
 
 export async function signOutAction() {
