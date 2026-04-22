@@ -48,7 +48,7 @@ packages/
 ```
 
 ## Key Docs
-- `AGENTS.md`
+- `Agents.md`
 - `docs/product/PRD.md`
 - `docs/engineering/architecture.md`
 - `docs/engineering/working-agreement.md`

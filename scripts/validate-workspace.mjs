@@ -1,4 +1,4 @@
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -8,6 +8,7 @@ const failures = [];
 const requiredFiles = [
   ".env.example",
   ".github/workflows/ci.yml",
+  "Agents.md",
   "apps/web/next.config.mjs",
   "apps/web/package.json",
   "apps/web/postcss.config.mjs",
@@ -34,6 +35,15 @@ const expectedPackages = ["@dnd/env", "@dnd/types", "@dnd/ui", "@dnd/web"];
 for (const file of requiredFiles) {
   expect(existsSync(resolve(file)), `Missing required file: ${file}`);
 }
+
+const rootEntries = new Set(readdirSync(rootDir));
+const agentInstructionFiles = ["Agents.md", "AGENTS.md"].filter((file) =>
+  rootEntries.has(file),
+);
+expect(
+  agentInstructionFiles.length === 1 && agentInstructionFiles[0] === "Agents.md",
+  "Use only Agents.md for repository instructions to avoid case-colliding filenames.",
+);
 
 const rootPackage = readJson("package.json");
 const webPackage = readJson("apps/web/package.json");
