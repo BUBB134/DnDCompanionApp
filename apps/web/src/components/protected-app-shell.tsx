@@ -13,11 +13,17 @@ type ProtectedAppShellProps = {
 
 const navigationItems = [
   { href: "/", label: "Dashboard" },
-  { href: "/campaigns", label: "Campaigns" },
-  { href: "/sessions", label: "Sessions" },
-  { href: "/rules", label: "Rules" },
-  { href: "/entities", label: "Entities" },
-];
+  { href: null, label: "Campaigns" },
+  { href: null, label: "Sessions" },
+  { href: null, label: "Rules" },
+  { href: null, label: "Entities" },
+] as const;
+
+const navItemClasses =
+  "rounded-md px-3 py-2 text-sm font-semibold transition focus:outline-none focus:ring-2 focus:ring-[#1f6f78] focus:ring-offset-2";
+
+const mobileNavItemClasses =
+  "flex min-h-12 items-center justify-center rounded-md px-1 text-center text-xs font-semibold transition focus:outline-none focus:ring-2 focus:ring-[#1f6f78] focus:ring-offset-2";
 
 export function ProtectedAppShell({
   appEnv,
@@ -72,13 +78,7 @@ export function ProtectedAppShell({
             >
               <div className="grid gap-1">
                 {navigationItems.map((item) => (
-                  <Link
-                    className="rounded-md px-3 py-2 text-sm font-semibold transition hover:bg-[#e7f5f6] focus:outline-none focus:ring-2 focus:ring-[#1f6f78] focus:ring-offset-2"
-                    href={item.href}
-                    key={item.href}
-                  >
-                    {item.label}
-                  </Link>
+                  <NavItem item={item} key={item.label} />
                 ))}
               </div>
             </nav>
@@ -94,16 +94,41 @@ export function ProtectedAppShell({
       >
         <div className="grid grid-cols-5 gap-1">
           {navigationItems.map((item) => (
-            <Link
-              className="flex min-h-12 items-center justify-center rounded-md px-1 text-center text-xs font-semibold transition hover:bg-[#e7f5f6] focus:outline-none focus:ring-2 focus:ring-[#1f6f78] focus:ring-offset-2"
-              href={item.href}
-              key={item.href}
-            >
-              {item.label}
-            </Link>
+            <NavItem isMobile item={item} key={item.label} />
           ))}
         </div>
       </nav>
     </main>
+  );
+}
+
+type NavigationItem = (typeof navigationItems)[number];
+
+function NavItem({
+  isMobile = false,
+  item,
+}: {
+  isMobile?: boolean;
+  item: NavigationItem;
+}) {
+  const className = isMobile ? mobileNavItemClasses : navItemClasses;
+
+  if (item.href) {
+    return (
+      <Link className={`${className} hover:bg-[#e7f5f6]`} href={item.href}>
+        {item.label}
+      </Link>
+    );
+  }
+
+  return (
+    <button
+      aria-disabled="true"
+      className={`${className} cursor-not-allowed text-[#4b4657]/70`}
+      disabled
+      type="button"
+    >
+      {item.label}
+    </button>
   );
 }

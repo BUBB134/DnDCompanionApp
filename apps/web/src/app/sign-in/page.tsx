@@ -16,7 +16,7 @@ export default async function SignInPage({ searchParams }: SignInPageProps) {
   const session = await getAuthSession();
 
   if (session) {
-    redirect(nextPath);
+    redirect("/");
   }
 
   return (
