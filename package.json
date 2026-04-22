@@ -1,0 +1,33 @@
+{
+  "name": "dnd-companion",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=20.9.0"
+  },
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "build": "npm --workspace @dnd/types run build && npm --workspace @dnd/env run build && npm --workspace @dnd/ui run build && npm --workspace @dnd/web run build",
+    "dev": "npm --workspace @dnd/web run dev",
+    "install": "node scripts/install-help.mjs",
+    "lint": "eslint . --max-warnings=0",
+    "test": "node scripts/validate-workspace.mjs",
+    "typecheck": "npm --workspace @dnd/types run typecheck && npm --workspace @dnd/env run typecheck && npm --workspace @dnd/ui run typecheck && npm --workspace @dnd/web run typecheck"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4.1.0",
+    "@types/node": "^24.0.0",
+    "@types/react": "^19.2.0",
+    "@types/react-dom": "^19.2.0",
+    "eslint": "^9.39.0",
+    "eslint-config-next": "^16.2.2",
+    "postcss": "^8.5.0",
+    "tailwindcss": "^4.1.0",
+    "typescript": "^5.9.0"
+  }
+}
+
