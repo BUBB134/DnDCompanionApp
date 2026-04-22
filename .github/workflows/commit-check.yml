@@ -1,0 +1,22 @@
+name: Commit message check
+
+on:
+  pull_request:
+
+jobs:
+  commit-message:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check commit messages
+        run: |
+          git log origin/${{ github.base_ref }}..HEAD --pretty=format:"%s" | while read line; do
+            if [[ ! $line =~ \[DND-[0-9]+\] ]]; then
+              echo "❌ Commit message missing [DND-XXX]: $line"
+              exit 1
+            fi
+          done
+
+          echo "✅ Commit messages valid"
