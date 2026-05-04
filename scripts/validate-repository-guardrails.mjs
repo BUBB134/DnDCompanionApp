@@ -58,7 +58,7 @@ const commitCheckWorkflow = readText(".github/workflows/commit-check.yml");
 for (const snippet of [
   "fetch-depth: 0",
   'git fetch origin "${{ github.base_ref }}" --depth=1',
-  'git log --no-merges --format=%s "$MERGE_BASE..HEAD"',
+  'git log --no-merges --format=%s "$BASE_BRANCH..HEAD"',
   "No non-merge pull request commits found to validate.",
 ]) {
   expect(

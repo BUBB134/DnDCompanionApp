@@ -20,8 +20,7 @@ jobs:
         shell: bash
         run: |
           BASE_BRANCH="origin/${{ github.base_ref }}"
-          MERGE_BASE="$(git merge-base HEAD "$BASE_BRANCH")"
-          COMMITS="$(git log --no-merges --format=%s "$MERGE_BASE..HEAD")"
+          COMMITS="$(git log --no-merges --format=%s "$BASE_BRANCH..HEAD")"
 
           if [[ -z "$COMMITS" ]]; then
             echo "No non-merge pull request commits found to validate."
