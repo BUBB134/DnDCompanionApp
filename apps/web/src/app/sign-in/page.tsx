@@ -41,6 +41,11 @@ export default async function SignInPage({ searchParams }: SignInPageProps) {
             Resume the shared notes, recaps, and table tools your group keeps close
             during play.
           </p>
+          <p className="mt-4 max-w-xl text-sm leading-6 text-[#4b4657]">
+            Local bootstrap memberships: <strong>dm@local.test</strong> opens the DM
+            view, <strong>player@local.test</strong> opens the player-safe view, and
+            any other email shows the non-member access state.
+          </p>
         </div>
 
         <form
