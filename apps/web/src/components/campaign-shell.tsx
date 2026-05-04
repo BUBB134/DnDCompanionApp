@@ -3,6 +3,7 @@ import { EmptyState, StatusPill, Surface } from "@dnd/ui";
 
 type CampaignShellProps = {
   campaign: Campaign;
+  dmBrief?: string | null;
   latestSession: SessionSummary;
   rules: RuleSnippet[];
 };
@@ -11,6 +12,7 @@ const tableUtilities = ["Initiative", "Conditions", "Shared loot"];
 
 export function CampaignShell({
   campaign,
+  dmBrief,
   latestSession,
   rules,
 }: CampaignShellProps) {
@@ -54,6 +56,15 @@ export function CampaignShell({
                 </div>
               ))}
             </div>
+
+            {dmBrief ? (
+              <div className="rounded-lg border border-[#8b2f39]/25 bg-[#f9e8ea] p-4">
+                <p className="text-xs font-semibold uppercase tracking-wide text-[#8b2f39]">
+                  DM brief
+                </p>
+                <p className="mt-2 text-sm leading-6 text-[#4b4657]">{dmBrief}</p>
+              </div>
+            ) : null}
           </div>
         </Surface>
 

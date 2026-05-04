@@ -1,12 +1,13 @@
 import Image from "next/image";
 import Link from "next/link";
-import type { AuthSession } from "@dnd/types";
+import { isDungeonMaster, type AuthSession, type Campaign } from "@dnd/types";
 import { StatusPill } from "@dnd/ui";
 import { signOutAction } from "@/auth/actions";
 import { AuthStatusNotice } from "@/auth/status-notice";
 
 type ProtectedAppShellProps = {
   appEnv: string;
+  campaign: Campaign | null;
   children: React.ReactNode;
   session: AuthSession;
 };
@@ -27,6 +28,7 @@ const mobileNavItemClasses =
 
 export function ProtectedAppShell({
   appEnv,
+  campaign,
   children,
   session,
 }: ProtectedAppShellProps) {
@@ -56,6 +58,16 @@ export function ProtectedAppShell({
               <AuthStatusNotice />
               <div className="flex flex-wrap items-center gap-2">
                 <StatusPill tone="teal">{session.user.name}</StatusPill>
+                {campaign ? (
+                  <>
+                    <StatusPill tone="gold">{campaign.name}</StatusPill>
+                    <StatusPill tone={isDungeonMaster(campaign.role) ? "red" : "teal"}>
+                      {isDungeonMaster(campaign.role) ? "DM access" : "Player access"}
+                    </StatusPill>
+                  </>
+                ) : (
+                  <StatusPill tone="red">No campaign access</StatusPill>
+                )}
                 <StatusPill tone="gold">Env: {appEnv}</StatusPill>
               </div>
               <form action={signOutAction}>

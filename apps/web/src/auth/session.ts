@@ -1,15 +1,17 @@
 import type { AuthSession } from "@dnd/types";
+import {
+  createLocalUserId,
+  DEFAULT_LOCAL_AUTH_EMAIL,
+  DEFAULT_LOCAL_AUTH_NAME,
+  normalizeLocalAuthEmail,
+  normalizeLocalAuthName,
+} from "@/auth/local-user";
 
 export const AUTH_COOKIE_NAME = "dnd_local_session";
 export const AUTH_COOKIE_MAX_AGE_SECONDS = 60 * 60 * 24 * 7;
 
 const PROTECTED_RETURN_PATHS = ["/", "/campaigns", "/entities", "/rules", "/sessions"] as const;
 const SESSION_TOKEN_PREFIX = "local-v1.";
-const DEFAULT_USER = {
-  email: "dm@local.test",
-  id: "local-dm",
-  name: "Local DM",
-};
 
 type LocalSessionInput = {
   email?: string;
@@ -22,12 +24,14 @@ export function createLocalAuthSession(
   input: LocalSessionInput = {},
   now = new Date(),
 ): AuthSession {
+  const email = normalizeLocalAuthEmail(input.email) ?? DEFAULT_LOCAL_AUTH_EMAIL;
+
   return {
     expiresAt: new Date(now.getTime() + AUTH_COOKIE_MAX_AGE_SECONDS * 1000).toISOString(),
     user: {
-      email: normalizeEmail(input.email) ?? DEFAULT_USER.email,
-      id: DEFAULT_USER.id,
-      name: normalizeName(input.name) ?? DEFAULT_USER.name,
+      email,
+      id: createLocalUserId(email),
+      name: normalizeLocalAuthName(input.name) ?? DEFAULT_LOCAL_AUTH_NAME,
     },
   };
 }
@@ -103,24 +107,6 @@ function isAuthSession(value: unknown): value is AuthSession {
     typeof user.id === "string" &&
     typeof user.name === "string"
   );
-}
-
-function normalizeEmail(email: string | undefined) {
-  const trimmed = email?.trim().toLowerCase();
-  if (!trimmed || !trimmed.includes("@") || trimmed.length > 254) {
-    return null;
-  }
-
-  return trimmed;
-}
-
-function normalizeName(name: string | undefined) {
-  const trimmed = name?.trim();
-  if (!trimmed || trimmed.length > 80) {
-    return null;
-  }
-
-  return trimmed;
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

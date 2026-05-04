@@ -1,9 +1,18 @@
+import { requireAuthSession } from "@/auth/server";
+import { getCurrentCampaignAccess } from "@/campaigns/bootstrap";
+import { CampaignAccessState } from "@/components/campaign-access-state";
 import { ProtectedScaffoldPage } from "@/components/protected-scaffold-page";
 
-export default function RulesPage() {
+export default async function RulesPage() {
+  const session = await requireAuthSession();
+
+  if (!getCurrentCampaignAccess(session)) {
+    return <CampaignAccessState />;
+  }
+
   return (
     <ProtectedScaffoldPage
-      body="Contextual rules and ability references will be added when rules surfacing lands."
+      body="Rules surfaced for a campaign now inherit membership-based visibility, so players only receive player-safe context."
       eyebrow="Rules"
       title="Rules"
     />

@@ -1,6 +1,10 @@
 export {
+  canAccessVisibility,
   campaignRoles,
   entityTypes,
+  filterByVisibility,
+  isDungeonMaster,
+  resolveCampaignAccess,
   ruleSnippetCategories,
   visibilities,
 } from "./campaign";
@@ -12,8 +16,11 @@ export type {
 
 export type {
   AbilitySummary,
+  CampaignAccess,
+  CampaignMembership,
   Campaign,
   CampaignRole,
+  CampaignSummary,
   EntityType,
   RuleSnippet,
   RuleSnippetCategory,
