@@ -5,6 +5,7 @@ import {
   DEFAULT_LOCAL_AUTH_NAME,
   normalizeLocalAuthEmail,
   normalizeLocalAuthName,
+  normalizeLocalAuthUserId,
 } from "@/auth/local-user";
 
 export const AUTH_COOKIE_NAME = "dnd_local_session";
@@ -60,7 +61,7 @@ export function decodeAuthSession(
       return null;
     }
 
-    return session;
+    return normalizeDecodedAuthSession(session);
   } catch {
     return null;
   }
@@ -107,6 +108,25 @@ function isAuthSession(value: unknown): value is AuthSession {
     typeof user.id === "string" &&
     typeof user.name === "string"
   );
+}
+
+function normalizeDecodedAuthSession(session: AuthSession): AuthSession {
+  const normalizedUserId = normalizeLocalAuthUserId(
+    session.user.id,
+    session.user.email,
+  );
+
+  if (normalizedUserId === session.user.id) {
+    return session;
+  }
+
+  return {
+    ...session,
+    user: {
+      ...session.user,
+      id: normalizedUserId,
+    },
+  };
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

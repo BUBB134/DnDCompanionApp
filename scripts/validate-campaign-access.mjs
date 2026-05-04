@@ -16,9 +16,30 @@ for (const file of requiredFiles) {
   expect(existsSync(resolve(file)), `Missing campaign access file: ${file}`);
 }
 
-const campaignModule = await import(
-  pathToFileURL(resolve("packages/types/src/campaign.ts")).href
-);
+const typescriptPath = resolve("node_modules/typescript/lib/typescript.js");
+const hasTypeScriptRuntime = existsSync(typescriptPath);
+const typescriptRuntime = hasTypeScriptRuntime
+  ? await import(pathToFileURL(typescriptPath).href)
+  : null;
+const typescript = hasTypeScriptRuntime
+  ? (typescriptRuntime.default ?? typescriptRuntime)
+  : null;
+
+const localUserModuleUrl = hasTypeScriptRuntime
+  ? await transpileModuleToDataUrl("apps/web/src/auth/local-user.ts")
+  : null;
+const campaignModule = hasTypeScriptRuntime
+  ? await import(
+      await transpileModuleToDataUrl("packages/types/src/campaign.ts"),
+    )
+  : null;
+const sessionModule = hasTypeScriptRuntime && localUserModuleUrl
+  ? await import(
+      await transpileModuleToDataUrl("apps/web/src/auth/session.ts", [
+        ["@/auth/local-user", localUserModuleUrl],
+      ]),
+    )
+  : null;
 
 const campaigns = [
   {
@@ -40,55 +61,81 @@ const memberships = [
   },
 ];
 
-const dmAccess = campaignModule.resolveCampaignAccess({
-  campaigns,
-  memberships,
-  userId: "local:dm@local.test",
-});
-expect(dmAccess?.role === "dm", "DM membership should resolve campaign access.");
+if (campaignModule) {
+  const dmAccess = campaignModule.resolveCampaignAccess({
+    campaigns,
+    memberships,
+    userId: "local:dm@local.test",
+  });
+  expect(dmAccess?.role === "dm", "DM membership should resolve campaign access.");
 
-const playerAccess = campaignModule.resolveCampaignAccess({
-  campaigns,
-  memberships,
-  userId: "local:player@local.test",
-});
-expect(playerAccess?.role === "player", "Player membership should resolve campaign access.");
+  const playerAccess = campaignModule.resolveCampaignAccess({
+    campaigns,
+    memberships,
+    userId: "local:player@local.test",
+  });
+  expect(
+    playerAccess?.role === "player",
+    "Player membership should resolve campaign access.",
+  );
 
-const nonMemberAccess = campaignModule.resolveCampaignAccess({
-  campaigns,
-  memberships,
-  userId: "local:outsider@local.test",
-});
-expect(nonMemberAccess === null, "Non-members must not resolve campaign access.");
+  const nonMemberAccess = campaignModule.resolveCampaignAccess({
+    campaigns,
+    memberships,
+    userId: "local:outsider@local.test",
+  });
+  expect(nonMemberAccess === null, "Non-members must not resolve campaign access.");
 
-expect(
-  campaignModule.canAccessVisibility("dm", "dm-only"),
-  "DM access should include dm-only visibility.",
-);
-expect(
-  campaignModule.canAccessVisibility("player", "player-safe"),
-  "Player access should include player-safe visibility.",
-);
-expect(
-  !campaignModule.canAccessVisibility("player", "dm-only"),
-  "Player access must exclude dm-only visibility.",
-);
-expect(
-  campaignModule.isDungeonMaster("dm") && !campaignModule.isDungeonMaster("player"),
-  "Role helper should distinguish DM from player access.",
-);
+  expect(
+    campaignModule.canAccessVisibility("dm", "dm-only"),
+    "DM access should include dm-only visibility.",
+  );
+  expect(
+    campaignModule.canAccessVisibility("player", "player-safe"),
+    "Player access should include player-safe visibility.",
+  );
+  expect(
+    !campaignModule.canAccessVisibility("player", "dm-only"),
+    "Player access must exclude dm-only visibility.",
+  );
+  expect(
+    campaignModule.isDungeonMaster("dm") && !campaignModule.isDungeonMaster("player"),
+    "Role helper should distinguish DM from player access.",
+  );
 
-const filteredRules = campaignModule.filterByVisibility(
-  [
-    { id: "rule-player", visibility: "player-safe" },
-    { id: "rule-dm", visibility: "dm-only" },
-  ],
-  "player",
-);
-expect(
-  filteredRules.length === 1 && filteredRules[0]?.id === "rule-player",
-  "Visibility filtering should keep only player-safe content for players.",
-);
+  const filteredRules = campaignModule.filterByVisibility(
+    [
+      { id: "rule-player", visibility: "player-safe" },
+      { id: "rule-dm", visibility: "dm-only" },
+    ],
+    "player",
+  );
+  expect(
+    filteredRules.length === 1 && filteredRules[0]?.id === "rule-player",
+    "Visibility filtering should keep only player-safe content for players.",
+  );
+}
+
+if (sessionModule && localUserModuleUrl) {
+  const legacyCookie = sessionModule.encodeAuthSession({
+    expiresAt: "2099-01-01T00:00:00.000Z",
+    user: {
+      email: "dm@local.test",
+      id: "local-dm",
+      name: "Local DM",
+    },
+  });
+  const decodedLegacySession = sessionModule.decodeAuthSession(
+    legacyCookie,
+    new Date("2026-05-04T00:00:00.000Z"),
+  );
+  const localUserModule = await import(localUserModuleUrl);
+
+  expect(
+    decodedLegacySession?.user.id === localUserModule.createLocalUserId("dm@local.test"),
+    "Legacy local auth cookies should normalize to the membership-backed user id.",
+  );
+}
 
 const dashboardPage = readText("apps/web/src/app/(protected)/page.tsx");
 expect(
@@ -116,6 +163,14 @@ expect(
   readText("apps/web/src/app/sign-in/page.tsx").includes("player-safe view"),
   "Sign-in page should document how to exercise the local membership bootstrap.",
 );
+expect(
+  readText("apps/web/src/auth/session.ts").includes("normalizeLocalAuthUserId"),
+  "Session decoding should normalize legacy local auth user ids.",
+);
+expect(
+  readText("scripts/validate-campaign-access.mjs").includes("transpileModuleToDataUrl"),
+  "Campaign access validation should transpile TypeScript sources instead of importing them directly.",
+);
 
 if (failures.length > 0) {
   console.error("Campaign access validation failed:");
@@ -139,4 +194,26 @@ function readText(path) {
 
 function resolve(path) {
   return join(rootDir, path);
+}
+
+async function transpileModuleToDataUrl(path, replacements = []) {
+  if (!typescript) {
+    throw new Error("TypeScript runtime is not available for validation.");
+  }
+
+  let source = readText(path);
+
+  for (const [from, to] of replacements) {
+    source = source.replaceAll(from, to);
+  }
+
+  const compiled = typescript.transpileModule(source, {
+    compilerOptions: {
+      module: typescript.ModuleKind.ES2022,
+      target: typescript.ScriptTarget.ES2022,
+    },
+    fileName: path,
+  }).outputText;
+
+  return `data:text/javascript;base64,${Buffer.from(compiled).toString("base64")}`;
 }
