@@ -13,6 +13,7 @@
     "noUncheckedIndexedAccess": true,
     "paths": {
       "@/*": ["apps/web/src/*"],
+      "@dnd/db": ["packages/db/src/index.ts"],
       "@dnd/env": ["packages/env/src/index.ts"],
       "@dnd/types": ["packages/types/src/index.ts"],
       "@dnd/ui": ["packages/ui/src/index.tsx"]

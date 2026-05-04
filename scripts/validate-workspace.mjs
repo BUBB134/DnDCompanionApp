@@ -13,6 +13,8 @@ const requiredFiles = [
   "apps/web/next.config.mjs",
   "apps/web/package.json",
   "apps/web/postcss.config.mjs",
+  "packages/db/package.json",
+  "packages/db/src/index.ts",
   "packages/env/package.json",
   "packages/env/src/index.ts",
   "packages/types/package.json",
@@ -30,7 +32,7 @@ const requiredEnvKeys = [
   "AI_GROUNDING_MODE",
 ];
 const expectedWorkspaces = ["apps/*", "packages/*"];
-const expectedPackages = ["@dnd/env", "@dnd/types", "@dnd/ui", "@dnd/web"];
+const expectedPackages = ["@dnd/db", "@dnd/env", "@dnd/types", "@dnd/ui", "@dnd/web"];
 
 for (const file of requiredFiles) {
   expect(existsSync(resolve(file)), `Missing required file: ${file}`);
@@ -63,6 +65,7 @@ for (const workspace of expectedWorkspaces) {
 
 const workspacePackageNames = [
   "apps/web/package.json",
+  "packages/db/package.json",
   "packages/env/package.json",
   "packages/types/package.json",
   "packages/ui/package.json",
@@ -83,7 +86,7 @@ for (const [dependencyName, dependencyRange] of Object.entries(webPackage.depend
 }
 
 const tsconfig = readJson("tsconfig.base.json");
-for (const packageName of ["@dnd/env", "@dnd/types", "@dnd/ui"]) {
+for (const packageName of ["@dnd/db", "@dnd/env", "@dnd/types", "@dnd/ui"]) {
   expect(
     packageName in (tsconfig.compilerOptions?.paths ?? {}),
     `Missing TypeScript path alias: ${packageName}`,
