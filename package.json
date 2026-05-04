@@ -11,12 +11,15 @@
     "packages/*"
   ],
   "scripts": {
-    "build": "npm --workspace @dnd/types run build && npm --workspace @dnd/env run build && npm --workspace @dnd/ui run build && npm --workspace @dnd/web run build",
+    "build": "npm --workspace @dnd/types run build && npm --workspace @dnd/env run build && npm --workspace @dnd/db run build && npm --workspace @dnd/ui run build && npm --workspace @dnd/web run build",
+    "db:check": "node scripts/check-database.mjs",
+    "db:generate": "node scripts/create-migration.mjs",
+    "db:migrate": "node scripts/apply-migrations.mjs",
     "dev": "npm --workspace @dnd/web run dev",
     "install": "node scripts/install-help.mjs",
     "lint": "eslint . --max-warnings=0",
-    "test": "node scripts/validate-workspace.mjs && node scripts/validate-auth.mjs",
-    "typecheck": "npm --workspace @dnd/types run typecheck && npm --workspace @dnd/env run typecheck && npm --workspace @dnd/ui run typecheck && npm --workspace @dnd/web run typecheck"
+    "test": "node scripts/validate-workspace.mjs && node scripts/validate-auth.mjs && node scripts/validate-database.mjs",
+    "typecheck": "npm --workspace @dnd/types run typecheck && npm --workspace @dnd/env run typecheck && npm --workspace @dnd/db run typecheck && npm --workspace @dnd/ui run typecheck && npm --workspace @dnd/web run typecheck"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4.1.0",
@@ -25,6 +28,7 @@
     "@types/react-dom": "^19.2.0",
     "eslint": "^9.39.0",
     "eslint-config-next": "^16.2.2",
+    "pg": "^8.16.3",
     "postcss": "^8.5.0",
     "tailwindcss": "^4.1.0",
     "typescript": "^5.9.0"

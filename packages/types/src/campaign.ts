@@ -1,5 +1,18 @@
-export type CampaignRole = "dm" | "player";
-export type Visibility = "dm-only" | "player-safe";
+export const campaignRoles = ["dm", "player"] as const;
+export type CampaignRole = (typeof campaignRoles)[number];
+
+export const visibilities = ["dm-only", "player-safe"] as const;
+export type Visibility = (typeof visibilities)[number];
+
+export const entityTypes = ["npc", "location", "faction", "quest", "item"] as const;
+export type EntityType = (typeof entityTypes)[number];
+
+export const ruleSnippetCategories = [
+  "condition",
+  "core-mechanic",
+  "ability",
+] as const;
+export type RuleSnippetCategory = (typeof ruleSnippetCategories)[number];
 
 export type Campaign = {
   activeSessionId?: string;
@@ -16,7 +29,7 @@ export type SessionSummary = {
 };
 
 export type RuleSnippet = {
-  category: "condition" | "core-mechanic" | "ability";
+  category: RuleSnippetCategory;
   id: string;
   summary: string;
   title: string;
