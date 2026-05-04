@@ -54,6 +54,19 @@ for (const snippet of [
   );
 }
 
+const commitCheckWorkflow = readText(".github/workflows/commit-check.yml");
+for (const snippet of [
+  "fetch-depth: 0",
+  'git fetch origin "${{ github.base_ref }}" --depth=1',
+  'git log --no-merges --format=%s "$MERGE_BASE..HEAD"',
+  "No non-merge pull request commits found to validate.",
+]) {
+  expect(
+    commitCheckWorkflow.includes(snippet),
+    `Commit check workflow is missing expected configuration: ${snippet}`,
+  );
+}
+
 for (const path of [
   ".github/pull_request_template.md",
   "docs/engineering/pull_request_template.md",
