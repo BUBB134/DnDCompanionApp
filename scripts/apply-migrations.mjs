@@ -13,11 +13,13 @@ if (!existsSync(migrationsDir)) {
   process.exit(1);
 }
 
-const client = new Client({
-  connectionString: resolveDatabaseUrl(),
-});
+let client;
 
 try {
+  client = new Client({
+    connectionString: resolveDatabaseUrl(),
+  });
+
   await client.connect();
   await client.query(`
     create table if not exists schema_migrations (
@@ -62,7 +64,9 @@ try {
   console.error(formatDatabaseError(error));
   process.exitCode = 1;
 } finally {
-  await client.end();
+  if (client) {
+    await client.end();
+  }
 }
 
 function loadEnvFiles() {

@@ -16,11 +16,23 @@ if (!existsSync(migrationsDir)) {
   mkdirSync(migrationsDir, { recursive: true });
 }
 
-writeFileSync(
-  migrationFilePath,
-  `-- ${migrationName}\n-- Add SQL statements below. The migration runner applies files in filename order.\n\n`,
-  "utf8",
-);
+try {
+  writeFileSync(
+    migrationFilePath,
+    `-- ${migrationName}\n-- Add SQL statements below. The migration runner applies files in filename order.\n\n`,
+    {
+      encoding: "utf8",
+      flag: "wx",
+    },
+  );
+} catch (error) {
+  if (error instanceof Error && "code" in error && error.code === "EEXIST") {
+    console.error(`Migration already exists: packages/db/migrations/${migrationFileName}`);
+    process.exit(1);
+  }
+
+  throw error;
+}
 
 console.log(`Created migration: packages/db/migrations/${migrationFileName}`);
 
