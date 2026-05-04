@@ -28,6 +28,16 @@ npm run dev
 
 The web app runs from `apps/web` and is exposed through the root `dev` script.
 
+## Local Membership Bootstrap
+
+The protected app currently resolves campaign access from a small local bootstrap dataset while the broader campaign data layer is still being built.
+
+- Sign in as `dm@local.test` to exercise DM access.
+- Sign in as `player@local.test` to exercise player-safe access.
+- Sign in as any other email to verify the non-member access state.
+
+If you want to try a different user during local development, update the bootstrap membership records in `apps/web/src/campaigns/bootstrap.ts`.
+
 ## Root Scripts
 - `npm run install` explains the install workflow for this npm workspace.
 - `npm run db:generate -- <name>` scaffolds a new SQL migration file.

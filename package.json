@@ -18,7 +18,7 @@
     "dev": "npm --workspace @dnd/web run dev",
     "install": "node scripts/install-help.mjs",
     "lint": "eslint . --max-warnings=0",
-    "test": "node scripts/validate-workspace.mjs && node scripts/validate-auth.mjs && node scripts/validate-database.mjs",
+    "test": "node scripts/validate-workspace.mjs && node scripts/validate-auth.mjs && node scripts/validate-database.mjs && node scripts/validate-campaign-access.mjs",
     "typecheck": "npm --workspace @dnd/types run typecheck && npm --workspace @dnd/env run typecheck && npm --workspace @dnd/db run typecheck && npm --workspace @dnd/ui run typecheck && npm --workspace @dnd/web run typecheck"
   },
   "devDependencies": {
