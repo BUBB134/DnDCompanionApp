@@ -1,1 +1,16 @@
+# Default owner
 * @BUBB134
+
+# Repository guardrails and docs
+/.github/ @BUBB134
+/Agents.md @BUBB134
+/README.md @BUBB134
+/docs/ @BUBB134
+/scripts/ @BUBB134
+
+# Application and packages
+/apps/web/ @BUBB134
+/packages/db/ @BUBB134
+/packages/env/ @BUBB134
+/packages/types/ @BUBB134
+/packages/ui/ @BUBB134

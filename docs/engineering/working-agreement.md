@@ -5,6 +5,11 @@
 - PRs must stay narrowly scoped
 - No direct pushes to `main`
 - Prefer multiple small PRs over one large PR
+- Branches must follow `dnd-<ticket-number>-description`
+- Commit subjects and PR titles must start with `[DND-123]`
+- Use `.github/pull_request_template.md` and link the Linear issue in every PR
+- Merge to `main` requires passing `ci`, `branch-name`, `commit-message`, and `pr-title`
+- Merge to `main` requires one approving CODEOWNER review and resolved review conversations
 
 ## Decision hierarchy
 1. Linear issue acceptance criteria

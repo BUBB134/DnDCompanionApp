@@ -2,7 +2,7 @@ name: PR title check
 
 on:
   pull_request:
-    types: [opened, edited, synchronize]
+    types: [opened, edited, reopened, synchronize]
 
 jobs:
   pr-title:
@@ -15,8 +15,8 @@ jobs:
           echo "Checking PR title: $TITLE"
 
           if [[ ! $TITLE =~ ^\[DND-[0-9]+\].*$ ]]; then
-            echo "❌ PR title must start with [DND-123]"
+            echo "PR title must start with [DND-123]"
             exit 1
           fi
 
-          echo "✅ PR title valid"
+          echo "PR title valid."

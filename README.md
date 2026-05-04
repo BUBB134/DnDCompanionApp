@@ -39,6 +39,14 @@ The web app runs from `apps/web` and is exposed through the root `dev` script.
 - `npm test` runs bootstrap/config validation.
 - `npm run typecheck` runs TypeScript checks.
 
+## Pull Request Flow
+
+- Create one branch per Linear issue using `dnd-<ticket-number>-short-description`.
+- Prefix commit subjects and pull request titles with `[DND-123]`.
+- Complete the repository PR template in `.github/pull_request_template.md` and link the Linear issue you are closing.
+- Before requesting review, run `npm run lint`, `npm run typecheck`, `npm test`, and `npm run build`.
+- Before merge to `main`, expect passing `ci`, `branch-name`, `commit-message`, and `pr-title` checks plus one CODEOWNER approval. See `docs/engineering/branch_protection.md` for the exact GitHub settings that must be applied in the repository UI.
+
 ## Database Workflow
 
 The baseline Postgres schema lives in `packages/db/src/schema.ts`, and checked-in SQL migrations live in `packages/db/migrations`.
@@ -67,6 +75,7 @@ packages/
 - `Agents.md`
 - `docs/product/PRD.md`
 - `docs/engineering/architecture.md`
+- `docs/engineering/branch_protection.md`
 - `docs/engineering/working-agreement.md`
 - `docs/engineering/code_review.md`
 - `docs/engineering/definition_of_done.md`
