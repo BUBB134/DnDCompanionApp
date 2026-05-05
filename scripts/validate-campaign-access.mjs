@@ -1,4 +1,4 @@
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
@@ -16,8 +16,8 @@ for (const file of requiredFiles) {
   expect(existsSync(resolve(file)), `Missing campaign access file: ${file}`);
 }
 
-const typescriptPath = resolve("node_modules/typescript/lib/typescript.js");
-const hasTypeScriptRuntime = existsSync(typescriptPath);
+const typescriptPath = resolveTypeScriptRuntimePath();
+const hasTypeScriptRuntime = typescriptPath !== null;
 const typescriptRuntime = hasTypeScriptRuntime
   ? await import(pathToFileURL(typescriptPath).href)
   : null;
@@ -27,6 +27,9 @@ const typescript = hasTypeScriptRuntime
 
 const localUserModuleUrl = hasTypeScriptRuntime
   ? await transpileModuleToDataUrl("apps/web/src/auth/local-user.ts")
+  : null;
+const localUserModule = localUserModuleUrl
+  ? await import(localUserModuleUrl)
   : null;
 const campaignModule = hasTypeScriptRuntime
   ? await import(
@@ -48,16 +51,20 @@ const campaigns = [
     name: "Ashen Coast",
   },
 ];
+const dmUserId = localUserModule?.createLocalUserId("dm@local.test")
+  ?? "00000000-0000-5000-8000-000000000001";
+const playerUserId = localUserModule?.createLocalUserId("player@local.test")
+  ?? "00000000-0000-5000-8000-000000000002";
 const memberships = [
   {
     campaignId: "campaign-1",
     role: "dm",
-    userId: "local:dm@local.test",
+    userId: dmUserId,
   },
   {
     campaignId: "campaign-1",
     role: "player",
-    userId: "local:player@local.test",
+    userId: playerUserId,
   },
 ];
 
@@ -65,14 +72,14 @@ if (campaignModule) {
   const dmAccess = campaignModule.resolveCampaignAccess({
     campaigns,
     memberships,
-    userId: "local:dm@local.test",
+    userId: dmUserId,
   });
   expect(dmAccess?.role === "dm", "DM membership should resolve campaign access.");
 
   const playerAccess = campaignModule.resolveCampaignAccess({
     campaigns,
     memberships,
-    userId: "local:player@local.test",
+    userId: playerUserId,
   });
   expect(
     playerAccess?.role === "player",
@@ -82,7 +89,7 @@ if (campaignModule) {
   const nonMemberAccess = campaignModule.resolveCampaignAccess({
     campaigns,
     memberships,
-    userId: "local:outsider@local.test",
+    userId: "00000000-0000-5000-8000-000000000099",
   });
   expect(nonMemberAccess === null, "Non-members must not resolve campaign access.");
 
@@ -116,7 +123,14 @@ if (campaignModule) {
   );
 }
 
-if (sessionModule && localUserModuleUrl) {
+if (localUserModule) {
+  expect(
+    isUuid(dmUserId) && isUuid(playerUserId) && dmUserId !== playerUserId,
+    "Local auth user ids should normalize to stable UUIDs per email.",
+  );
+}
+
+if (sessionModule && localUserModule) {
   const legacyCookie = sessionModule.encodeAuthSession({
     expiresAt: "2099-01-01T00:00:00.000Z",
     user: {
@@ -129,10 +143,9 @@ if (sessionModule && localUserModuleUrl) {
     legacyCookie,
     new Date("2026-05-04T00:00:00.000Z"),
   );
-  const localUserModule = await import(localUserModuleUrl);
 
   expect(
-    decodedLegacySession?.user.id === localUserModule.createLocalUserId("dm@local.test"),
+    decodedLegacySession?.user.id === dmUserId,
     "Legacy local auth cookies should normalize to the membership-backed user id.",
   );
 }
@@ -144,7 +157,6 @@ expect(
 );
 
 for (const protectedPage of [
-  "apps/web/src/app/(protected)/campaigns/page.tsx",
   "apps/web/src/app/(protected)/entities/page.tsx",
   "apps/web/src/app/(protected)/rules/page.tsx",
   "apps/web/src/app/(protected)/sessions/page.tsx",
@@ -154,6 +166,16 @@ for (const protectedPage of [
     `Protected page must gate non-members with CampaignAccessState: ${protectedPage}`,
   );
 }
+
+const campaignsPage = readText("apps/web/src/app/(protected)/campaigns/page.tsx");
+expect(
+  campaignsPage.includes("CampaignCreateForm"),
+  "Campaigns page must expose the authenticated campaign creation entry point.",
+);
+expect(
+  campaignsPage.includes("listDatabaseCampaignsForUser"),
+  "Campaigns page must load persisted campaigns for the signed-in user.",
+);
 
 expect(
   readText("apps/web/src/components/campaign-shell.tsx").includes("DM brief"),
@@ -216,4 +238,50 @@ async function transpileModuleToDataUrl(path, replacements = []) {
   }).outputText;
 
   return `data:text/javascript;base64,${Buffer.from(compiled).toString("base64")}`;
+}
+
+function resolveTypeScriptRuntimePath() {
+  const localPath = resolve("node_modules/typescript/lib/typescript.js");
+
+  if (existsSync(localPath)) {
+    return localPath;
+  }
+
+  const vscodeBasePath = join(
+    process.env.LOCALAPPDATA ?? "",
+    "Programs",
+    "Microsoft VS Code",
+  );
+
+  if (!existsSync(vscodeBasePath)) {
+    return null;
+  }
+
+  for (const entry of readdirSync(vscodeBasePath, { withFileTypes: true })) {
+    if (!entry.isDirectory()) {
+      continue;
+    }
+
+    const candidatePath = join(
+      vscodeBasePath,
+      entry.name,
+      "resources",
+      "app",
+      "extensions",
+      "node_modules",
+      "typescript",
+      "lib",
+      "typescript.js",
+    );
+
+    if (existsSync(candidatePath)) {
+      return candidatePath;
+    }
+  }
+
+  return null;
+}
+
+function isUuid(value) {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
 }

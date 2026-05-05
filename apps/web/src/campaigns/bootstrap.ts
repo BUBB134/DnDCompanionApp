@@ -5,6 +5,11 @@ import {
   resolveCampaignAccess,
 } from "@dnd/types";
 import { createLocalUserId } from "@/auth/local-user";
+import { getActiveCampaignId } from "@/campaigns/active-campaign";
+import {
+  getDatabaseCampaignAccessForUser,
+  listDatabaseCampaignsForUser,
+} from "@/campaigns/repository";
 
 type CampaignRuleSnippet = RuleSnippet & {
   campaignId: string;
@@ -17,7 +22,7 @@ type CampaignSessionSummary = SessionSummary & {
 export type CampaignHomeData = {
   campaign: Campaign;
   dmBrief: string | null;
-  latestSession: SessionSummary;
+  latestSession: SessionSummary | null;
   rules: RuleSnippet[];
 };
 
@@ -85,20 +90,32 @@ const bootstrapDmBriefs: Record<string, string> = {
     "Captain Thorn still works for the smugglers. If the party trusts him before clearing the vault, the lighthouse ward becomes an ambush instead of an ally.",
 };
 
-export function getCurrentCampaignAccess(
+export async function getCurrentCampaignAccess(
   session: AuthSession,
   campaignId?: string | null,
 ) {
+  const selectedCampaignId = campaignId ?? (await getActiveCampaignId());
+  const databaseCampaign = await getCurrentDatabaseCampaignAccess(
+    session.user.id,
+    selectedCampaignId,
+  );
+
+  if (databaseCampaign) {
+    return databaseCampaign;
+  }
+
   return resolveCampaignAccess({
-    campaignId,
+    campaignId: selectedCampaignId,
     campaigns: bootstrapCampaigns,
     memberships: bootstrapMemberships,
     userId: session.user.id,
   });
 }
 
-export function getCampaignHomeData(session: AuthSession): CampaignHomeData | null {
-  const campaign = getCurrentCampaignAccess(session);
+export async function getCampaignHomeData(
+  session: AuthSession,
+): Promise<CampaignHomeData | null> {
+  const campaign = await getCurrentCampaignAccess(session);
 
   if (!campaign) {
     return null;
@@ -108,19 +125,41 @@ export function getCampaignHomeData(session: AuthSession): CampaignHomeData | nu
     (sessionSummary) => sessionSummary.campaignId === campaign.id,
   );
 
-  if (!latestSession) {
-    return null;
-  }
-
   return {
     campaign,
     dmBrief: isDungeonMaster(campaign.role)
       ? bootstrapDmBriefs[campaign.id] ?? null
       : null,
-    latestSession,
-    rules: filterByVisibility(
-      bootstrapRules.filter((rule) => rule.campaignId === campaign.id),
-      campaign.role,
-    ),
+    latestSession: latestSession ?? null,
+    rules: latestSession
+      ? filterByVisibility(
+          bootstrapRules.filter((rule) => rule.campaignId === campaign.id),
+          campaign.role,
+        )
+      : [],
   };
+}
+
+async function getCurrentDatabaseCampaignAccess(
+  userId: string,
+  campaignId?: string | null,
+) {
+  try {
+    if (campaignId) {
+      const selectedCampaign = await getDatabaseCampaignAccessForUser(
+        userId,
+        campaignId,
+      );
+
+      if (selectedCampaign) {
+        return selectedCampaign;
+      }
+    }
+
+    const campaigns = await listDatabaseCampaignsForUser(userId);
+
+    return campaigns[0] ?? null;
+  } catch {
+    return null;
+  }
 }

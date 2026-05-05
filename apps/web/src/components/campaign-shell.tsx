@@ -4,7 +4,7 @@ import { EmptyState, StatusPill, Surface } from "@dnd/ui";
 type CampaignShellProps = {
   campaign: Campaign;
   dmBrief?: string | null;
-  latestSession: SessionSummary;
+  latestSession: SessionSummary | null;
   rules: RuleSnippet[];
 };
 
@@ -24,6 +24,11 @@ export function CampaignShell({
             Active campaign
           </p>
           <h2 className="mt-1 text-2xl font-semibold leading-tight">{campaign.name}</h2>
+          {campaign.summary ? (
+            <p className="mt-2 max-w-2xl text-sm leading-6 text-[#4b4657]">
+              {campaign.summary}
+            </p>
+          ) : null}
         </div>
         <StatusPill tone="teal">Role: {campaign.role.toUpperCase()}</StatusPill>
       </section>
@@ -31,31 +36,40 @@ export function CampaignShell({
       <section className="grid gap-5 xl:grid-cols-[minmax(0,1.7fr)_minmax(280px,0.9fr)]">
         <Surface className="min-h-[360px] p-5 sm:p-6">
           <div className="flex flex-col gap-5">
-            <div className="flex flex-col gap-2">
-              <p className="text-sm font-semibold uppercase tracking-wide text-[#1f6f78]">
-                Current session
-              </p>
-              <h2 className="max-w-3xl text-3xl font-semibold leading-tight sm:text-4xl">
-                {latestSession.title}
-              </h2>
-              <p className="max-w-3xl text-base leading-7 text-[#4b4657]">
-                {latestSession.recap}
-              </p>
-            </div>
-
-            <div className="grid gap-3 sm:grid-cols-2">
-              {latestSession.unresolvedHooks.map((hook) => (
-                <div
-                  className="rounded-lg border border-[#c3943e]/45 bg-[#fffaf0] p-4"
-                  key={hook}
-                >
-                  <p className="text-xs font-semibold uppercase tracking-wide text-[#8b2f39]">
-                    Open hook
+            {latestSession ? (
+              <>
+                <div className="flex flex-col gap-2">
+                  <p className="text-sm font-semibold uppercase tracking-wide text-[#1f6f78]">
+                    Current session
                   </p>
-                  <p className="mt-2 text-sm font-medium">{hook}</p>
+                  <h2 className="max-w-3xl text-3xl font-semibold leading-tight sm:text-4xl">
+                    {latestSession.title}
+                  </h2>
+                  <p className="max-w-3xl text-base leading-7 text-[#4b4657]">
+                    {latestSession.recap}
+                  </p>
                 </div>
-              ))}
-            </div>
+
+                <div className="grid gap-3 sm:grid-cols-2">
+                  {latestSession.unresolvedHooks.map((hook) => (
+                    <div
+                      className="rounded-lg border border-[#c3943e]/45 bg-[#fffaf0] p-4"
+                      key={hook}
+                    >
+                      <p className="text-xs font-semibold uppercase tracking-wide text-[#8b2f39]">
+                        Open hook
+                      </p>
+                      <p className="mt-2 text-sm font-medium">{hook}</p>
+                    </div>
+                  ))}
+                </div>
+              </>
+            ) : (
+              <EmptyState
+                body="This campaign is ready for its first session. Once sessions are added, the dashboard will surface the latest recap and unresolved hooks here."
+                title="No sessions yet"
+              />
+            )}
 
             {dmBrief ? (
               <div className="rounded-lg border border-[#8b2f39]/25 bg-[#f9e8ea] p-4">

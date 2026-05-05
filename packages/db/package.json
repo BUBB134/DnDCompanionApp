@@ -13,6 +13,7 @@
   },
   "dependencies": {
     "@dnd/env": "file:../env",
-    "@dnd/types": "file:../types"
+    "@dnd/types": "file:../types",
+    "pg": "^8.16.3"
   }
 }

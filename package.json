@@ -18,12 +18,13 @@
     "dev": "npm --workspace @dnd/web run dev",
     "install": "node scripts/install-help.mjs",
     "lint": "eslint . --max-warnings=0",
-    "test": "node scripts/validate-workspace.mjs && node scripts/validate-repository-guardrails.mjs && node scripts/validate-auth.mjs && node scripts/validate-pwa-shell.mjs && node scripts/validate-database.mjs && node scripts/validate-campaign-access.mjs",
+    "test": "node scripts/validate-workspace.mjs && node scripts/validate-repository-guardrails.mjs && node scripts/validate-auth.mjs && node scripts/validate-pwa-shell.mjs && node scripts/validate-database.mjs && node scripts/validate-campaign-access.mjs && node scripts/validate-campaign-creation.mjs",
     "typecheck": "npm --workspace @dnd/types run typecheck && npm --workspace @dnd/env run typecheck && npm --workspace @dnd/db run typecheck && npm --workspace @dnd/ui run typecheck && npm --workspace @dnd/web run typecheck"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4.1.0",
     "@types/node": "^24.0.0",
+    "@types/pg": "^8.15.6",
     "@types/react": "^19.2.0",
     "@types/react-dom": "^19.2.0",
     "eslint": "^9.39.0",

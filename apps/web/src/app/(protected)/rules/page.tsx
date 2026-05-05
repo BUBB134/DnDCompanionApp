@@ -6,7 +6,7 @@ import { ProtectedScaffoldPage } from "@/components/protected-scaffold-page";
 export default async function RulesPage() {
   const session = await requireAuthSession();
 
-  if (!getCurrentCampaignAccess(session)) {
+  if (!(await getCurrentCampaignAccess(session))) {
     return <CampaignAccessState />;
   }
 
