@@ -10,7 +10,6 @@ const requiredFiles = [
   "apps/web/src/app/(protected)/loading.tsx",
   "apps/web/src/app/apple-icon.tsx",
   "apps/web/src/app/icon.tsx",
-  "apps/web/src/app/icon1.tsx",
   "apps/web/src/app/manifest.ts",
   "apps/web/src/components/app-shell-navigation.tsx",
 ];
@@ -33,6 +32,7 @@ expect(manifest.includes('display: "standalone"'), "Manifest must use standalone
 expect(manifest.includes('start_url: "/"'), "Manifest must define the root start URL.");
 expect(manifest.includes("theme_color"), "Manifest must define a theme color.");
 expect(manifest.includes("icons"), "Manifest must include icon entries.");
+expect(!manifest.includes('src: "/icon1"'), "Manifest must not reference unsupported icon routes.");
 
 const middleware = readText("apps/web/src/middleware.ts");
 expect(
