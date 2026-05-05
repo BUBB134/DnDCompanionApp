@@ -10,7 +10,7 @@ type ProtectedLayoutProps = {
 export default async function ProtectedLayout({ children }: ProtectedLayoutProps) {
   const session = await requireAuthSession();
   const env = readPublicEnv(process.env);
-  const campaign = getCurrentCampaignAccess(session);
+  const campaign = await getCurrentCampaignAccess(session);
 
   return (
     <ProtectedAppShell appEnv={env.NEXT_PUBLIC_APP_ENV} campaign={campaign} session={session}>

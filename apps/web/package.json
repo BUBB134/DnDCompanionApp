@@ -10,6 +10,7 @@
     "typecheck": "tsc -p tsconfig.json --noEmit --pretty false"
   },
   "dependencies": {
+    "@dnd/db": "file:../../packages/db",
     "@dnd/env": "file:../../packages/env",
     "@dnd/types": "file:../../packages/types",
     "@dnd/ui": "file:../../packages/ui",

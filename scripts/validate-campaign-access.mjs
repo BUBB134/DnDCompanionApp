@@ -1,4 +1,4 @@
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
@@ -16,8 +16,8 @@ for (const file of requiredFiles) {
   expect(existsSync(resolve(file)), `Missing campaign access file: ${file}`);
 }
 
-const typescriptPath = resolve("node_modules/typescript/lib/typescript.js");
-const hasTypeScriptRuntime = existsSync(typescriptPath);
+const typescriptPath = resolveTypeScriptRuntimePath();
+const hasTypeScriptRuntime = typescriptPath !== null;
 const typescriptRuntime = hasTypeScriptRuntime
   ? await import(pathToFileURL(typescriptPath).href)
   : null;
@@ -144,7 +144,6 @@ expect(
 );
 
 for (const protectedPage of [
-  "apps/web/src/app/(protected)/campaigns/page.tsx",
   "apps/web/src/app/(protected)/entities/page.tsx",
   "apps/web/src/app/(protected)/rules/page.tsx",
   "apps/web/src/app/(protected)/sessions/page.tsx",
@@ -154,6 +153,16 @@ for (const protectedPage of [
     `Protected page must gate non-members with CampaignAccessState: ${protectedPage}`,
   );
 }
+
+const campaignsPage = readText("apps/web/src/app/(protected)/campaigns/page.tsx");
+expect(
+  campaignsPage.includes("CampaignCreateForm"),
+  "Campaigns page must expose the authenticated campaign creation entry point.",
+);
+expect(
+  campaignsPage.includes("listDatabaseCampaignsForUser"),
+  "Campaigns page must load persisted campaigns for the signed-in user.",
+);
 
 expect(
   readText("apps/web/src/components/campaign-shell.tsx").includes("DM brief"),
@@ -216,4 +225,46 @@ async function transpileModuleToDataUrl(path, replacements = []) {
   }).outputText;
 
   return `data:text/javascript;base64,${Buffer.from(compiled).toString("base64")}`;
+}
+
+function resolveTypeScriptRuntimePath() {
+  const localPath = resolve("node_modules/typescript/lib/typescript.js");
+
+  if (existsSync(localPath)) {
+    return localPath;
+  }
+
+  const vscodeBasePath = join(
+    process.env.LOCALAPPDATA ?? "",
+    "Programs",
+    "Microsoft VS Code",
+  );
+
+  if (!existsSync(vscodeBasePath)) {
+    return null;
+  }
+
+  for (const entry of readdirSync(vscodeBasePath, { withFileTypes: true })) {
+    if (!entry.isDirectory()) {
+      continue;
+    }
+
+    const candidatePath = join(
+      vscodeBasePath,
+      entry.name,
+      "resources",
+      "app",
+      "extensions",
+      "node_modules",
+      "typescript",
+      "lib",
+      "typescript.js",
+    );
+
+    if (existsSync(candidatePath)) {
+      return candidatePath;
+    }
+  }
+
+  return null;
 }

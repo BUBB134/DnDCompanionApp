@@ -18,6 +18,7 @@ export type CampaignSummary = {
   activeSessionId?: string;
   id: string;
   name: string;
+  summary?: string | null;
 };
 
 export type CampaignMembership = {

@@ -5,7 +5,7 @@ import { CampaignShell } from "@/components/campaign-shell";
 
 export default async function Home() {
   const session = await requireAuthSession();
-  const campaignHomeData = getCampaignHomeData(session);
+  const campaignHomeData = await getCampaignHomeData(session);
 
   if (!campaignHomeData) {
     return <CampaignAccessState />;
