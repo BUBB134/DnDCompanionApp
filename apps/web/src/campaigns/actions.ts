@@ -18,6 +18,7 @@ export async function createCampaignAction(
   _previousState: CreateCampaignActionState = initialCreateCampaignActionState,
   formData: FormData,
 ) {
+  void _previousState;
   const session = await requireAuthSession();
   const result = await createCampaignSubmission(
     { createCampaignForUser },

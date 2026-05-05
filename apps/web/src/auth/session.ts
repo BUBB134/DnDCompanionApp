@@ -78,6 +78,8 @@ export function getSafeReturnPath(
     return "/";
   }
 
+  const normalizedReturnPath = returnPath as ProtectedReturnPath;
+
   if (returnPath === "/sign-in" || returnPath.startsWith("/sign-in?")) {
     return "/";
   }
@@ -89,7 +91,7 @@ export function getSafeReturnPath(
       (protectedPath !== "/" && pathname.startsWith(`${protectedPath}/`)),
   );
 
-  return matchedPath ? returnPath : "/";
+  return matchedPath ? normalizedReturnPath : "/";
 }
 
 function isAuthSession(value: unknown): value is AuthSession {
