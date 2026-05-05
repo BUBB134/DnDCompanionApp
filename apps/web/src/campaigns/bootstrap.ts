@@ -1,4 +1,11 @@
-import type { AuthSession, Campaign, CampaignMembership, RuleSnippet, SessionSummary } from "@dnd/types";
+import type {
+  AuthSession,
+  Campaign,
+  CampaignEntitySummary,
+  CampaignMembership,
+  RuleSnippet,
+  SessionSummary,
+} from "@dnd/types";
 import {
   filterByVisibility,
   isDungeonMaster,
@@ -19,12 +26,19 @@ type CampaignSessionSummary = SessionSummary & {
   campaignId: string;
 };
 
-export type CampaignHomeData = {
+type CampaignEntityRecord = CampaignEntitySummary & {
+  campaignId: string;
+};
+
+export type CampaignDashboardData = {
   campaign: Campaign;
   dmBrief: string | null;
+  entities: CampaignEntitySummary[];
   latestSession: SessionSummary | null;
   rules: RuleSnippet[];
 };
+
+export type CampaignHomeData = CampaignDashboardData;
 
 const bootstrapCampaigns = [
   {
@@ -55,6 +69,36 @@ const bootstrapSessions: readonly CampaignSessionSummary[] = [
       "The party recovered the drowned keeper's journal, named Captain Thorn as a likely ally, and left one sealed vault unopened.",
     title: "The lighthouse beneath the tide",
     unresolvedHooks: ["Decode the salt-stained map", "Decide what to tell Captain Thorn"],
+  },
+] as const;
+
+const bootstrapEntities: readonly CampaignEntityRecord[] = [
+  {
+    campaignId: "campaign-ashen-coast",
+    id: "entity-captain-thorn",
+    name: "Captain Thorn",
+    summary:
+      "A tide-worn privateer with a useful harbor chart and a reputation the party has not fully tested.",
+    type: "npc",
+    visibility: "player-safe",
+  },
+  {
+    campaignId: "campaign-ashen-coast",
+    id: "entity-sunken-lighthouse",
+    name: "Sunken lighthouse",
+    summary:
+      "The half-flooded beacon below the Ashen Coast still anchors the party's open vault mystery.",
+    type: "location",
+    visibility: "player-safe",
+  },
+  {
+    campaignId: "campaign-ashen-coast",
+    id: "entity-lantern-ward",
+    name: "Lantern ward",
+    summary:
+      "A hidden flood-clock trigger that should stay out of the player view until discovered in play.",
+    type: "quest",
+    visibility: "dm-only",
   },
 ] as const;
 
@@ -121,6 +165,19 @@ export async function getCampaignHomeData(
     return null;
   }
 
+  return buildCampaignDashboardData(campaign);
+}
+
+export async function getSelectedCampaignDashboardData(
+  userId: string,
+  campaignId: string,
+) {
+  const campaign = await getDatabaseCampaignAccessForUser(userId, campaignId);
+
+  return campaign ? buildCampaignDashboardData(campaign) : null;
+}
+
+export function buildCampaignDashboardData(campaign: Campaign): CampaignDashboardData {
   const latestSession = bootstrapSessions.find(
     (sessionSummary) => sessionSummary.campaignId === campaign.id,
   );
@@ -130,6 +187,10 @@ export async function getCampaignHomeData(
     dmBrief: isDungeonMaster(campaign.role)
       ? bootstrapDmBriefs[campaign.id] ?? null
       : null,
+    entities: filterByVisibility(
+      bootstrapEntities.filter((entity) => entity.campaignId === campaign.id),
+      campaign.role,
+    ),
     latestSession: latestSession ?? null,
     rules: latestSession
       ? filterByVisibility(

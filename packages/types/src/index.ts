@@ -17,6 +17,7 @@ export type {
 export type {
   AbilitySummary,
   CampaignAccess,
+  CampaignEntitySummary,
   CampaignMembership,
   Campaign,
   CampaignRole,

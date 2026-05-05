@@ -9,7 +9,8 @@ export default function NotFound() {
         </p>
         <h1 className="mt-3 text-2xl font-semibold">This campaign page is not available.</h1>
         <p className="mt-3 text-sm text-[#4b4657]">
-          The route exists as a bootstrap fallback until campaign routing lands.
+          The campaign may not exist, or the signed-in user may not have membership
+          access to view it.
         </p>
         <Link
           className="mt-5 inline-flex rounded-md bg-[#17161f] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#2d2937] focus:outline-none focus:ring-2 focus:ring-[#1f6f78] focus:ring-offset-2"
