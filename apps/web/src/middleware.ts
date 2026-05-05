@@ -40,7 +40,9 @@ export function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/((?!_next/static|_next/image|api/auth/session|brand-mark.svg|favicon.ico).*)"],
+  matcher: [
+    "/((?!_next/static|_next/image|api/auth/session|apple-icon|brand-mark.svg|favicon.ico|icon|manifest.webmanifest).*)",
+  ],
 };
 
 function isProtectedRoute(pathname: string) {
