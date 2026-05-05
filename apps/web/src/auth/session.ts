@@ -19,7 +19,7 @@ type LocalSessionInput = {
   name?: string;
 };
 
-export type ProtectedReturnPath = (typeof PROTECTED_RETURN_PATHS)[number];
+export type ProtectedReturnPath = `/${string}`;
 
 export function createLocalAuthSession(
   input: LocalSessionInput = {},
@@ -89,7 +89,7 @@ export function getSafeReturnPath(
       (protectedPath !== "/" && pathname.startsWith(`${protectedPath}/`)),
   );
 
-  return matchedPath ?? "/";
+  return matchedPath ? returnPath : "/";
 }
 
 function isAuthSession(value: unknown): value is AuthSession {
