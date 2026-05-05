@@ -10,6 +10,7 @@ const requiredFiles = [
   "apps/web/src/app/(protected)/campaigns/[campaignId]/loading.tsx",
   "apps/web/src/campaigns/bootstrap.ts",
   "apps/web/src/components/campaign-shell.tsx",
+  "packages/types/src/index.ts",
 ];
 
 for (const file of requiredFiles) {
@@ -48,6 +49,11 @@ for (const expectedText of [
 expect(
   campaignShell.includes("canAccessVisibility"),
   "Campaign shell actions must respect DM-only versus player-safe visibility.",
+);
+
+expect(
+  readText("packages/types/src/index.ts").includes("CampaignEntitySummary"),
+  "Shared campaign entity summary type must be exported from @dnd/types.",
 );
 
 const typescriptPath = resolveTypeScriptRuntimePath();
