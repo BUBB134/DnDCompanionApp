@@ -27,6 +27,9 @@ expect(hasTypeScriptRuntime, "TypeScript runtime is required for campaign creati
 if (hasTypeScriptRuntime) {
   const typescriptRuntime = await import(pathToFileURL(typescriptPath).href);
   const typescript = typescriptRuntime.default ?? typescriptRuntime;
+  const localUserModule = await import(
+    await transpileModuleToDataUrl(typescript, "apps/web/src/auth/local-user.ts"),
+  );
   const typesStubModuleUrl = moduleTextToDataUrl(`
     export const AuthUser = undefined;
     export const Campaign = undefined;
@@ -56,9 +59,14 @@ if (hasTypeScriptRuntime) {
 
   const user = {
     email: "dm@local.test",
-    id: "local:dm@local.test",
+    id: localUserModule.createLocalUserId("dm@local.test"),
     name: "Local DM",
   };
+
+  expect(
+    isUuid(user.id),
+    "Campaign creation validation should exercise the local-auth UUID-backed user id.",
+  );
 
   const missingName = createCampaignModule.validateCreateCampaignValues({
     name: "   ",
@@ -244,4 +252,8 @@ function resolveTypeScriptRuntimePath() {
   }
 
   return null;
+}
+
+function isUuid(value) {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
 }

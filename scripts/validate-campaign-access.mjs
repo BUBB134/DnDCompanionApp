@@ -28,6 +28,9 @@ const typescript = hasTypeScriptRuntime
 const localUserModuleUrl = hasTypeScriptRuntime
   ? await transpileModuleToDataUrl("apps/web/src/auth/local-user.ts")
   : null;
+const localUserModule = localUserModuleUrl
+  ? await import(localUserModuleUrl)
+  : null;
 const campaignModule = hasTypeScriptRuntime
   ? await import(
       await transpileModuleToDataUrl("packages/types/src/campaign.ts"),
@@ -48,16 +51,20 @@ const campaigns = [
     name: "Ashen Coast",
   },
 ];
+const dmUserId = localUserModule?.createLocalUserId("dm@local.test")
+  ?? "00000000-0000-5000-8000-000000000001";
+const playerUserId = localUserModule?.createLocalUserId("player@local.test")
+  ?? "00000000-0000-5000-8000-000000000002";
 const memberships = [
   {
     campaignId: "campaign-1",
     role: "dm",
-    userId: "local:dm@local.test",
+    userId: dmUserId,
   },
   {
     campaignId: "campaign-1",
     role: "player",
-    userId: "local:player@local.test",
+    userId: playerUserId,
   },
 ];
 
@@ -65,14 +72,14 @@ if (campaignModule) {
   const dmAccess = campaignModule.resolveCampaignAccess({
     campaigns,
     memberships,
-    userId: "local:dm@local.test",
+    userId: dmUserId,
   });
   expect(dmAccess?.role === "dm", "DM membership should resolve campaign access.");
 
   const playerAccess = campaignModule.resolveCampaignAccess({
     campaigns,
     memberships,
-    userId: "local:player@local.test",
+    userId: playerUserId,
   });
   expect(
     playerAccess?.role === "player",
@@ -82,7 +89,7 @@ if (campaignModule) {
   const nonMemberAccess = campaignModule.resolveCampaignAccess({
     campaigns,
     memberships,
-    userId: "local:outsider@local.test",
+    userId: "00000000-0000-5000-8000-000000000099",
   });
   expect(nonMemberAccess === null, "Non-members must not resolve campaign access.");
 
@@ -116,7 +123,14 @@ if (campaignModule) {
   );
 }
 
-if (sessionModule && localUserModuleUrl) {
+if (localUserModule) {
+  expect(
+    isUuid(dmUserId) && isUuid(playerUserId) && dmUserId !== playerUserId,
+    "Local auth user ids should normalize to stable UUIDs per email.",
+  );
+}
+
+if (sessionModule && localUserModule) {
   const legacyCookie = sessionModule.encodeAuthSession({
     expiresAt: "2099-01-01T00:00:00.000Z",
     user: {
@@ -129,10 +143,9 @@ if (sessionModule && localUserModuleUrl) {
     legacyCookie,
     new Date("2026-05-04T00:00:00.000Z"),
   );
-  const localUserModule = await import(localUserModuleUrl);
 
   expect(
-    decodedLegacySession?.user.id === localUserModule.createLocalUserId("dm@local.test"),
+    decodedLegacySession?.user.id === dmUserId,
     "Legacy local auth cookies should normalize to the membership-backed user id.",
   );
 }
@@ -267,4 +280,8 @@ function resolveTypeScriptRuntimePath() {
   }
 
   return null;
+}
+
+function isUuid(value) {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
 }
