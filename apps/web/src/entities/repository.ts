@@ -49,7 +49,13 @@ export async function listEntitySummariesForUser(
 ): Promise<CampaignEntitySummary[]> {
   const entities = await listEntitiesForUser(userId, campaignId);
 
-  return entities.map(({ description: _description, ...entity }) => entity);
+  return entities.map((entity) => ({
+    id: entity.id,
+    name: entity.name,
+    summary: entity.summary,
+    type: entity.type,
+    visibility: entity.visibility,
+  }));
 }
 
 export async function createEntityForUser(
