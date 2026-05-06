@@ -28,7 +28,7 @@ export const initialDeleteEntityActionState: DeleteEntityActionState = {
 export async function createEntityAction(
   _previousState: EntityActionState,
   formData: FormData,
-) {
+): Promise<EntityActionState> {
   void _previousState;
   const session = await requireAuthSession();
   const values = readEntityFormValues(formData);
@@ -59,7 +59,7 @@ export async function createEntityAction(
 export async function updateEntityAction(
   _previousState: EntityActionState,
   formData: FormData,
-) {
+): Promise<EntityActionState> {
   void _previousState;
   const session = await requireAuthSession();
   const values = readEntityFormValues(formData);

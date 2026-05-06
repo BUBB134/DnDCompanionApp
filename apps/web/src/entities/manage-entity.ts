@@ -55,6 +55,17 @@ type UpdateEntityRepository = {
   ): Promise<CampaignEntity>;
 };
 
+type EntitySubmissionResult =
+  | {
+      entity: CampaignEntity;
+      ok: true;
+      state: EntityActionState;
+    }
+  | {
+      ok: false;
+      state: EntityActionState;
+    };
+
 export const emptyEntityFormValues: EntityFormValues = {
   campaignId: "",
   description: "",
@@ -85,7 +96,7 @@ export async function createEntitySubmission(
   campaign: Campaign,
   values: EntityFormValues,
   formatError: (error: unknown) => string,
-) {
+): Promise<EntitySubmissionResult> {
   const validation = validateEntityValues(values, campaign);
 
   if (hasFieldErrors(validation.fieldErrors)) {
@@ -97,7 +108,7 @@ export async function createEntitySubmission(
         successMessage: null,
         values: validation.values,
       },
-    } as const;
+    };
   }
 
   try {
@@ -110,7 +121,7 @@ export async function createEntitySubmission(
         campaignId: campaign.id,
         type: validation.input.type,
       }),
-    } as const;
+    };
   } catch (error) {
     return {
       ok: false,
@@ -120,7 +131,7 @@ export async function createEntitySubmission(
         successMessage: null,
         values: validation.values,
       },
-    } as const;
+    };
   }
 }
 
@@ -130,7 +141,7 @@ export async function updateEntitySubmission(
   campaign: Campaign,
   values: EntityFormValues,
   formatError: (error: unknown) => string,
-) {
+): Promise<EntitySubmissionResult> {
   const validation = validateEntityValues(values, campaign);
   const entityId = values.entityId.trim();
 
@@ -147,7 +158,7 @@ export async function updateEntitySubmission(
         successMessage: null,
         values: validation.values,
       },
-    } as const;
+    };
   }
 
   try {
@@ -166,7 +177,7 @@ export async function updateEntitySubmission(
         successMessage: "Entity saved.",
         values: entityToFormValues(campaign.id, entity),
       },
-    } as const;
+    };
   } catch (error) {
     return {
       ok: false,
@@ -176,7 +187,7 @@ export async function updateEntitySubmission(
         successMessage: null,
         values: validation.values,
       },
-    } as const;
+    };
   }
 }
 
