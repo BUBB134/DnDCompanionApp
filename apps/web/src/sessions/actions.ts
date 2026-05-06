@@ -122,6 +122,7 @@ function readSessionFormValues(formData: FormData): SessionFormValues {
   return {
     campaignId: getStringField(formData, "campaignId"),
     notes: getStringField(formData, "notes"),
+    notesDocument: getStringField(formData, "notesDocument"),
     sessionId: getStringField(formData, "sessionId"),
     taggedEntityIds: getStringFields(formData, "taggedEntityIds"),
     title: getStringField(formData, "title"),

@@ -12,13 +12,14 @@ import {
 } from "@/campaigns/bootstrap";
 import { isDatabaseCampaignId } from "@/campaigns/database-id";
 import { CampaignAccessState } from "@/components/campaign-access-state";
-import { RuleLinkedText } from "@/components/rule-linked-text";
+import { SessionNoteDocumentView } from "@/components/session-note-document-view";
 import {
   SessionCreateForm,
   SessionEditForm,
 } from "@/components/session-editor";
 import { listEntitySummariesForUser } from "@/entities/repository";
 import { listRuleSnippetsForUser } from "@/rules/repository";
+import { createSessionNoteDocumentFromPlainText } from "@/sessions/note-document";
 import { listSessionsForUser } from "@/sessions/repository";
 
 const entityTypeLabels: Record<CampaignEntitySummary["type"], string> = {
@@ -62,6 +63,9 @@ export default async function SessionsPage() {
             ...latestSession,
             createdAt: "",
             notes: latestSession.recap,
+            notesDocument: createSessionNoteDocumentFromPlainText(
+              latestSession.recap,
+            ),
             updatedAt: "",
           },
         ]
@@ -152,10 +156,10 @@ export default async function SessionsPage() {
                     </div>
 
                     {campaignSession.notes ? (
-                      <RuleLinkedText
-                        className="mt-3 whitespace-pre-wrap text-sm leading-6 text-[#17161f]"
+                      <SessionNoteDocumentView
+                        document={campaignSession.notesDocument}
+                        fallbackText={campaignSession.notes}
                         rules={rules}
-                        text={campaignSession.notes}
                       />
                     ) : (
                       <p className="mt-3 text-sm leading-6 text-[#4b4657]">

@@ -8,11 +8,14 @@ const failures = [];
 const requiredFiles = [
   "apps/web/src/app/(protected)/sessions/page.tsx",
   "apps/web/src/app/(protected)/sessions/loading.tsx",
+  "apps/web/src/components/session-note-document-view.tsx",
   "apps/web/src/components/session-editor.tsx",
   "apps/web/src/sessions/actions.ts",
   "apps/web/src/sessions/manage-session.ts",
+  "apps/web/src/sessions/note-document.ts",
   "apps/web/src/sessions/repository.ts",
   "packages/db/migrations/0002_session_entity_tags.sql",
+  "packages/db/migrations/0004_session_note_document.sql",
   "packages/types/src/campaign.ts",
 ];
 
@@ -25,6 +28,7 @@ for (const expectedText of [
   "listSessionsForUser",
   "SessionCreateForm",
   "SessionEditForm",
+  "SessionNoteDocumentView",
   "CampaignAccessState",
   "taggedEntities",
   "isDatabaseCampaignId",
@@ -41,6 +45,7 @@ for (const expectedSql of [
   "from sessions",
   "insert into sessions",
   "update sessions",
+  "notes_document",
   "session_entity_tags",
   "campaign_memberships",
   "entities.visibility = 'player-safe'",
@@ -84,10 +89,16 @@ if (hasTypeScriptRuntime) {
   const databaseIdUrl = await transpileModuleToDataUrl(
     "apps/web/src/campaigns/database-id.ts",
   );
+  const noteDocumentUrl = await transpileModuleToDataUrl(
+    "apps/web/src/sessions/note-document.ts",
+    [["@dnd/types", campaignTypesUrl]],
+  );
+  const noteDocumentModule = await import(noteDocumentUrl);
   const manageSessionModule = await import(
     await transpileModuleToDataUrl("apps/web/src/sessions/manage-session.ts", [
       ["@dnd/types", campaignTypesUrl],
       ["@/campaigns/database-id", databaseIdUrl],
+      ["@/sessions/note-document", noteDocumentUrl],
     ]),
   );
 
@@ -108,6 +119,11 @@ if (hasTypeScriptRuntime) {
   const validValues = {
     campaignId: savedCampaign.id,
     notes: "  The party found the tide key.  ",
+    notesDocument: noteDocumentModule.serializeSessionNoteDocument(
+      noteDocumentModule.createSessionNoteDocumentFromPlainText(
+        "  The party found the tide key.  ",
+      ),
+    ),
     sessionId: "",
     taggedEntityIds: [visibleEntities[0].id, visibleEntities[0].id, ""],
     title: "  The drowned door  ",
@@ -123,9 +139,50 @@ if (hasTypeScriptRuntime) {
     Object.keys(valid.fieldErrors).length === 0 &&
       valid.input.title === "The drowned door" &&
       valid.input.notes === "The party found the tide key." &&
+      valid.input.notesDocument.blocks[0]?.type === "paragraph" &&
       valid.input.unresolvedHooks.length === 2 &&
       valid.input.taggedEntityIds.length === 1,
-    "Session validation must trim notes and hooks while deduplicating visible tags.",
+    "Session validation must trim note blocks and hooks while deduplicating visible tags.",
+  );
+
+  const structuredNotes = manageSessionModule.validateSessionValues(
+    {
+      ...validValues,
+      notes: "",
+      notesDocument: JSON.stringify({
+        version: 1,
+        blocks: [
+          {
+            id: "block-heading",
+            references: [],
+            text: "  A tide key turns  ",
+            type: "heading",
+          },
+          {
+            id: "block-callout",
+            references: [
+              {
+                endOffset: 13,
+                label: "Captain Thorn",
+                startOffset: 0,
+                targetId: visibleEntities[0].id,
+                targetType: "entity",
+              },
+            ],
+            text: "Captain Thorn waits.",
+            type: "callout",
+          },
+        ],
+      }),
+    },
+    savedCampaign,
+    visibleEntities,
+  );
+  expect(
+    structuredNotes.input.notes === "A tide key turns\n\nCaptain Thorn waits." &&
+      structuredNotes.input.notesDocument.blocks[1]?.references[0]?.targetType ===
+        "entity",
+    "Session validation must preserve structured note blocks and reference metadata.",
   );
 
   const unavailableTag = manageSessionModule.validateSessionValues(
@@ -183,6 +240,7 @@ if (hasTypeScriptRuntime) {
           createdAt: "2026-05-06T00:00:00.000Z",
           id: "session-1",
           notes: input.notes,
+          notesDocument: input.notesDocument,
           recap: "",
           taggedEntities: visibleEntities,
           title: input.title,
@@ -233,6 +291,7 @@ if (hasTypeScriptRuntime) {
           createdAt: "2026-05-06T00:00:00.000Z",
           id: sessionId,
           notes: input.notes,
+          notesDocument: input.notesDocument,
           recap: "",
           taggedEntities: visibleEntities,
           title: input.title,
@@ -265,6 +324,17 @@ if (hasTypeScriptRuntime) {
         created_at: "2026-05-06T00:00:00.000Z",
         id: "session-1",
         notes: "The party found the tide key.",
+        notes_document: {
+          version: 1,
+          blocks: [
+            {
+              id: "legacy-block-1",
+              references: [],
+              text: "The party found the tide key.",
+              type: "paragraph"
+            }
+          ]
+        },
         recap: "",
         tagged_entities: [
           {
@@ -323,6 +393,7 @@ if (hasTypeScriptRuntime) {
       ["@dnd/db", dbStubModuleUrl],
       ["@dnd/types", campaignTypesUrl],
       ["@/sessions/manage-session", moduleDataUrl("export {};")],
+      ["@/sessions/note-document", noteDocumentUrl],
     ]),
   );
 
@@ -332,9 +403,11 @@ if (hasTypeScriptRuntime) {
   );
   expect(
     listedSessions[0]?.notes === "The party found the tide key." &&
+      listedSessions[0]?.notesDocument.blocks[0]?.text ===
+        "The party found the tide key." &&
       listedSessions[0]?.recap === "The party found the tide key." &&
       listedSessions[0]?.taggedEntities[0]?.name === "Captain Thorn",
-    "Session repository must map persisted notes and visible entity tags.",
+    "Session repository must map persisted note documents and visible entity tags.",
   );
 
   await repositoryModule.getLatestSessionForUser("user-1", savedCampaign.id);
@@ -343,11 +416,12 @@ if (hasTypeScriptRuntime) {
 
   const queryTexts = dbStubModule.queries.map((query) => query.text).join("\n");
   expect(
-    queryTexts.includes("campaign_memberships.user_id = $1") &&
+      queryTexts.includes("campaign_memberships.user_id = $1") &&
       queryTexts.includes("$5::jsonb") &&
       queryTexts.includes("$6::jsonb") &&
+      queryTexts.includes("$7::jsonb") &&
       queryTexts.includes("$4::uuid[]"),
-    "Session repository queries must gate by membership, store hooks, and tag visible entities.",
+    "Session repository queries must gate by membership, store note documents/hooks, and tag visible entities.",
   );
 }
 

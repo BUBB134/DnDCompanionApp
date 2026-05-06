@@ -6,6 +6,8 @@ export {
   isDungeonMaster,
   resolveCampaignAccess,
   ruleSnippetCategories,
+  sessionNoteBlockTypes,
+  sessionNoteReferenceTypes,
   visibilities,
 } from "./campaign";
 
@@ -27,6 +29,11 @@ export type {
   EntityType,
   RuleSnippet,
   RuleSnippetCategory,
+  SessionNoteBlock,
+  SessionNoteBlockType,
+  SessionNoteDocument,
+  SessionNoteReference,
+  SessionNoteReferenceType,
   SessionSummary,
   Visibility,
 } from "./campaign";
