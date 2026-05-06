@@ -1,4 +1,4 @@
-import type { CampaignSession } from "@dnd/types";
+import type { CampaignEntitySummary, CampaignSession } from "@dnd/types";
 import { formatDatabaseError } from "@dnd/db";
 import { StatusPill, EmptyState, Surface } from "@dnd/ui";
 import { requireAuthSession } from "@/auth/server";
@@ -12,12 +12,22 @@ import {
   SessionCreateForm,
   SessionEditForm,
 } from "@/components/session-editor";
+import { listEntitySummariesForUser } from "@/entities/repository";
 import { listSessionsForUser } from "@/sessions/repository";
+
+const entityTypeLabels: Record<CampaignEntitySummary["type"], string> = {
+  faction: "Faction",
+  item: "Item",
+  location: "Location",
+  npc: "NPC",
+  quest: "Quest",
+};
 
 export default async function SessionsPage() {
   const session = await requireAuthSession();
   const campaign = await getCurrentCampaignAccess(session);
   const canManageSessions = isDatabaseCampaignId(campaign?.id ?? "");
+  let taggableEntities: CampaignEntitySummary[] = [];
   let sessions: CampaignSession[] = [];
   let loadError: string | null = null;
 
@@ -27,12 +37,16 @@ export default async function SessionsPage() {
 
   if (canManageSessions) {
     try {
-      sessions = await listSessionsForUser(session.user.id, campaign.id);
+      [sessions, taggableEntities] = await Promise.all([
+        listSessionsForUser(session.user.id, campaign.id),
+        listEntitySummariesForUser(session.user.id, campaign.id),
+      ]);
     } catch (error) {
       loadError = formatDatabaseError(error);
     }
   } else {
-    const latestSession = buildCampaignDashboardData(campaign).latestSession;
+    const dashboardData = buildCampaignDashboardData(campaign);
+    const latestSession = dashboardData.latestSession;
 
     sessions = latestSession
       ? [
@@ -44,6 +58,7 @@ export default async function SessionsPage() {
           },
         ]
       : [];
+    taggableEntities = dashboardData.entities;
   }
 
   return (
@@ -79,7 +94,10 @@ export default async function SessionsPage() {
         <section className="grid gap-5 xl:grid-cols-[minmax(300px,0.8fr)_minmax(0,1.4fr)]">
           {canManageSessions ? (
             <Surface className="p-5 sm:p-6">
-              <SessionCreateForm campaign={campaign} />
+              <SessionCreateForm
+                availableEntities={taggableEntities}
+                campaign={campaign}
+              />
             </Surface>
           ) : (
             <Surface className="p-5">
@@ -149,8 +167,27 @@ export default async function SessionsPage() {
                       </div>
                     ) : null}
 
+                    {campaignSession.taggedEntities.length > 0 ? (
+                      <div className="mt-4 rounded-lg border border-[#1f6f78]/20 bg-white p-4">
+                        <p className="text-xs font-semibold uppercase tracking-wide text-[#1f6f78]">
+                          Tagged entities
+                        </p>
+                        <div className="mt-3 flex flex-wrap gap-2">
+                          {campaignSession.taggedEntities.map((entity) => (
+                            <StatusPill
+                              key={`${campaignSession.id}-entity-${entity.id}`}
+                              tone={entity.visibility === "dm-only" ? "red" : "teal"}
+                            >
+                              {entity.name} - {entityTypeLabels[entity.type]}
+                            </StatusPill>
+                          ))}
+                        </div>
+                      </div>
+                    ) : null}
+
                     {canManageSessions ? (
                       <SessionEditForm
+                        availableEntities={taggableEntities}
                         campaign={campaign}
                         session={campaignSession}
                       />

@@ -64,17 +64,6 @@ const bootstrapMemberships: readonly CampaignMembership[] = [
   },
 ] as const;
 
-const bootstrapSessions: readonly CampaignSessionSummary[] = [
-  {
-    campaignId: "campaign-ashen-coast",
-    id: "session-12",
-    recap:
-      "The party recovered the drowned keeper's journal, named Captain Thorn as a likely ally, and left one sealed vault unopened.",
-    title: "The lighthouse beneath the tide",
-    unresolvedHooks: ["Decode the salt-stained map", "Decide what to tell Captain Thorn"],
-  },
-] as const;
-
 const bootstrapEntities: readonly CampaignEntityRecord[] = [
   {
     campaignId: "campaign-ashen-coast",
@@ -102,6 +91,18 @@ const bootstrapEntities: readonly CampaignEntityRecord[] = [
       "A hidden flood-clock trigger that should stay out of the player view until discovered in play.",
     type: "quest",
     visibility: "dm-only",
+  },
+] as const;
+
+const bootstrapSessions: readonly CampaignSessionSummary[] = [
+  {
+    campaignId: "campaign-ashen-coast",
+    id: "session-12",
+    recap:
+      "The party recovered the drowned keeper's journal, named Captain Thorn as a likely ally, and left one sealed vault unopened.",
+    taggedEntities: bootstrapEntities.slice(0, 2),
+    title: "The lighthouse beneath the tide",
+    unresolvedHooks: ["Decode the salt-stained map", "Decide what to tell Captain Thorn"],
   },
 ] as const;
 

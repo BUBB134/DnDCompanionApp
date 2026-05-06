@@ -12,6 +12,7 @@ const requiredFiles = [
   "apps/web/src/sessions/actions.ts",
   "apps/web/src/sessions/manage-session.ts",
   "apps/web/src/sessions/repository.ts",
+  "packages/db/migrations/0002_session_entity_tags.sql",
   "packages/types/src/campaign.ts",
 ];
 
@@ -25,6 +26,7 @@ for (const expectedText of [
   "SessionCreateForm",
   "SessionEditForm",
   "CampaignAccessState",
+  "taggedEntities",
   "isDatabaseCampaignId",
   "No sessions yet",
 ]) {
@@ -39,7 +41,9 @@ for (const expectedSql of [
   "from sessions",
   "insert into sessions",
   "update sessions",
+  "session_entity_tags",
   "campaign_memberships",
+  "entities.visibility = 'player-safe'",
   "unresolved_hooks",
   "updated_at = now()",
 ]) {
@@ -92,10 +96,20 @@ if (hasTypeScriptRuntime) {
     name: "Saved Ashen Coast",
     role: "player",
   };
+  const visibleEntities = [
+    {
+      id: "22222222-2222-5222-8222-222222222222",
+      name: "Captain Thorn",
+      summary: "A privateer with a tide chart.",
+      type: "npc",
+      visibility: "player-safe",
+    },
+  ];
   const validValues = {
     campaignId: savedCampaign.id,
     notes: "  The party found the tide key.  ",
     sessionId: "",
+    taggedEntityIds: [visibleEntities[0].id, visibleEntities[0].id, ""],
     title: "  The drowned door  ",
     unresolvedHooks: " - Tell Captain Thorn\n\nFind the second lantern ",
   };
@@ -103,13 +117,29 @@ if (hasTypeScriptRuntime) {
   const valid = manageSessionModule.validateSessionValues(
     validValues,
     savedCampaign,
+    visibleEntities,
   );
   expect(
     Object.keys(valid.fieldErrors).length === 0 &&
       valid.input.title === "The drowned door" &&
       valid.input.notes === "The party found the tide key." &&
-      valid.input.unresolvedHooks.length === 2,
-    "Session validation must trim title, notes, and multiline hooks.",
+      valid.input.unresolvedHooks.length === 2 &&
+      valid.input.taggedEntityIds.length === 1,
+    "Session validation must trim notes and hooks while deduplicating visible tags.",
+  );
+
+  const unavailableTag = manageSessionModule.validateSessionValues(
+    {
+      ...validValues,
+      taggedEntityIds: ["33333333-3333-5333-8333-333333333333"],
+    },
+    savedCampaign,
+    visibleEntities,
+  );
+  expect(
+    unavailableTag.fieldErrors.taggedEntityIds ===
+      "Choose only visible entities from this campaign.",
+    "Session validation must reject unavailable entity tags.",
   );
 
   const missingTitle = manageSessionModule.validateSessionValues(
@@ -118,6 +148,7 @@ if (hasTypeScriptRuntime) {
       title: "   ",
     },
     savedCampaign,
+    visibleEntities,
   );
   expect(
     missingTitle.fieldErrors.title === "Session title is required.",
@@ -134,6 +165,7 @@ if (hasTypeScriptRuntime) {
       name: "Ashen Coast",
       role: "dm",
     },
+    visibleEntities,
   );
   expect(
     bootstrapValidation.fieldErrors.campaignId ===
@@ -152,6 +184,7 @@ if (hasTypeScriptRuntime) {
           id: "session-1",
           notes: input.notes,
           recap: "",
+          taggedEntities: visibleEntities,
           title: input.title,
           unresolvedHooks: input.unresolvedHooks,
           updatedAt: "2026-05-06T00:00:00.000Z",
@@ -162,12 +195,14 @@ if (hasTypeScriptRuntime) {
     savedCampaign,
     validValues,
     () => "Unexpected failure",
+    visibleEntities,
   );
   expect(
     createResult.ok &&
       capturedCreateInput?.campaignId === savedCampaign.id &&
+      capturedCreateInput?.taggedEntityIds[0] === visibleEntities[0].id &&
       createResult.state.savedSessionId === "session-1",
-    "Session creation submission must persist normalized values and reset after save.",
+    "Session creation submission must persist normalized tag values and reset after save.",
   );
 
   const missingUpdateId = await manageSessionModule.updateSessionSubmission(
@@ -180,6 +215,7 @@ if (hasTypeScriptRuntime) {
     savedCampaign,
     validValues,
     () => "Unexpected failure",
+    visibleEntities,
   );
   expect(
     !missingUpdateId.ok &&
@@ -198,6 +234,7 @@ if (hasTypeScriptRuntime) {
           id: sessionId,
           notes: input.notes,
           recap: "",
+          taggedEntities: visibleEntities,
           title: input.title,
           unresolvedHooks: input.unresolvedHooks,
           updatedAt: "2026-05-06T00:00:00.000Z",
@@ -211,6 +248,7 @@ if (hasTypeScriptRuntime) {
       sessionId: "session-1",
     },
     () => "Unexpected failure",
+    visibleEntities,
   );
   expect(
     updateResult.ok &&
@@ -222,22 +260,61 @@ if (hasTypeScriptRuntime) {
   const dbStubModuleUrl = moduleDataUrl(`
     export const queries = [];
 
+    function sessionRow() {
+      return {
+        created_at: "2026-05-06T00:00:00.000Z",
+        id: "session-1",
+        notes: "The party found the tide key.",
+        recap: "",
+        tagged_entities: [
+          {
+            id: "22222222-2222-5222-8222-222222222222",
+            name: "Captain Thorn",
+            summary: "A privateer with a tide chart.",
+            type: "npc",
+            visibility: "player-safe",
+          },
+        ],
+        title: "The drowned door",
+        unresolved_hooks: ["Tell Captain Thorn"],
+        updated_at: "2026-05-06T00:00:00.000Z"
+      };
+    }
+
     export async function queryDatabase(text, values = []) {
       queries.push({ text, values });
 
       return {
-        rows: [
-          {
-            created_at: "2026-05-06T00:00:00.000Z",
-            id: "session-1",
-            notes: "The party found the tide key.",
-            recap: "",
-            title: "The drowned door",
-            unresolved_hooks: ["Tell Captain Thorn"],
-            updated_at: "2026-05-06T00:00:00.000Z"
-          }
-        ]
+        rows: [sessionRow()]
       };
+    }
+
+    export async function withDatabaseTransaction(callback) {
+      return callback({
+        async query(text, values = []) {
+          queries.push({ text, values });
+
+          if (text.includes("returning sessions.id") || text.includes("returning id")) {
+            return { rows: [{ id: "session-1" }], rowCount: 1 };
+          }
+
+          if (text.includes("insert into session_entity_tags")) {
+            return {
+              rows: values[3].map((id) => ({ entity_id: id })),
+              rowCount: values[3].length,
+            };
+          }
+
+          if (text.includes("delete from session_entity_tags")) {
+            return { rows: [], rowCount: 1 };
+          }
+
+          return {
+            rows: [sessionRow()],
+            rowCount: 1,
+          };
+        }
+      });
     }
   `);
   const dbStubModule = await import(dbStubModuleUrl);
@@ -255,8 +332,9 @@ if (hasTypeScriptRuntime) {
   );
   expect(
     listedSessions[0]?.notes === "The party found the tide key." &&
-      listedSessions[0]?.recap === "The party found the tide key.",
-    "Session repository must map persisted notes and provide a dashboard preview.",
+      listedSessions[0]?.recap === "The party found the tide key." &&
+      listedSessions[0]?.taggedEntities[0]?.name === "Captain Thorn",
+    "Session repository must map persisted notes and visible entity tags.",
   );
 
   await repositoryModule.getLatestSessionForUser("user-1", savedCampaign.id);
@@ -267,8 +345,9 @@ if (hasTypeScriptRuntime) {
   expect(
     queryTexts.includes("campaign_memberships.user_id = $1") &&
       queryTexts.includes("$5::jsonb") &&
-      queryTexts.includes("$6::jsonb"),
-    "Session repository queries must gate by membership and store hooks as jsonb.",
+      queryTexts.includes("$6::jsonb") &&
+      queryTexts.includes("$4::uuid[]"),
+    "Session repository queries must gate by membership, store hooks, and tag visible entities.",
   );
 }
 

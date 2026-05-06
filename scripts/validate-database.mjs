@@ -50,6 +50,7 @@ for (const tableName of [
   '"sessions"',
   '"characters"',
   '"entities"',
+  '"session_entity_tags"',
   '"notes"',
   '"rule_snippets"',
   '"ability_summaries"',

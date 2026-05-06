@@ -36,6 +36,7 @@ export type Campaign = CampaignAccess;
 export type SessionSummary = {
   id: string;
   recap: string;
+  taggedEntities: readonly CampaignEntitySummary[];
   title: string;
   unresolvedHooks: string[];
 };
