@@ -3,7 +3,11 @@ import { formatDatabaseError } from "@dnd/db";
 import { isDungeonMaster } from "@dnd/types";
 import { EmptyState, StatusPill, Surface } from "@dnd/ui";
 import { requireAuthSession } from "@/auth/server";
-import { getCurrentCampaignAccess } from "@/campaigns/bootstrap";
+import {
+  buildCampaignDashboardData,
+  getCurrentCampaignAccess,
+} from "@/campaigns/bootstrap";
+import { isDatabaseCampaignId } from "@/campaigns/database-id";
 import { CampaignAccessState } from "@/components/campaign-access-state";
 import { EntityCreateForm } from "@/components/entity-create-form";
 import {
@@ -25,15 +29,23 @@ export default async function EntitiesPage() {
   const campaign = await getCurrentCampaignAccess(session);
   let entities: CampaignEntity[] = [];
   let loadError: string | null = null;
+  const canManageEntities = isDatabaseCampaignId(campaign?.id ?? "");
 
   if (!campaign) {
     return <CampaignAccessState />;
   }
 
-  try {
-    entities = await listEntitiesForUser(session.user.id, campaign.id);
-  } catch (error) {
-    loadError = formatDatabaseError(error);
+  if (canManageEntities) {
+    try {
+      entities = await listEntitiesForUser(session.user.id, campaign.id);
+    } catch (error) {
+      loadError = formatDatabaseError(error);
+    }
+  } else {
+    entities = buildCampaignDashboardData(campaign).entities.map((entity) => ({
+      ...entity,
+      description: "",
+    }));
   }
 
   const typeCounts = countEntitiesByType(entities);
@@ -55,6 +67,9 @@ export default async function EntitiesPage() {
             {isDungeonMaster(campaign.role) ? "DM access" : "Player access"}
           </StatusPill>
           <StatusPill tone="gold">{entities.length} visible</StatusPill>
+          {!canManageEntities ? (
+            <StatusPill tone="red">Read only</StatusPill>
+          ) : null}
         </div>
       </section>
 
@@ -64,9 +79,18 @@ export default async function EntitiesPage() {
         </Surface>
       ) : (
         <section className="grid gap-5 xl:grid-cols-[minmax(300px,0.8fr)_minmax(0,1.4fr)]">
-          <Surface className="p-5">
-            <EntityCreateForm campaign={campaign} />
-          </Surface>
+          {canManageEntities ? (
+            <Surface className="p-5">
+              <EntityCreateForm campaign={campaign} />
+            </Surface>
+          ) : (
+            <Surface className="p-5">
+              <EmptyState
+                body="Open or create a saved campaign to add, edit, and delete persisted wiki entities. The local bootstrap campaign stays read-only so it can be used without a Postgres record."
+                title="Saved campaign required"
+              />
+            </Surface>
+          )}
 
           <Surface className="p-5">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
@@ -121,8 +145,12 @@ export default async function EntitiesPage() {
                       </p>
                     ) : null}
 
-                    <EntityEditForm campaign={campaign} entity={entity} />
-                    <EntityDeleteForm campaign={campaign} entity={entity} />
+                    {canManageEntities ? (
+                      <>
+                        <EntityEditForm campaign={campaign} entity={entity} />
+                        <EntityDeleteForm campaign={campaign} entity={entity} />
+                      </>
+                    ) : null}
                   </article>
                 ))
               )}

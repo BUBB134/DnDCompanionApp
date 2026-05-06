@@ -4,6 +4,7 @@ import { formatDatabaseError } from "@dnd/db";
 import { revalidatePath } from "next/cache";
 import { requireAuthSession } from "@/auth/server";
 import { getCurrentCampaignAccess } from "@/campaigns/bootstrap";
+import { isDatabaseCampaignId } from "@/campaigns/database-id";
 import {
   createEntitySubmission,
   createEntityActionState,
@@ -32,6 +33,14 @@ export async function createEntityAction(
   void _previousState;
   const session = await requireAuthSession();
   const values = readEntityFormValues(formData);
+
+  if (!isDatabaseCampaignId(values.campaignId)) {
+    return {
+      ...createEntityActionState(values),
+      formError: "Create or open a saved campaign before managing entities.",
+    };
+  }
+
   const campaign = await getCurrentCampaignAccess(session, values.campaignId);
 
   if (!campaign) {
@@ -63,6 +72,14 @@ export async function updateEntityAction(
   void _previousState;
   const session = await requireAuthSession();
   const values = readEntityFormValues(formData);
+
+  if (!isDatabaseCampaignId(values.campaignId)) {
+    return {
+      ...createEntityActionState(values),
+      formError: "Create or open a saved campaign before managing entities.",
+    };
+  }
+
   const campaign = await getCurrentCampaignAccess(session, values.campaignId);
 
   if (!campaign) {
@@ -95,9 +112,16 @@ export async function deleteEntityAction(
   const session = await requireAuthSession();
   const campaignId = getStringField(formData, "campaignId");
   const entityId = getStringField(formData, "entityId");
+
+  if (!isDatabaseCampaignId(campaignId)) {
+    return {
+      formError: "Create or open a saved campaign before deleting entities.",
+    };
+  }
+
   const campaign = await getCurrentCampaignAccess(session, campaignId);
 
-  if (!campaign) {
+  if (!campaign || campaign.id !== campaignId) {
     return {
       formError: "Campaign access is required before deleting entities.",
     };

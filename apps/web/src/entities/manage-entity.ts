@@ -5,6 +5,7 @@ import type {
   Visibility,
 } from "@dnd/types";
 import { entityTypes, isDungeonMaster, visibilities } from "@dnd/types";
+import { isDatabaseCampaignId } from "@/campaigns/database-id";
 
 const ENTITY_NAME_MAX_LENGTH = 100;
 const ENTITY_SUMMARY_MAX_LENGTH = 280;
@@ -220,7 +221,9 @@ export function validateEntityValues(values: EntityFormValues, campaign: Campaig
   };
   const fieldErrors: EntityFieldErrors = {};
 
-  if (normalizedValues.campaignId !== campaign.id) {
+  if (!isDatabaseCampaignId(normalizedValues.campaignId)) {
+    fieldErrors.campaignId = "Create or open a saved campaign before managing entities.";
+  } else if (normalizedValues.campaignId !== campaign.id) {
     fieldErrors.campaignId = "Entity must belong to the selected campaign.";
   }
 

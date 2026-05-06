@@ -7,6 +7,7 @@ const failures = [];
 
 const requiredFiles = [
   "apps/web/src/app/(protected)/entities/page.tsx",
+  "apps/web/src/campaigns/database-id.ts",
   "apps/web/src/components/entity-create-form.tsx",
   "apps/web/src/components/entity-edit-form.tsx",
   "apps/web/src/entities/actions.ts",
@@ -41,6 +42,7 @@ for (const expectedText of [
   "EntityCreateForm",
   "EntityEditForm",
   "EntityDeleteForm",
+  "isDatabaseCampaignId",
   "Player safe",
   "DM only",
 ]) {
@@ -65,6 +67,12 @@ for (const expectedSql of [
   );
 }
 
+const actionText = readText("apps/web/src/entities/actions.ts");
+expect(
+  actionText.includes("campaign.id !== campaignId"),
+  "Delete action must verify resolved campaign access matches the submitted campaign id.",
+);
+
 const typescriptPath = resolveTypeScriptRuntimePath();
 const hasTypeScriptRuntime = typescriptPath !== null;
 const typescriptRuntime = hasTypeScriptRuntime
@@ -76,24 +84,28 @@ const typescript = hasTypeScriptRuntime
 
 if (hasTypeScriptRuntime) {
   const campaignTypesUrl = await transpileModuleToDataUrl("packages/types/src/campaign.ts");
+  const databaseIdUrl = await transpileModuleToDataUrl(
+    "apps/web/src/campaigns/database-id.ts",
+  );
   const manageEntityModule = await import(
     await transpileModuleToDataUrl("apps/web/src/entities/manage-entity.ts", [
       ["@dnd/types", campaignTypesUrl],
+      ["@/campaigns/database-id", databaseIdUrl],
     ]),
   );
 
-  const dmCampaign = {
-    id: "campaign-1",
-    name: "Ashen Coast",
-    role: "dm",
-  };
   const playerCampaign = {
-    id: "campaign-1",
+    id: "11111111-1111-5111-8111-111111111111",
     name: "Ashen Coast",
     role: "player",
   };
+  const savedDmCampaign = {
+    id: "11111111-1111-5111-8111-111111111111",
+    name: "Saved Ashen Coast",
+    role: "dm",
+  };
   const validValues = {
-    campaignId: "campaign-1",
+    campaignId: savedDmCampaign.id,
     description: "  Keeps the harbor keys.  ",
     entityId: "",
     name: "  Captain Thorn  ",
@@ -102,7 +114,7 @@ if (hasTypeScriptRuntime) {
     visibility: "dm-only",
   };
 
-  const valid = manageEntityModule.validateEntityValues(validValues, dmCampaign);
+  const valid = manageEntityModule.validateEntityValues(validValues, savedDmCampaign);
   expect(
     Object.keys(valid.fieldErrors).length === 0 &&
       valid.input.name === "Captain Thorn" &&
@@ -116,7 +128,7 @@ if (hasTypeScriptRuntime) {
       ...validValues,
       type: "monster",
     },
-    dmCampaign,
+    savedDmCampaign,
   );
   expect(
     invalidType.fieldErrors.type === "Choose a supported entity type.",
@@ -149,13 +161,13 @@ if (hasTypeScriptRuntime) {
       },
     },
     "user-1",
-    dmCampaign,
+    savedDmCampaign,
     validValues,
     () => "Unexpected failure",
   );
   expect(
     createResult.ok &&
-      capturedCreateInput?.campaignId === "campaign-1" &&
+      capturedCreateInput?.campaignId === savedDmCampaign.id &&
       capturedCreateInput?.summary === "A privateer with a tide chart.",
     "Entity creation submission must normalize values before persistence.",
   );
@@ -177,7 +189,7 @@ if (hasTypeScriptRuntime) {
       },
     },
     "user-1",
-    dmCampaign,
+    savedDmCampaign,
     {
       ...validValues,
       entityId: "entity-1",
@@ -222,6 +234,24 @@ if (hasTypeScriptRuntime) {
       ["@dnd/db", dbStubModuleUrl],
       ["@dnd/types", campaignTypesUrl],
     ]),
+  );
+
+  const bootstrapCampaign = {
+    id: "campaign-ashen-coast",
+    name: "Ashen Coast",
+    role: "dm",
+  };
+  const bootstrapValidation = manageEntityModule.validateEntityValues(
+    {
+      ...validValues,
+      campaignId: bootstrapCampaign.id,
+    },
+    bootstrapCampaign,
+  );
+  expect(
+    bootstrapValidation.fieldErrors.campaignId ===
+      "Create or open a saved campaign before managing entities.",
+    "Entity validation must prevent writes for non-database bootstrap campaign ids.",
   );
 
   const listedEntities = await repositoryModule.listEntitiesForUser(
