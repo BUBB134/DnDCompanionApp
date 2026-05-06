@@ -97,10 +97,10 @@ export function CampaignShell({
 
                 {latestSession.unresolvedHooks.length > 0 ? (
                   <div className="grid gap-3 sm:grid-cols-2">
-                    {latestSession.unresolvedHooks.map((hook) => (
+                    {latestSession.unresolvedHooks.map((hook, hookIndex) => (
                       <div
                         className="rounded-lg border border-[#c3943e]/45 bg-[#fffaf0] p-4"
-                        key={hook}
+                        key={`${latestSession.id}-hook-${hookIndex}`}
                       >
                         <p className="text-xs font-semibold uppercase tracking-wide text-[#8b2f39]">
                           Open hook

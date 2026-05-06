@@ -140,8 +140,10 @@ export default async function SessionsPage() {
                           Unresolved hooks
                         </p>
                         <ul className="mt-3 grid gap-2 text-sm leading-6 text-[#4b4657]">
-                          {campaignSession.unresolvedHooks.map((hook) => (
-                            <li key={hook}>{hook}</li>
+                          {campaignSession.unresolvedHooks.map((hook, hookIndex) => (
+                            <li key={`${campaignSession.id}-hook-${hookIndex}`}>
+                              {hook}
+                            </li>
                           ))}
                         </ul>
                       </div>
