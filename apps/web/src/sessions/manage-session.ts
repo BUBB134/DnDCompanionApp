@@ -2,8 +2,16 @@ import type {
   Campaign,
   CampaignEntitySummary,
   CampaignSession,
+  SessionNoteDocument,
 } from "@dnd/types";
 import { isDatabaseCampaignId } from "@/campaigns/database-id";
+import {
+  deserializeSessionNoteDocument,
+  noteDocumentToPlainText,
+  serializeSessionNoteDocument,
+  SESSION_NOTE_MAX_BLOCKS,
+  SESSION_NOTE_MAX_BLOCK_TEXT_LENGTH,
+} from "@/sessions/note-document";
 
 const SESSION_TITLE_MAX_LENGTH = 120;
 const SESSION_NOTES_MAX_LENGTH = 10000;
@@ -14,6 +22,7 @@ const SESSION_TAGS_MAX_COUNT = 24;
 export type SessionFormValues = {
   campaignId: string;
   notes: string;
+  notesDocument: string;
   sessionId: string;
   taggedEntityIds: string[];
   title: string;
@@ -23,6 +32,7 @@ export type SessionFormValues = {
 export type SessionMutationInput = {
   campaignId: string;
   notes: string;
+  notesDocument: SessionNoteDocument;
   taggedEntityIds: string[];
   title: string;
   unresolvedHooks: string[];
@@ -69,6 +79,10 @@ type SessionSubmissionResult =
 export const emptySessionFormValues: SessionFormValues = {
   campaignId: "",
   notes: "",
+  notesDocument: serializeSessionNoteDocument({
+    blocks: [],
+    version: 1,
+  }),
   sessionId: "",
   taggedEntityIds: [],
   title: "",
@@ -208,9 +222,12 @@ export function sessionToFormValues(
   campaignId: string,
   session: CampaignSession,
 ): SessionFormValues {
+  const notesDocument = serializeSessionNoteDocument(session.notesDocument);
+
   return {
     campaignId,
     notes: session.notes,
+    notesDocument,
     sessionId: session.id,
     taggedEntityIds: session.taggedEntities.map((entity) => entity.id),
     title: session.title,
@@ -227,9 +244,15 @@ export function validateSessionValues(
     values.taggedEntityIds,
     availableEntities,
   );
+  const notesDocument = deserializeSessionNoteDocument(
+    values.notesDocument,
+    values.notes,
+  );
+  const notes = noteDocumentToPlainText(notesDocument);
   const normalizedValues = {
     campaignId: values.campaignId.trim(),
-    notes: values.notes.trim(),
+    notes,
+    notesDocument: serializeSessionNoteDocument(notesDocument),
     sessionId: values.sessionId.trim(),
     taggedEntityIds: normalizedTaggedEntityIds.ids,
     title: values.title.trim(),
@@ -256,6 +279,18 @@ export function validateSessionValues(
       `Notes must be ${SESSION_NOTES_MAX_LENGTH} characters or fewer.`;
   }
 
+  if (notesDocument.blocks.length > SESSION_NOTE_MAX_BLOCKS) {
+    fieldErrors.notesDocument =
+      `Keep notes to ${SESSION_NOTE_MAX_BLOCKS} blocks or fewer.`;
+  } else if (
+    notesDocument.blocks.some(
+      (block) => block.text.length > SESSION_NOTE_MAX_BLOCK_TEXT_LENGTH,
+    )
+  ) {
+    fieldErrors.notesDocument =
+      `Each note block must be ${SESSION_NOTE_MAX_BLOCK_TEXT_LENGTH} characters or fewer.`;
+  }
+
   if (unresolvedHooks.length > SESSION_HOOKS_MAX_COUNT) {
     fieldErrors.unresolvedHooks =
       `Keep unresolved hooks to ${SESSION_HOOKS_MAX_COUNT} items or fewer.`;
@@ -279,6 +314,7 @@ export function validateSessionValues(
     input: {
       campaignId: normalizedValues.campaignId,
       notes: normalizedValues.notes,
+      notesDocument,
       taggedEntityIds: normalizedValues.taggedEntityIds,
       title: normalizedValues.title,
       unresolvedHooks,

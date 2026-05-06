@@ -4,8 +4,11 @@ import type {
   Campaign,
   CampaignEntitySummary,
   CampaignSession,
+  SessionNoteBlock,
+  SessionNoteBlockType,
 } from "@dnd/types";
-import { useActionState } from "react";
+import { sessionNoteBlockTypes } from "@dnd/types";
+import { useActionState, useMemo, useState } from "react";
 import { useFormStatus } from "react-dom";
 import {
   createSessionAction,
@@ -16,6 +19,13 @@ import {
   sessionToFormValues,
   type SessionActionState,
 } from "@/sessions/manage-session";
+import {
+  createSessionNoteBlock,
+  deserializeSessionNoteDocument,
+  noteDocumentToPlainText,
+  serializeSessionNoteDocument,
+  sessionNoteBlockTypeLabels,
+} from "@/sessions/note-document";
 
 type SessionCreateFormProps = {
   availableEntities: CampaignEntitySummary[];
@@ -198,35 +208,12 @@ function SessionCoreFields({
         ) : null}
       </fieldset>
 
-      <div>
-        <label
-          className="text-sm font-semibold text-[#17161f]"
-          htmlFor={`${fieldIdPrefix}-session-notes`}
-        >
-          Notes
-        </label>
-        <textarea
-          aria-describedby={
-            state.fieldErrors.notes
-              ? `${fieldIdPrefix}-session-notes-error`
-              : undefined
-          }
-          aria-invalid={state.fieldErrors.notes ? true : undefined}
-          className="mt-2 min-h-56 w-full rounded-md border border-[#17161f]/15 bg-[#fffaf0] px-3 py-3 text-base leading-7 outline-none transition focus:border-[#1f6f78] focus:ring-2 focus:ring-[#1f6f78]/25"
-          defaultValue={state.values.notes}
-          id={`${fieldIdPrefix}-session-notes`}
-          name="notes"
-          rows={compact ? 8 : 12}
-        />
-        {state.fieldErrors.notes ? (
-          <p
-            className="mt-2 text-sm text-[#8b2f39]"
-            id={`${fieldIdPrefix}-session-notes-error`}
-          >
-            {state.fieldErrors.notes}
-          </p>
-        ) : null}
-      </div>
+      <SessionNoteBlockEditor
+        compact={compact}
+        fieldIdPrefix={fieldIdPrefix}
+        key={`${fieldIdPrefix}-${state.values.notesDocument}`}
+        state={state}
+      />
 
       <div>
         <label
@@ -258,6 +245,220 @@ function SessionCoreFields({
         ) : null}
       </div>
     </div>
+  );
+}
+
+function SessionNoteBlockEditor({
+  compact,
+  fieldIdPrefix,
+  state,
+}: {
+  compact: boolean;
+  fieldIdPrefix: string;
+  state: SessionActionState;
+}) {
+  const [document, setDocument] = useState(() =>
+    deserializeSessionNoteDocument(
+      state.values.notesDocument,
+      state.values.notes,
+    ),
+  );
+  const notesError =
+    state.fieldErrors.notesDocument ?? state.fieldErrors.notes ?? null;
+
+  const serializedDocument = useMemo(
+    () => serializeSessionNoteDocument(document),
+    [document],
+  );
+  const plainTextNotes = useMemo(
+    () => noteDocumentToPlainText(document),
+    [document],
+  );
+
+  function updateBlock(
+    blockId: string,
+    update: Partial<Pick<SessionNoteBlock, "text" | "type">>,
+  ) {
+    setDocument((currentDocument) => ({
+      ...currentDocument,
+      blocks: currentDocument.blocks.map((block) =>
+        block.id === blockId
+          ? {
+              ...block,
+              ...update,
+              references:
+                update.text === undefined ? block.references : [],
+            }
+          : block,
+      ),
+    }));
+  }
+
+  function addBlock(afterIndex: number) {
+    setDocument((currentDocument) => {
+      const nextBlocks = [...currentDocument.blocks];
+
+      nextBlocks.splice(afterIndex + 1, 0, createSessionNoteBlock());
+
+      return {
+        ...currentDocument,
+        blocks: nextBlocks,
+      };
+    });
+  }
+
+  function moveBlock(fromIndex: number, direction: -1 | 1) {
+    setDocument((currentDocument) => {
+      const toIndex = fromIndex + direction;
+
+      if (toIndex < 0 || toIndex >= currentDocument.blocks.length) {
+        return currentDocument;
+      }
+
+      const nextBlocks = [...currentDocument.blocks];
+      const [block] = nextBlocks.splice(fromIndex, 1);
+
+      if (!block) {
+        return currentDocument;
+      }
+
+      nextBlocks.splice(toIndex, 0, block);
+
+      return {
+        ...currentDocument,
+        blocks: nextBlocks,
+      };
+    });
+  }
+
+  function removeBlock(blockId: string) {
+    setDocument((currentDocument) => {
+      const nextBlocks = currentDocument.blocks.filter(
+        (block) => block.id !== blockId,
+      );
+
+      return {
+        ...currentDocument,
+        blocks: nextBlocks.length > 0 ? nextBlocks : [createSessionNoteBlock()],
+      };
+    });
+  }
+
+  return (
+    <div>
+      <label
+        className="text-sm font-semibold text-[#17161f]"
+        htmlFor={`${fieldIdPrefix}-session-notes-block-0`}
+      >
+        Notes
+      </label>
+      <input name="notes" type="hidden" value={plainTextNotes} />
+      <input name="notesDocument" type="hidden" value={serializedDocument} />
+      <div className="mt-2 grid gap-3">
+        {document.blocks.map((block, index) => (
+          <div
+            className="rounded-lg border border-[#17161f]/10 bg-white p-3"
+            key={block.id}
+          >
+            <div className="flex flex-wrap items-center gap-2">
+              <label
+                className="sr-only"
+                htmlFor={`${fieldIdPrefix}-session-block-type-${block.id}`}
+              >
+                Block type
+              </label>
+              <select
+                className="min-h-9 rounded-md border border-[#17161f]/15 bg-[#fffaf0] px-2 text-sm font-semibold outline-none transition focus:border-[#1f6f78] focus:ring-2 focus:ring-[#1f6f78]/25"
+                id={`${fieldIdPrefix}-session-block-type-${block.id}`}
+                onChange={(event) =>
+                  updateBlock(block.id, {
+                    type: event.target.value as SessionNoteBlockType,
+                  })
+                }
+                value={block.type}
+              >
+                {sessionNoteBlockTypes.map((type) => (
+                  <option key={type} value={type}>
+                    {sessionNoteBlockTypeLabels[type]}
+                  </option>
+                ))}
+              </select>
+              <div className="ml-auto flex flex-wrap gap-2">
+                <BlockEditorButton
+                  disabled={index === 0}
+                  label="Up"
+                  onClick={() => moveBlock(index, -1)}
+                />
+                <BlockEditorButton
+                  disabled={index === document.blocks.length - 1}
+                  label="Down"
+                  onClick={() => moveBlock(index, 1)}
+                />
+                <BlockEditorButton
+                  label="Add"
+                  onClick={() => addBlock(index)}
+                />
+                <BlockEditorButton
+                  disabled={
+                    document.blocks.length === 1 && block.text.length === 0
+                  }
+                  label="Remove"
+                  onClick={() => removeBlock(block.id)}
+                />
+              </div>
+            </div>
+            <label
+              className="sr-only"
+              htmlFor={`${fieldIdPrefix}-session-notes-block-${index}`}
+            >
+              Note block {index + 1}
+            </label>
+            <textarea
+              aria-describedby={
+                notesError ? `${fieldIdPrefix}-session-notes-error` : undefined
+              }
+              aria-invalid={notesError ? true : undefined}
+              className="mt-3 min-h-36 w-full resize-y rounded-md border border-[#17161f]/15 bg-[#fffaf0] px-3 py-3 text-base leading-7 outline-none transition focus:border-[#1f6f78] focus:ring-2 focus:ring-[#1f6f78]/25"
+              id={`${fieldIdPrefix}-session-notes-block-${index}`}
+              onChange={(event) =>
+                updateBlock(block.id, { text: event.target.value })
+              }
+              rows={compact ? 4 : 5}
+              value={block.text}
+            />
+          </div>
+        ))}
+      </div>
+      {notesError ? (
+        <p
+          className="mt-2 text-sm text-[#8b2f39]"
+          id={`${fieldIdPrefix}-session-notes-error`}
+        >
+          {notesError}
+        </p>
+      ) : null}
+    </div>
+  );
+}
+
+function BlockEditorButton({
+  disabled = false,
+  label,
+  onClick,
+}: {
+  disabled?: boolean;
+  label: string;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      className="min-h-9 rounded-md border border-[#17161f]/10 bg-[#fffaf0] px-3 text-xs font-semibold text-[#17161f] transition hover:border-[#1f6f78]/45 hover:bg-[#e7f5f6] focus:outline-none focus:ring-2 focus:ring-[#1f6f78] focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-45"
+      disabled={disabled}
+      onClick={onClick}
+      type="button"
+    >
+      {label}
+    </button>
   );
 }
 

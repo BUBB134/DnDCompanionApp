@@ -14,6 +14,18 @@ export const ruleSnippetCategories = [
 ] as const;
 export type RuleSnippetCategory = (typeof ruleSnippetCategories)[number];
 
+export const sessionNoteBlockTypes = [
+  "paragraph",
+  "heading",
+  "quote",
+  "callout",
+] as const;
+export type SessionNoteBlockType = (typeof sessionNoteBlockTypes)[number];
+
+export const sessionNoteReferenceTypes = ["entity", "rule"] as const;
+export type SessionNoteReferenceType =
+  (typeof sessionNoteReferenceTypes)[number];
+
 export type CampaignSummary = {
   activeSessionId?: string;
   id: string;
@@ -44,7 +56,28 @@ export type SessionSummary = {
 export type CampaignSession = SessionSummary & {
   createdAt: string;
   notes: string;
+  notesDocument: SessionNoteDocument;
   updatedAt: string;
+};
+
+export type SessionNoteReference = {
+  endOffset: number;
+  label: string;
+  startOffset: number;
+  targetId: string;
+  targetType: SessionNoteReferenceType;
+};
+
+export type SessionNoteBlock = {
+  id: string;
+  references: SessionNoteReference[];
+  text: string;
+  type: SessionNoteBlockType;
+};
+
+export type SessionNoteDocument = {
+  blocks: SessionNoteBlock[];
+  version: 1;
 };
 
 export type CampaignEntitySummary = {

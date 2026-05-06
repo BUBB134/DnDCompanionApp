@@ -25,6 +25,12 @@
 - ConditionState
 - LootItem
 
+## Session note editor
+Session notes use a versioned block document stored alongside a plain-text
+projection so editing can evolve toward inline references and graph retrieval
+without breaking current previews, rules matching, or search. See
+`docs/engineering/session-note-editor.md`.
+
 ## Entity strategy
 Use a generic `Entity` model for MVP with a `type` field:
 - npc

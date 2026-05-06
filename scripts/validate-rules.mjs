@@ -9,6 +9,7 @@ const requiredFiles = [
   "apps/web/src/app/(protected)/rules/page.tsx",
   "apps/web/src/components/rule-card.tsx",
   "apps/web/src/components/rule-linked-text.tsx",
+  "apps/web/src/components/session-note-document-view.tsx",
   "apps/web/src/rules/core-rules.ts",
   "apps/web/src/rules/matching.ts",
   "apps/web/src/rules/repository.ts",
@@ -63,9 +64,12 @@ for (const expectedText of [
 
 expect(
   readText("apps/web/src/app/(protected)/sessions/page.tsx").includes(
-    "RuleLinkedText",
-  ),
-  "Session notes must render rule-linked inline text.",
+    "SessionNoteDocumentView",
+  ) &&
+    readText("apps/web/src/components/session-note-document-view.tsx").includes(
+      "RuleLinkedText",
+    ),
+  "Session notes must render rule-linked inline text through the note document view.",
 );
 
 expect(

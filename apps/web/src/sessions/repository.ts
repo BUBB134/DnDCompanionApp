@@ -11,11 +11,13 @@ import {
   type DatabaseQueryable,
 } from "@dnd/db";
 import type { SessionMutationInput } from "@/sessions/manage-session";
+import { normalizeSessionNoteDocument } from "@/sessions/note-document";
 
 type SessionRow = {
   created_at: Date | string;
   id: string;
   notes: string;
+  notes_document: unknown;
   recap: string;
   tagged_entities: unknown;
   title: string;
@@ -60,13 +62,15 @@ export async function createSessionForUser(
           campaign_id,
           title,
           notes,
+          notes_document,
           unresolved_hooks
         )
         select
           campaign_memberships.campaign_id,
           $3,
           $4,
-          $5::jsonb
+          $5::jsonb,
+          $6::jsonb
         from campaign_memberships
         where campaign_memberships.user_id = $1
           and campaign_memberships.campaign_id = $2
@@ -77,6 +81,7 @@ export async function createSessionForUser(
         input.campaignId,
         input.title,
         input.notes,
+        JSON.stringify(input.notesDocument),
         JSON.stringify(input.unresolvedHooks),
       ],
     );
@@ -115,7 +120,8 @@ export async function updateSessionForUser(
         set
           title = $4,
           notes = $5,
-          unresolved_hooks = $6::jsonb,
+          notes_document = $6::jsonb,
+          unresolved_hooks = $7::jsonb,
           updated_at = now()
         from campaign_memberships
         where sessions.id = $3
@@ -130,6 +136,7 @@ export async function updateSessionForUser(
         sessionId,
         input.title,
         input.notes,
+        JSON.stringify(input.notesDocument),
         JSON.stringify(input.unresolvedHooks),
       ],
     );
@@ -235,6 +242,7 @@ function mapSessionRow(row: SessionRow): CampaignSession {
     ...mapSessionSummaryRow(row),
     createdAt: toIsoString(row.created_at),
     notes: row.notes,
+    notesDocument: normalizeSessionNoteDocument(row.notes_document, row.notes),
     updatedAt: toIsoString(row.updated_at),
   };
 }
@@ -256,6 +264,7 @@ function createSessionsQuery(extraWhereClause = "") {
         sessions.title,
         sessions.recap,
         sessions.notes,
+        sessions.notes_document,
         sessions.unresolved_hooks,
         sessions.created_at,
         sessions.updated_at,
@@ -292,6 +301,7 @@ function createSessionsQuery(extraWhereClause = "") {
         sessions.title,
         sessions.recap,
         sessions.notes,
+        sessions.notes_document,
         sessions.unresolved_hooks,
         sessions.created_at,
         sessions.updated_at

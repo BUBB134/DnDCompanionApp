@@ -58,6 +58,7 @@ export const baselineSchemaStatements = [
     title text not null,
     recap text not null default '',
     notes text not null default '',
+    notes_document jsonb not null default '{"version":1,"blocks":[]}'::jsonb,
     started_at timestamptz,
     ended_at timestamptz,
     unresolved_hooks jsonb not null default '[]'::jsonb,
