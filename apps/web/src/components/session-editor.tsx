@@ -1,6 +1,10 @@
 "use client";
 
-import type { Campaign, CampaignSession } from "@dnd/types";
+import type {
+  Campaign,
+  CampaignEntitySummary,
+  CampaignSession,
+} from "@dnd/types";
 import { useActionState } from "react";
 import { useFormStatus } from "react-dom";
 import {
@@ -14,15 +18,20 @@ import {
 } from "@/sessions/manage-session";
 
 type SessionCreateFormProps = {
+  availableEntities: CampaignEntitySummary[];
   campaign: Campaign;
 };
 
 type SessionEditFormProps = {
+  availableEntities: CampaignEntitySummary[];
   campaign: Campaign;
   session: CampaignSession;
 };
 
-export function SessionCreateForm({ campaign }: SessionCreateFormProps) {
+export function SessionCreateForm({
+  availableEntities,
+  campaign,
+}: SessionCreateFormProps) {
   const [state, formAction] = useActionState(
     createSessionAction,
     createSessionActionState({
@@ -50,14 +59,21 @@ export function SessionCreateForm({ campaign }: SessionCreateFormProps) {
         success={state.successMessage}
       />
 
-      <SessionCoreFields state={state} />
+      <SessionCoreFields
+        availableEntities={availableEntities}
+        state={state}
+      />
 
       <SessionSubmitButton label="Save session" pendingLabel="Saving session..." />
     </form>
   );
 }
 
-export function SessionEditForm({ campaign, session }: SessionEditFormProps) {
+export function SessionEditForm({
+  availableEntities,
+  campaign,
+  session,
+}: SessionEditFormProps) {
   const [state, formAction] = useActionState(
     updateSessionAction,
     createSessionActionState(sessionToFormValues(campaign.id, session)),
@@ -77,7 +93,11 @@ export function SessionEditForm({ campaign, session }: SessionEditFormProps) {
           success={state.successMessage}
         />
 
-        <SessionCoreFields compact state={state} />
+        <SessionCoreFields
+          availableEntities={availableEntities}
+          compact
+          state={state}
+        />
 
         <SessionSubmitButton
           label="Save changes"
@@ -89,13 +109,16 @@ export function SessionEditForm({ campaign, session }: SessionEditFormProps) {
 }
 
 function SessionCoreFields({
+  availableEntities,
   compact = false,
   state,
 }: {
+  availableEntities: CampaignEntitySummary[];
   compact?: boolean;
   state: SessionActionState;
 }) {
   const fieldIdPrefix = state.values.sessionId || "new";
+  const selectedEntityIds = new Set(state.values.taggedEntityIds);
 
   return (
     <div className={compact ? "grid gap-4" : "grid gap-5"}>
@@ -129,6 +152,51 @@ function SessionCoreFields({
           </p>
         ) : null}
       </div>
+
+      <fieldset>
+        <legend className="text-sm font-semibold text-[#17161f]">
+          Tagged entities
+        </legend>
+        {availableEntities.length === 0 ? (
+          <div className="mt-2 rounded-lg border border-dashed border-[#17161f]/20 bg-white px-4 py-3 text-sm leading-6 text-[#4b4657]">
+            No visible entities yet.
+          </div>
+        ) : (
+          <div className="mt-2 grid gap-2 sm:grid-cols-2">
+            {availableEntities.map((entity) => (
+              <label
+                className="flex min-h-16 gap-3 rounded-lg border border-[#17161f]/10 bg-white px-3 py-3 text-sm transition hover:border-[#1f6f78]/45"
+                key={`${fieldIdPrefix}-tag-${entity.id}`}
+              >
+                <input
+                  className="mt-1 h-4 w-4 rounded border-[#17161f]/25 text-[#1f6f78] focus:ring-[#1f6f78]"
+                  defaultChecked={selectedEntityIds.has(entity.id)}
+                  name="taggedEntityIds"
+                  type="checkbox"
+                  value={entity.id}
+                />
+                <span>
+                  <span className="block font-semibold text-[#17161f]">
+                    {entity.name}
+                  </span>
+                  <span className="mt-1 block text-xs uppercase tracking-wide text-[#4b4657]">
+                    {formatEntityType(entity.type)} -{" "}
+                    {formatVisibility(entity.visibility)}
+                  </span>
+                </span>
+              </label>
+            ))}
+          </div>
+        )}
+        {state.fieldErrors.taggedEntityIds ? (
+          <p
+            className="mt-2 text-sm text-[#8b2f39]"
+            id={`${fieldIdPrefix}-session-tags-error`}
+          >
+            {state.fieldErrors.taggedEntityIds}
+          </p>
+        ) : null}
+      </fieldset>
 
       <div>
         <label
@@ -191,6 +259,22 @@ function SessionCoreFields({
       </div>
     </div>
   );
+}
+
+function formatEntityType(type: CampaignEntitySummary["type"]) {
+  const labels: Record<CampaignEntitySummary["type"], string> = {
+    faction: "Faction",
+    item: "Item",
+    location: "Location",
+    npc: "NPC",
+    quest: "Quest",
+  };
+
+  return labels[type];
+}
+
+function formatVisibility(visibility: CampaignEntitySummary["visibility"]) {
+  return visibility === "dm-only" ? "DM only" : "Player safe";
 }
 
 function SessionFormNotice({

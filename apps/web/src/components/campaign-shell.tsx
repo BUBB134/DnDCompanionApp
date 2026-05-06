@@ -115,6 +115,24 @@ export function CampaignShell({
                     title="No open hooks"
                   />
                 )}
+
+                {latestSession.taggedEntities.length > 0 ? (
+                  <div className="rounded-lg border border-[#1f6f78]/20 bg-white p-4">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-[#1f6f78]">
+                      Mentioned entities
+                    </p>
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      {latestSession.taggedEntities.map((entity) => (
+                        <StatusPill
+                          key={`${latestSession.id}-entity-${entity.id}`}
+                          tone={entity.visibility === "dm-only" ? "red" : "teal"}
+                        >
+                          {entity.name}
+                        </StatusPill>
+                      ))}
+                    </div>
+                  </div>
+                ) : null}
               </>
             ) : (
               <EmptyState

@@ -1,15 +1,21 @@
-import type { Campaign, CampaignSession } from "@dnd/types";
+import type {
+  Campaign,
+  CampaignEntitySummary,
+  CampaignSession,
+} from "@dnd/types";
 import { isDatabaseCampaignId } from "@/campaigns/database-id";
 
 const SESSION_TITLE_MAX_LENGTH = 120;
 const SESSION_NOTES_MAX_LENGTH = 10000;
 const SESSION_HOOK_MAX_LENGTH = 180;
 const SESSION_HOOKS_MAX_COUNT = 12;
+const SESSION_TAGS_MAX_COUNT = 24;
 
 export type SessionFormValues = {
   campaignId: string;
   notes: string;
   sessionId: string;
+  taggedEntityIds: string[];
   title: string;
   unresolvedHooks: string;
 };
@@ -17,6 +23,7 @@ export type SessionFormValues = {
 export type SessionMutationInput = {
   campaignId: string;
   notes: string;
+  taggedEntityIds: string[];
   title: string;
   unresolvedHooks: string[];
 };
@@ -63,6 +70,7 @@ export const emptySessionFormValues: SessionFormValues = {
   campaignId: "",
   notes: "",
   sessionId: "",
+  taggedEntityIds: [],
   title: "",
   unresolvedHooks: "",
 };
@@ -88,8 +96,9 @@ export async function createSessionSubmission(
   campaign: Campaign,
   values: SessionFormValues,
   formatError: (error: unknown) => string,
+  availableEntities: readonly CampaignEntitySummary[] = [],
 ): Promise<SessionSubmissionResult> {
-  const validation = validateSessionValues(values, campaign);
+  const validation = validateSessionValues(values, campaign, availableEntities);
 
   if (hasFieldErrors(validation.fieldErrors)) {
     return {
@@ -141,8 +150,9 @@ export async function updateSessionSubmission(
   campaign: Campaign,
   values: SessionFormValues,
   formatError: (error: unknown) => string,
+  availableEntities: readonly CampaignEntitySummary[] = [],
 ): Promise<SessionSubmissionResult> {
-  const validation = validateSessionValues(values, campaign);
+  const validation = validateSessionValues(values, campaign, availableEntities);
   const sessionId = values.sessionId.trim();
 
   if (!sessionId) {
@@ -202,6 +212,7 @@ export function sessionToFormValues(
     campaignId,
     notes: session.notes,
     sessionId: session.id,
+    taggedEntityIds: session.taggedEntities.map((entity) => entity.id),
     title: session.title,
     unresolvedHooks: session.unresolvedHooks.join("\n"),
   };
@@ -210,11 +221,17 @@ export function sessionToFormValues(
 export function validateSessionValues(
   values: SessionFormValues,
   campaign: Campaign,
+  availableEntities: readonly CampaignEntitySummary[] = [],
 ) {
+  const normalizedTaggedEntityIds = normalizeTaggedEntityIds(
+    values.taggedEntityIds,
+    availableEntities,
+  );
   const normalizedValues = {
     campaignId: values.campaignId.trim(),
     notes: values.notes.trim(),
     sessionId: values.sessionId.trim(),
+    taggedEntityIds: normalizedTaggedEntityIds.ids,
     title: values.title.trim(),
     unresolvedHooks: values.unresolvedHooks.trim(),
   };
@@ -249,11 +266,20 @@ export function validateSessionValues(
       `Each unresolved hook must be ${SESSION_HOOK_MAX_LENGTH} characters or fewer.`;
   }
 
+  if (normalizedTaggedEntityIds.hasUnavailableEntity) {
+    fieldErrors.taggedEntityIds =
+      "Choose only visible entities from this campaign.";
+  } else if (normalizedTaggedEntityIds.ids.length > SESSION_TAGS_MAX_COUNT) {
+    fieldErrors.taggedEntityIds =
+      `Keep tagged entities to ${SESSION_TAGS_MAX_COUNT} or fewer.`;
+  }
+
   return {
     fieldErrors,
     input: {
       campaignId: normalizedValues.campaignId,
       notes: normalizedValues.notes,
+      taggedEntityIds: normalizedValues.taggedEntityIds,
       title: normalizedValues.title,
       unresolvedHooks,
     } satisfies SessionMutationInput,
@@ -261,6 +287,37 @@ export function validateSessionValues(
       ...normalizedValues,
       unresolvedHooks: unresolvedHooks.join("\n"),
     },
+  };
+}
+
+function normalizeTaggedEntityIds(
+  entityIds: readonly string[],
+  availableEntities: readonly CampaignEntitySummary[],
+) {
+  const availableEntityIds = new Set(
+    availableEntities.map((entity) => entity.id),
+  );
+  const ids: string[] = [];
+  let hasUnavailableEntity = false;
+
+  for (const entityId of entityIds) {
+    const normalizedEntityId = entityId.trim();
+
+    if (!normalizedEntityId || ids.includes(normalizedEntityId)) {
+      continue;
+    }
+
+    if (!availableEntityIds.has(normalizedEntityId)) {
+      hasUnavailableEntity = true;
+      continue;
+    }
+
+    ids.push(normalizedEntityId);
+  }
+
+  return {
+    hasUnavailableEntity,
+    ids,
   };
 }
 

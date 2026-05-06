@@ -16,6 +16,7 @@ import {
   createSessionForUser,
   updateSessionForUser,
 } from "@/sessions/repository";
+import { listEntitySummariesForUser } from "@/entities/repository";
 
 export async function createSessionAction(
   _previousState: SessionActionState,
@@ -41,12 +42,23 @@ export async function createSessionAction(
     };
   }
 
+  const availableEntities = await listAvailableEntities(
+    session.user.id,
+    campaign.id,
+    values,
+  );
+
+  if ("formError" in availableEntities) {
+    return availableEntities;
+  }
+
   const result = await createSessionSubmission(
     { createSessionForUser },
     session.user.id,
     campaign,
     values,
     formatDatabaseError,
+    availableEntities.entities,
   );
 
   if (result.ok) {
@@ -80,12 +92,23 @@ export async function updateSessionAction(
     };
   }
 
+  const availableEntities = await listAvailableEntities(
+    session.user.id,
+    campaign.id,
+    values,
+  );
+
+  if ("formError" in availableEntities) {
+    return availableEntities;
+  }
+
   const result = await updateSessionSubmission(
     { updateSessionForUser },
     session.user.id,
     campaign,
     values,
     formatDatabaseError,
+    availableEntities.entities,
   );
 
   if (result.ok) {
@@ -100,6 +123,7 @@ function readSessionFormValues(formData: FormData): SessionFormValues {
     campaignId: getStringField(formData, "campaignId"),
     notes: getStringField(formData, "notes"),
     sessionId: getStringField(formData, "sessionId"),
+    taggedEntityIds: getStringFields(formData, "taggedEntityIds"),
     title: getStringField(formData, "title"),
     unresolvedHooks: getStringField(formData, "unresolvedHooks"),
   };
@@ -109,6 +133,29 @@ function getStringField(formData: FormData, fieldName: string) {
   const value = formData.get(fieldName);
 
   return typeof value === "string" ? value : "";
+}
+
+function getStringFields(formData: FormData, fieldName: string) {
+  return formData
+    .getAll(fieldName)
+    .filter((value): value is string => typeof value === "string");
+}
+
+async function listAvailableEntities(
+  userId: string,
+  campaignId: string,
+  values: SessionFormValues,
+) {
+  try {
+    return {
+      entities: await listEntitySummariesForUser(userId, campaignId),
+    };
+  } catch (error) {
+    return {
+      ...createSessionActionState(values),
+      formError: formatDatabaseError(error),
+    };
+  }
 }
 
 function revalidateSessionPaths(campaignId: string) {
