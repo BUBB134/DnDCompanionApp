@@ -1,5 +1,11 @@
 import type { AuthSession } from "@dnd/types";
 import {
+  isNonLocalAppEnvironment,
+  readPublicEnv,
+  readServerEnv,
+  type EnvSource,
+} from "@dnd/env";
+import {
   createLocalUserId,
   DEFAULT_LOCAL_AUTH_EMAIL,
   DEFAULT_LOCAL_AUTH_NAME,
@@ -12,7 +18,8 @@ export const AUTH_COOKIE_NAME = "dnd_local_session";
 export const AUTH_COOKIE_MAX_AGE_SECONDS = 60 * 60 * 24 * 7;
 
 const PROTECTED_RETURN_PATHS = ["/", "/campaigns", "/entities", "/rules", "/sessions"] as const;
-const SESSION_TOKEN_PREFIX = "local-v1.";
+const SIGNED_SESSION_TOKEN_PREFIX = "local-v2.";
+const UNSIGNED_SESSION_TOKEN_PREFIX = "local-v1.";
 
 type LocalSessionInput = {
   email?: string;
@@ -37,20 +44,121 @@ export function createLocalAuthSession(
   };
 }
 
-export function encodeAuthSession(session: AuthSession) {
-  return `${SESSION_TOKEN_PREFIX}${toBase64Url(JSON.stringify(session))}`;
+export async function encodeAuthSession(
+  session: AuthSession,
+  source: EnvSource = process.env,
+) {
+  const payload = toBase64Url(JSON.stringify(session));
+  const sessionSecret = readServerEnv(source).AUTH_SESSION_SECRET;
+
+  if (!sessionSecret) {
+    if (requiresSignedAuthSession(source)) {
+      throw new Error(
+        "AUTH_SESSION_SECRET is required before auth sessions can be created outside local development.",
+      );
+    }
+
+    return `${UNSIGNED_SESSION_TOKEN_PREFIX}${payload}`;
+  }
+
+  return `${SIGNED_SESSION_TOKEN_PREFIX}${payload}.${await signValue(
+    payload,
+    sessionSecret,
+  )}`;
 }
 
-export function decodeAuthSession(
+export async function decodeAuthSession(
   cookieValue: string | null | undefined,
   now = new Date(),
-): AuthSession | null {
-  if (!cookieValue?.startsWith(SESSION_TOKEN_PREFIX)) {
+  source: EnvSource = process.env,
+): Promise<AuthSession | null> {
+  if (!cookieValue) {
     return null;
   }
 
+  if (cookieValue.startsWith(SIGNED_SESSION_TOKEN_PREFIX)) {
+    const token = cookieValue.slice(SIGNED_SESSION_TOKEN_PREFIX.length);
+    const separatorIndex = token.lastIndexOf(".");
+    const sessionSecret = readServerEnv(source).AUTH_SESSION_SECRET;
+
+    if (separatorIndex <= 0 || !sessionSecret) {
+      return null;
+    }
+
+    const payload = token.slice(0, separatorIndex);
+    const signature = token.slice(separatorIndex + 1);
+
+    if (!(await hasValidSignature(payload, signature, sessionSecret))) {
+      return null;
+    }
+
+    return decodeSessionPayload(payload, now);
+  }
+
+  if (cookieValue.startsWith(UNSIGNED_SESSION_TOKEN_PREFIX)) {
+    if (requiresSignedAuthSession(source)) {
+      return null;
+    }
+
+    return decodeSessionPayload(
+      cookieValue.slice(UNSIGNED_SESSION_TOKEN_PREFIX.length),
+      now,
+    );
+  }
+
+  return null;
+}
+
+export async function hasAuthSessionCookie(
+  cookieValue: string | null | undefined,
+  now = new Date(),
+  source: EnvSource = process.env,
+) {
+  return (await decodeAuthSession(cookieValue, now, source)) !== null;
+}
+
+function requiresSignedAuthSession(source: EnvSource) {
+  return isNonLocalAppEnvironment(readPublicEnv(source).NEXT_PUBLIC_APP_ENV);
+}
+
+async function signValue(value: string, secret: string) {
+  const encoder = new TextEncoder();
+  const key = await crypto.subtle.importKey(
+    "raw",
+    encoder.encode(secret),
+    { hash: "SHA-256", name: "HMAC" },
+    false,
+    ["sign"],
+  );
+  const signature = await crypto.subtle.sign("HMAC", key, encoder.encode(value));
+
+  return toBase64UrlFromBytes(new Uint8Array(signature));
+}
+
+async function hasValidSignature(value: string, signature: string, secret: string) {
+  const expectedSignature = await signValue(value, secret);
+
+  if (signature.length !== expectedSignature.length) {
+    return false;
+  }
+
+  let isMatch = true;
+
+  for (let index = 0; index < signature.length; index += 1) {
+    if (signature.charCodeAt(index) !== expectedSignature.charCodeAt(index)) {
+      isMatch = false;
+    }
+  }
+
+  return isMatch;
+}
+
+function decodeSessionPayload(
+  payload: string,
+  now: Date,
+): AuthSession | null {
   try {
-    const decoded = fromBase64Url(cookieValue.slice(SESSION_TOKEN_PREFIX.length));
+    const decoded = fromBase64Url(payload);
     const session = JSON.parse(decoded) as unknown;
 
     if (!isAuthSession(session)) {
@@ -65,10 +173,6 @@ export function decodeAuthSession(
   } catch {
     return null;
   }
-}
-
-export function hasAuthSessionCookie(cookieValue: string | null | undefined) {
-  return decodeAuthSession(cookieValue) !== null;
 }
 
 export function getSafeReturnPath(
@@ -137,6 +241,11 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 
 function toBase64Url(value: string) {
   const bytes = new TextEncoder().encode(value);
+
+  return toBase64UrlFromBytes(bytes);
+}
+
+function toBase64UrlFromBytes(bytes: Uint8Array) {
   let binary = "";
 
   for (const byte of bytes) {
