@@ -49,6 +49,8 @@ const rulesPageText = readText("apps/web/src/app/(protected)/rules/page.tsx");
 for (const expectedText of [
   "listRuleSnippetsForUser",
   "filterRulesBySearch",
+  "createCategoryFilterHref(filter.value, query)",
+  'params.set("q", query)',
   "RuleCard",
   'name="q"',
   "No rules found",

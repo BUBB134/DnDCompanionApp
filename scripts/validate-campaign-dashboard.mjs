@@ -109,6 +109,7 @@ if (hasTypeScriptRuntime) {
     ],
   );
   const bootstrapModule = await import(bootstrapUrl);
+  const coreRulesModule = await import(coreRulesUrl);
 
   const dmDashboard = bootstrapModule.buildCampaignDashboardData({
     id: "campaign-ashen-coast",
@@ -142,6 +143,28 @@ if (hasTypeScriptRuntime) {
       emptyDashboard.entities.length === 0 &&
       emptyDashboard.rules.length === 0,
     "Campaigns without memory should produce empty dashboard sections.",
+  );
+
+  const longNotesDashboard = bootstrapModule.buildCampaignDashboardData(
+    {
+      id: "11111111-1111-5111-8111-111111111111",
+      name: "Saved Ashen Coast",
+      role: "player",
+    },
+    [],
+    {
+      id: "session-long-notes",
+      notes: `${"quiet notes ".repeat(30)} stunned`,
+      recap: "Short visible summary without tracked rules.",
+      taggedEntities: [],
+      title: "Long notes",
+      unresolvedHooks: [],
+    },
+    coreRulesModule.coreRuleSnippets,
+  );
+  expect(
+    longNotesDashboard.rules.some((rule) => rule.slug === "stunned"),
+    "Campaign dashboard rule matching should use full session notes when available.",
   );
 }
 

@@ -24,7 +24,11 @@ import { findReferencedRules } from "@/rules/matching";
 import { listRuleSnippetsForUser } from "@/rules/repository";
 import { getLatestSessionForUser } from "@/sessions/repository";
 
-type CampaignSessionSummary = SessionSummary & {
+type RuleSourceSession = SessionSummary & {
+  notes?: string;
+};
+
+type CampaignSessionSummary = RuleSourceSession & {
   campaignId: string;
 };
 
@@ -184,7 +188,7 @@ export async function getSelectedCampaignDashboardData(
 export function buildCampaignDashboardData(
   campaign: Campaign,
   entities?: CampaignEntitySummary[],
-  latestSessionOverride?: SessionSummary | null,
+  latestSessionOverride?: RuleSourceSession | null,
   rules?: RuleSnippet[],
 ): CampaignDashboardData {
   const latestSession =
@@ -208,15 +212,19 @@ export function buildCampaignDashboardData(
     latestSession,
     rules: latestSession
       ? findReferencedRules(
-          [
-            latestSession.title,
-            latestSession.recap,
-            ...latestSession.unresolvedHooks,
-          ].join("\n"),
+          createRuleReferenceText(latestSession),
           rules ?? filterByVisibility(coreRuleSnippets, campaign.role),
         )
       : [],
   };
+}
+
+function createRuleReferenceText(session: RuleSourceSession) {
+  return [
+    session.title,
+    session.notes ?? session.recap,
+    ...session.unresolvedHooks,
+  ].join("\n");
 }
 
 async function getCurrentDatabaseEntitySummaries(userId: string, campaignId: string) {

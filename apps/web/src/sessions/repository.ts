@@ -38,7 +38,7 @@ export async function listSessionsForUser(
 export async function getLatestSessionForUser(
   userId: string,
   campaignId: string,
-): Promise<SessionSummary | null> {
+): Promise<CampaignSession | null> {
   const result = await queryDatabase<SessionRow>(
     `${createSessionsQuery()}
       limit 1
@@ -46,7 +46,7 @@ export async function getLatestSessionForUser(
     [userId, campaignId],
   );
 
-  return result.rows[0] ? mapSessionSummaryRow(result.rows[0]) : null;
+  return result.rows[0] ? mapSessionRow(result.rows[0]) : null;
 }
 
 export async function createSessionForUser(

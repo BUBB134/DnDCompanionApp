@@ -114,7 +114,7 @@ export default async function RulesPage({ searchParams }: RulesPageProps) {
                     ? "border-[#17161f] bg-[#17161f] text-white"
                     : "border-[#17161f]/15 bg-white hover:border-[#1f6f78]"
                 }`}
-                href={filter.value ? `/rules?category=${filter.value}` : "/rules"}
+                href={createCategoryFilterHref(filter.value, query)}
                 key={filter.value || "all"}
               >
                 {filter.label}
@@ -150,6 +150,22 @@ export default async function RulesPage({ searchParams }: RulesPageProps) {
       )}
     </div>
   );
+}
+
+function createCategoryFilterHref(category: string, query: string) {
+  const params = new URLSearchParams();
+
+  if (category) {
+    params.set("category", category);
+  }
+
+  if (query) {
+    params.set("q", query);
+  }
+
+  const queryString = params.toString();
+
+  return queryString ? `/rules?${queryString}` : "/rules";
 }
 
 function normalizeSearchParam(value: string | undefined) {
