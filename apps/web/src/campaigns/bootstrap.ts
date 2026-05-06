@@ -13,11 +13,13 @@ import {
 } from "@dnd/types";
 import { createLocalUserId } from "@/auth/local-user";
 import { getActiveCampaignId } from "@/campaigns/active-campaign";
+import { isDatabaseCampaignId } from "@/campaigns/database-id";
 import {
   getDatabaseCampaignAccessForUser,
   listDatabaseCampaignsForUser,
 } from "@/campaigns/repository";
 import { listEntitySummariesForUser } from "@/entities/repository";
+import { getLatestSessionForUser } from "@/sessions/repository";
 
 type CampaignRuleSnippet = RuleSnippet & {
   campaignId: string;
@@ -166,12 +168,19 @@ export async function getCampaignHomeData(
     return null;
   }
 
-  const databaseEntities = await getCurrentDatabaseEntitySummaries(
-    session.user.id,
-    campaign.id,
-  );
+  const isSavedCampaign = isDatabaseCampaignId(campaign.id);
+  const databaseEntities = isSavedCampaign
+    ? await getCurrentDatabaseEntitySummaries(session.user.id, campaign.id)
+    : null;
+  const databaseLatestSession = isSavedCampaign
+    ? await getCurrentDatabaseLatestSession(session.user.id, campaign.id)
+    : undefined;
 
-  return buildCampaignDashboardData(campaign, databaseEntities ?? undefined);
+  return buildCampaignDashboardData(
+    campaign,
+    databaseEntities ?? undefined,
+    databaseLatestSession,
+  );
 }
 
 export async function getSelectedCampaignDashboardData(
@@ -187,16 +196,21 @@ export async function getSelectedCampaignDashboardData(
   return buildCampaignDashboardData(
     campaign,
     await listEntitySummariesForUser(userId, campaign.id),
+    await getLatestSessionForUser(userId, campaign.id),
   );
 }
 
 export function buildCampaignDashboardData(
   campaign: Campaign,
   entities?: CampaignEntitySummary[],
+  latestSessionOverride?: SessionSummary | null,
 ): CampaignDashboardData {
-  const latestSession = bootstrapSessions.find(
-    (sessionSummary) => sessionSummary.campaignId === campaign.id,
-  );
+  const latestSession =
+    latestSessionOverride === undefined
+      ? bootstrapSessions.find(
+          (sessionSummary) => sessionSummary.campaignId === campaign.id,
+        ) ?? null
+      : latestSessionOverride;
 
   return {
     campaign,
@@ -209,7 +223,7 @@ export function buildCampaignDashboardData(
         bootstrapEntities.filter((entity) => entity.campaignId === campaign.id),
         campaign.role,
       ),
-    latestSession: latestSession ?? null,
+    latestSession,
     rules: latestSession
       ? filterByVisibility(
           bootstrapRules.filter((rule) => rule.campaignId === campaign.id),
@@ -222,6 +236,14 @@ export function buildCampaignDashboardData(
 async function getCurrentDatabaseEntitySummaries(userId: string, campaignId: string) {
   try {
     return await listEntitySummariesForUser(userId, campaignId);
+  } catch {
+    return null;
+  }
+}
+
+async function getCurrentDatabaseLatestSession(userId: string, campaignId: string) {
+  try {
+    return await getLatestSessionForUser(userId, campaignId);
   } catch {
     return null;
   }

@@ -22,6 +22,7 @@ export type {
   CampaignMembership,
   Campaign,
   CampaignRole,
+  CampaignSession,
   CampaignSummary,
   EntityType,
   RuleSnippet,

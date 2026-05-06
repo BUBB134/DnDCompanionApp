@@ -40,6 +40,12 @@ export type SessionSummary = {
   unresolvedHooks: string[];
 };
 
+export type CampaignSession = SessionSummary & {
+  createdAt: string;
+  notes: string;
+  updatedAt: string;
+};
+
 export type CampaignEntitySummary = {
   id: string;
   name: string;
