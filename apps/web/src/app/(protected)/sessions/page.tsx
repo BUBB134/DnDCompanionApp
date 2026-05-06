@@ -1,4 +1,8 @@
-import type { CampaignEntitySummary, CampaignSession } from "@dnd/types";
+import type {
+  CampaignEntitySummary,
+  CampaignSession,
+  RuleSnippet,
+} from "@dnd/types";
 import { formatDatabaseError } from "@dnd/db";
 import { StatusPill, EmptyState, Surface } from "@dnd/ui";
 import { requireAuthSession } from "@/auth/server";
@@ -8,11 +12,13 @@ import {
 } from "@/campaigns/bootstrap";
 import { isDatabaseCampaignId } from "@/campaigns/database-id";
 import { CampaignAccessState } from "@/components/campaign-access-state";
+import { RuleLinkedText } from "@/components/rule-linked-text";
 import {
   SessionCreateForm,
   SessionEditForm,
 } from "@/components/session-editor";
 import { listEntitySummariesForUser } from "@/entities/repository";
+import { listRuleSnippetsForUser } from "@/rules/repository";
 import { listSessionsForUser } from "@/sessions/repository";
 
 const entityTypeLabels: Record<CampaignEntitySummary["type"], string> = {
@@ -28,6 +34,7 @@ export default async function SessionsPage() {
   const campaign = await getCurrentCampaignAccess(session);
   const canManageSessions = isDatabaseCampaignId(campaign?.id ?? "");
   let taggableEntities: CampaignEntitySummary[] = [];
+  let rules: RuleSnippet[] = [];
   let sessions: CampaignSession[] = [];
   let loadError: string | null = null;
 
@@ -37,9 +44,10 @@ export default async function SessionsPage() {
 
   if (canManageSessions) {
     try {
-      [sessions, taggableEntities] = await Promise.all([
+      [sessions, taggableEntities, rules] = await Promise.all([
         listSessionsForUser(session.user.id, campaign.id),
         listEntitySummariesForUser(session.user.id, campaign.id),
+        listRuleSnippetsForUser(session.user.id, campaign.id),
       ]);
     } catch (error) {
       loadError = formatDatabaseError(error);
@@ -59,6 +67,7 @@ export default async function SessionsPage() {
         ]
       : [];
     taggableEntities = dashboardData.entities;
+    rules = dashboardData.rules;
   }
 
   return (
@@ -143,9 +152,11 @@ export default async function SessionsPage() {
                     </div>
 
                     {campaignSession.notes ? (
-                      <p className="mt-3 whitespace-pre-wrap text-sm leading-6 text-[#17161f]">
-                        {campaignSession.notes}
-                      </p>
+                      <RuleLinkedText
+                        className="mt-3 whitespace-pre-wrap text-sm leading-6 text-[#17161f]"
+                        rules={rules}
+                        text={campaignSession.notes}
+                      />
                     ) : (
                       <p className="mt-3 text-sm leading-6 text-[#4b4657]">
                         No notes captured yet.

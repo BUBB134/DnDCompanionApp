@@ -60,8 +60,11 @@ export type CampaignEntity = CampaignEntitySummary & {
 };
 
 export type RuleSnippet = {
+  aliases: string[];
+  body: string;
   category: RuleSnippetCategory;
   id: string;
+  slug: string;
   summary: string;
   title: string;
   visibility: Visibility;

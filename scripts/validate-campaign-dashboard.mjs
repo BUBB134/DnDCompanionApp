@@ -82,6 +82,17 @@ if (hasTypeScriptRuntime) {
   const sessionsRepositoryUrl = moduleDataUrl(`
     export async function getLatestSessionForUser() { return null; }
   `);
+  const coreRulesUrl = await transpileModuleToDataUrl(
+    "apps/web/src/rules/core-rules.ts",
+    [["@dnd/types", campaignTypesUrl]],
+  );
+  const matchingUrl = await transpileModuleToDataUrl(
+    "apps/web/src/rules/matching.ts",
+    [["@dnd/types", campaignTypesUrl]],
+  );
+  const rulesRepositoryUrl = moduleDataUrl(`
+    export async function listRuleSnippetsForUser() { return []; }
+  `);
   const bootstrapUrl = await transpileModuleToDataUrl(
     "apps/web/src/campaigns/bootstrap.ts",
     [
@@ -92,9 +103,13 @@ if (hasTypeScriptRuntime) {
       ["@/campaigns/repository", repositoryUrl],
       ["@/entities/repository", entitiesRepositoryUrl],
       ["@/sessions/repository", sessionsRepositoryUrl],
+      ["@/rules/core-rules", coreRulesUrl],
+      ["@/rules/matching", matchingUrl],
+      ["@/rules/repository", rulesRepositoryUrl],
     ],
   );
   const bootstrapModule = await import(bootstrapUrl);
+  const coreRulesModule = await import(coreRulesUrl);
 
   const dmDashboard = bootstrapModule.buildCampaignDashboardData({
     id: "campaign-ashen-coast",
@@ -128,6 +143,28 @@ if (hasTypeScriptRuntime) {
       emptyDashboard.entities.length === 0 &&
       emptyDashboard.rules.length === 0,
     "Campaigns without memory should produce empty dashboard sections.",
+  );
+
+  const longNotesDashboard = bootstrapModule.buildCampaignDashboardData(
+    {
+      id: "11111111-1111-5111-8111-111111111111",
+      name: "Saved Ashen Coast",
+      role: "player",
+    },
+    [],
+    {
+      id: "session-long-notes",
+      notes: `${"quiet notes ".repeat(30)} stunned`,
+      recap: "Short visible summary without tracked rules.",
+      taggedEntities: [],
+      title: "Long notes",
+      unresolvedHooks: [],
+    },
+    coreRulesModule.coreRuleSnippets,
+  );
+  expect(
+    longNotesDashboard.rules.some((rule) => rule.slug === "stunned"),
+    "Campaign dashboard rule matching should use full session notes when available.",
   );
 }
 
