@@ -48,6 +48,10 @@ export type CampaignEntitySummary = {
   visibility: Visibility;
 };
 
+export type CampaignEntity = CampaignEntitySummary & {
+  description: string;
+};
+
 export type RuleSnippet = {
   category: RuleSnippetCategory;
   id: string;

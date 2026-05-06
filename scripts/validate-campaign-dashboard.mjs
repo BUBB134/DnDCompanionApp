@@ -73,6 +73,9 @@ if (hasTypeScriptRuntime) {
     export async function getDatabaseCampaignAccessForUser() { return null; }
     export async function listDatabaseCampaignsForUser() { return []; }
   `);
+  const entitiesRepositoryUrl = moduleDataUrl(`
+    export async function listEntitySummariesForUser() { return []; }
+  `);
   const bootstrapUrl = await transpileModuleToDataUrl(
     "apps/web/src/campaigns/bootstrap.ts",
     [
@@ -80,6 +83,7 @@ if (hasTypeScriptRuntime) {
       ["@/auth/local-user", localUserUrl],
       ["@/campaigns/active-campaign", activeCampaignUrl],
       ["@/campaigns/repository", repositoryUrl],
+      ["@/entities/repository", entitiesRepositoryUrl],
     ],
   );
   const bootstrapModule = await import(bootstrapUrl);

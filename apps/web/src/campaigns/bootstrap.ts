@@ -17,6 +17,7 @@ import {
   getDatabaseCampaignAccessForUser,
   listDatabaseCampaignsForUser,
 } from "@/campaigns/repository";
+import { listEntitySummariesForUser } from "@/entities/repository";
 
 type CampaignRuleSnippet = RuleSnippet & {
   campaignId: string;
@@ -165,7 +166,12 @@ export async function getCampaignHomeData(
     return null;
   }
 
-  return buildCampaignDashboardData(campaign);
+  const databaseEntities = await getCurrentDatabaseEntitySummaries(
+    session.user.id,
+    campaign.id,
+  );
+
+  return buildCampaignDashboardData(campaign, databaseEntities ?? undefined);
 }
 
 export async function getSelectedCampaignDashboardData(
@@ -174,10 +180,20 @@ export async function getSelectedCampaignDashboardData(
 ) {
   const campaign = await getDatabaseCampaignAccessForUser(userId, campaignId);
 
-  return campaign ? buildCampaignDashboardData(campaign) : null;
+  if (!campaign) {
+    return null;
+  }
+
+  return buildCampaignDashboardData(
+    campaign,
+    await listEntitySummariesForUser(userId, campaign.id),
+  );
 }
 
-export function buildCampaignDashboardData(campaign: Campaign): CampaignDashboardData {
+export function buildCampaignDashboardData(
+  campaign: Campaign,
+  entities?: CampaignEntitySummary[],
+): CampaignDashboardData {
   const latestSession = bootstrapSessions.find(
     (sessionSummary) => sessionSummary.campaignId === campaign.id,
   );
@@ -187,10 +203,12 @@ export function buildCampaignDashboardData(campaign: Campaign): CampaignDashboar
     dmBrief: isDungeonMaster(campaign.role)
       ? bootstrapDmBriefs[campaign.id] ?? null
       : null,
-    entities: filterByVisibility(
-      bootstrapEntities.filter((entity) => entity.campaignId === campaign.id),
-      campaign.role,
-    ),
+    entities:
+      entities ??
+      filterByVisibility(
+        bootstrapEntities.filter((entity) => entity.campaignId === campaign.id),
+        campaign.role,
+      ),
     latestSession: latestSession ?? null,
     rules: latestSession
       ? filterByVisibility(
@@ -199,6 +217,14 @@ export function buildCampaignDashboardData(campaign: Campaign): CampaignDashboar
         )
       : [],
   };
+}
+
+async function getCurrentDatabaseEntitySummaries(userId: string, campaignId: string) {
+  try {
+    return await listEntitySummariesForUser(userId, campaignId);
+  } catch {
+    return null;
+  }
 }
 
 async function getCurrentDatabaseCampaignAccess(
