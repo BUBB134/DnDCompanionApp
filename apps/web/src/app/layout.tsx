@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { AuthProvider } from "@/auth/provider";
 import { getAuthSession } from "@/auth/server";
+import { validateRuntimeEnvironment } from "@/env/runtime";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -29,6 +30,8 @@ export default async function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  validateRuntimeEnvironment();
+
   const session = await getAuthSession();
 
   return (

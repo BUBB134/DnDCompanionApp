@@ -34,7 +34,7 @@ export async function setAuthSessionCookie(session: AuthSession) {
     path: "/",
     sameSite: "lax",
     secure: process.env.NODE_ENV === "production",
-    value: encodeAuthSession(session),
+    value: await encodeAuthSession(session),
   });
 }
 

@@ -1,0 +1,48 @@
+name: Integration Smoke
+
+on:
+  workflow_dispatch:
+    inputs:
+      target:
+        description: Environment to validate
+        required: true
+        type: choice
+        options:
+          - preview
+          - production
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.target }}
+    env:
+      NEXT_PUBLIC_APP_ENV: ${{ inputs.target }}
+      AUTH_PROVIDER: local
+      AUTH_SESSION_SECRET: ${{ secrets.AUTH_SESSION_SECRET }}
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      AI_GROUNDING_MODE: retrieval
+      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+      OPENAI_MODEL: ${{ vars.OPENAI_MODEL }}
+      OBSERVABILITY_PROVIDER: ${{ vars.OBSERVABILITY_PROVIDER || 'console' }}
+      SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
+      NEXT_PUBLIC_SENTRY_DSN: ${{ vars.NEXT_PUBLIC_SENTRY_DSN }}
+      LOG_LEVEL: ${{ vars.LOG_LEVEL || 'info' }}
+      STORAGE_PROVIDER: none
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install
+        run: npm install
+
+      - name: Validate environment
+        run: npm run env:check -- --strict
+
+      - name: Check database
+        run: npm run db:check

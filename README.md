@@ -43,6 +43,7 @@ If you want to try a different user during local development, update the bootstr
 - `npm run db:generate -- <name>` scaffolds a new SQL migration file.
 - `npm run db:migrate` applies local Postgres migrations.
 - `npm run db:check` verifies that `DATABASE_URL` is configured and reachable.
+- `npm run env:check -- --env=production --strict` validates production integration environment wiring.
 - `npm run dev` starts the web app locally.
 - `npm run build` builds shared packages and the web app.
 - `npm run lint` runs ESLint.
@@ -69,6 +70,15 @@ For local development:
 4. Run `npm run db:migrate` to apply migrations locally.
 5. Run `npm run db:check` if you want a quick connectivity/configuration check.
 
+## Production Integrations
+
+The MVP production contract is documented in `docs/engineering/production-integrations.md`.
+
+- Deploy the monorepo through Vercel using `vercel.json`.
+- Configure preview with `NEXT_PUBLIC_APP_ENV=preview` and production with `NEXT_PUBLIC_APP_ENV=production`.
+- Set `DATABASE_URL`, `AUTH_SESSION_SECRET`, and AI/observability secrets in Vercel and matching GitHub environments.
+- Use `npm run env:check -- --env=production --strict` and `npm run db:check` to validate environment wiring before promotion.
+
 ## Workspace Layout
 
 ```text
@@ -86,6 +96,7 @@ packages/
 - `docs/product/PRD.md`
 - `docs/engineering/architecture.md`
 - `docs/engineering/branch_protection.md`
+- `docs/engineering/production-integrations.md`
 - `docs/engineering/working-agreement.md`
 - `docs/engineering/code_review.md`
 - `docs/engineering/definition_of_done.md`

@@ -28,6 +28,9 @@ const typescript = hasTypeScriptRuntime
 const localUserModuleUrl = hasTypeScriptRuntime
   ? await transpileModuleToDataUrl("apps/web/src/auth/local-user.ts")
   : null;
+const envModuleUrl = hasTypeScriptRuntime
+  ? await transpileModuleToDataUrl("packages/env/src/index.ts")
+  : null;
 const localUserModule = localUserModuleUrl
   ? await import(localUserModuleUrl)
   : null;
@@ -36,10 +39,11 @@ const campaignModule = hasTypeScriptRuntime
       await transpileModuleToDataUrl("packages/types/src/campaign.ts"),
     )
   : null;
-const sessionModule = hasTypeScriptRuntime && localUserModuleUrl
+const sessionModule = hasTypeScriptRuntime && localUserModuleUrl && envModuleUrl
   ? await import(
       await transpileModuleToDataUrl("apps/web/src/auth/session.ts", [
         ["@/auth/local-user", localUserModuleUrl],
+        ["@dnd/env", envModuleUrl],
       ]),
     )
   : null;
@@ -131,7 +135,7 @@ if (localUserModule) {
 }
 
 if (sessionModule && localUserModule) {
-  const legacyCookie = sessionModule.encodeAuthSession({
+  const legacyCookie = await sessionModule.encodeAuthSession({
     expiresAt: "2099-01-01T00:00:00.000Z",
     user: {
       email: "dm@local.test",
@@ -139,7 +143,7 @@ if (sessionModule && localUserModule) {
       name: "Local DM",
     },
   });
-  const decodedLegacySession = sessionModule.decodeAuthSession(
+  const decodedLegacySession = await sessionModule.decodeAuthSession(
     legacyCookie,
     new Date("2026-05-04T00:00:00.000Z"),
   );

@@ -7,9 +7,9 @@ import {
 
 const PROTECTED_ROUTE_PREFIXES = ["/", "/campaigns", "/entities", "/rules", "/sessions"];
 
-export function middleware(request: NextRequest) {
+export async function middleware(request: NextRequest) {
   const { pathname, search } = request.nextUrl;
-  const isAuthenticated = hasAuthSessionCookie(
+  const isAuthenticated = await hasAuthSessionCookie(
     request.cookies.get(AUTH_COOKIE_NAME)?.value,
   );
 
