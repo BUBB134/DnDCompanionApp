@@ -118,6 +118,7 @@ export const baselineSchemaStatements = [
     title text not null,
     summary text not null,
     body text not null default '',
+    aliases text[] not null default '{}'::text[],
     visibility visibility not null default 'player-safe',
     created_at timestamptz not null default now(),
     updated_at timestamptz not null default now()

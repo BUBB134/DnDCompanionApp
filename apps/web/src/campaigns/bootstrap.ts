@@ -19,11 +19,10 @@ import {
   listDatabaseCampaignsForUser,
 } from "@/campaigns/repository";
 import { listEntitySummariesForUser } from "@/entities/repository";
+import { coreRuleSnippets } from "@/rules/core-rules";
+import { findReferencedRules } from "@/rules/matching";
+import { listRuleSnippetsForUser } from "@/rules/repository";
 import { getLatestSessionForUser } from "@/sessions/repository";
-
-type CampaignRuleSnippet = RuleSnippet & {
-  campaignId: string;
-};
 
 type CampaignSessionSummary = SessionSummary & {
   campaignId: string;
@@ -99,37 +98,13 @@ const bootstrapSessions: readonly CampaignSessionSummary[] = [
     campaignId: "campaign-ashen-coast",
     id: "session-12",
     recap:
-      "The party recovered the drowned keeper's journal, named Captain Thorn as a likely ally, and left one sealed vault unopened.",
+      "The party recovered the drowned keeper's journal, knocked a smuggler prone in the flooded stair, and left one sealed vault unopened while Mira held concentration.",
     taggedEntities: bootstrapEntities.slice(0, 2),
     title: "The lighthouse beneath the tide",
-    unresolvedHooks: ["Decode the salt-stained map", "Decide what to tell Captain Thorn"],
-  },
-] as const;
-
-const bootstrapRules: readonly CampaignRuleSnippet[] = [
-  {
-    campaignId: "campaign-ashen-coast",
-    category: "condition",
-    id: "condition-prone",
-    summary: "A quick reminder for movement cost and attack roll implications.",
-    title: "Prone",
-    visibility: "player-safe",
-  },
-  {
-    campaignId: "campaign-ashen-coast",
-    category: "core-mechanic",
-    id: "mechanic-concentration",
-    summary: "Track when damage or spell conflicts should trigger a check.",
-    title: "Concentration",
-    visibility: "player-safe",
-  },
-  {
-    campaignId: "campaign-ashen-coast",
-    category: "core-mechanic",
-    id: "hazard-rising-tide",
-    summary: "The hidden vault flood clock advances if the party trips the lantern ward.",
-    title: "Hidden flood clock",
-    visibility: "dm-only",
+    unresolvedHooks: [
+      "Decode the salt-stained map",
+      "Decide what to tell Captain Thorn",
+    ],
   },
 ] as const;
 
@@ -176,11 +151,15 @@ export async function getCampaignHomeData(
   const databaseLatestSession = isSavedCampaign
     ? await getCurrentDatabaseLatestSession(session.user.id, campaign.id)
     : undefined;
+  const databaseRules = isSavedCampaign
+    ? await getCurrentDatabaseRuleSnippets(session.user.id, campaign.id)
+    : null;
 
   return buildCampaignDashboardData(
     campaign,
     databaseEntities ?? undefined,
     databaseLatestSession,
+    databaseRules ?? undefined,
   );
 }
 
@@ -198,6 +177,7 @@ export async function getSelectedCampaignDashboardData(
     campaign,
     await listEntitySummariesForUser(userId, campaign.id),
     await getLatestSessionForUser(userId, campaign.id),
+    await listRuleSnippetsForUser(userId, campaign.id),
   );
 }
 
@@ -205,6 +185,7 @@ export function buildCampaignDashboardData(
   campaign: Campaign,
   entities?: CampaignEntitySummary[],
   latestSessionOverride?: SessionSummary | null,
+  rules?: RuleSnippet[],
 ): CampaignDashboardData {
   const latestSession =
     latestSessionOverride === undefined
@@ -226,9 +207,13 @@ export function buildCampaignDashboardData(
       ),
     latestSession,
     rules: latestSession
-      ? filterByVisibility(
-          bootstrapRules.filter((rule) => rule.campaignId === campaign.id),
-          campaign.role,
+      ? findReferencedRules(
+          [
+            latestSession.title,
+            latestSession.recap,
+            ...latestSession.unresolvedHooks,
+          ].join("\n"),
+          rules ?? filterByVisibility(coreRuleSnippets, campaign.role),
         )
       : [],
   };
@@ -245,6 +230,14 @@ async function getCurrentDatabaseEntitySummaries(userId: string, campaignId: str
 async function getCurrentDatabaseLatestSession(userId: string, campaignId: string) {
   try {
     return await getLatestSessionForUser(userId, campaignId);
+  } catch {
+    return null;
+  }
+}
+
+async function getCurrentDatabaseRuleSnippets(userId: string, campaignId: string) {
+  try {
+    return await listRuleSnippetsForUser(userId, campaignId);
   } catch {
     return null;
   }

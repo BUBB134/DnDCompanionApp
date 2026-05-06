@@ -8,6 +8,7 @@ import type {
 import { canAccessVisibility, isDungeonMaster } from "@dnd/types";
 import { EmptyState, StatusPill, Surface } from "@dnd/ui";
 import Link from "next/link";
+import { RuleCard } from "@/components/rule-card";
 
 type CampaignShellProps = {
   campaign: Campaign;
@@ -40,6 +41,11 @@ const campaignActions: readonly CampaignAction[] = [
   {
     body: "Review known NPCs, locations, factions, quests, and items from campaign memory.",
     title: "Review entities",
+    visibility: "player-safe",
+  },
+  {
+    body: "Search conditions and mechanics, or tap linked terms from session notes.",
+    title: "Search rules",
     visibility: "player-safe",
   },
   {
@@ -201,10 +207,10 @@ export function CampaignShell({
           <Surface className="p-5">
             <h2 className="text-lg font-semibold">Key actions</h2>
             <div className="mt-4 grid gap-3">
-                {visibleActions.map((action) => (
-                  <article
-                    className="rounded-lg border border-[#17161f]/10 bg-white p-4"
-                    key={action.title}
+              {visibleActions.map((action) => (
+                <article
+                  className="rounded-lg border border-[#17161f]/10 bg-white p-4"
+                  key={action.title}
                 >
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <h3 className="font-semibold">{action.title}</h3>
@@ -221,6 +227,14 @@ export function CampaignShell({
                       Open session editor
                     </Link>
                   ) : null}
+                  {action.title === "Search rules" ? (
+                    <Link
+                      className="mt-3 inline-flex min-h-10 items-center rounded-md border border-[#17161f]/15 bg-[#fffaf0] px-3 py-2 text-sm font-semibold transition hover:border-[#1f6f78] focus:outline-none focus:ring-2 focus:ring-[#1f6f78] focus:ring-offset-2"
+                      href="/rules"
+                    >
+                      Open rules panel
+                    </Link>
+                  ) : null}
                 </article>
               ))}
             </div>
@@ -234,22 +248,11 @@ export function CampaignShell({
             <div className="mt-4 grid gap-3">
               {rules.length === 0 ? (
                 <EmptyState
-                  body="Rules and abilities will appear here once session context is indexed."
+                  body="Rules and abilities will appear here once session notes mention tracked conditions or mechanics."
                   title="No rules surfaced"
                 />
               ) : (
-                rules.map((rule) => (
-                  <article
-                    className="rounded-lg border border-[#17161f]/10 bg-[#f7f1e5] p-4"
-                    key={rule.id}
-                  >
-                    <div className="flex items-center justify-between gap-3">
-                      <h3 className="font-semibold">{rule.title}</h3>
-                      <StatusPill tone="teal">{rule.visibility}</StatusPill>
-                    </div>
-                    <p className="mt-2 text-sm leading-6 text-[#4b4657]">{rule.summary}</p>
-                  </article>
-                ))
+                rules.map((rule) => <RuleCard key={rule.id} rule={rule} />)
               )}
             </div>
           </Surface>

@@ -82,6 +82,17 @@ if (hasTypeScriptRuntime) {
   const sessionsRepositoryUrl = moduleDataUrl(`
     export async function getLatestSessionForUser() { return null; }
   `);
+  const coreRulesUrl = await transpileModuleToDataUrl(
+    "apps/web/src/rules/core-rules.ts",
+    [["@dnd/types", campaignTypesUrl]],
+  );
+  const matchingUrl = await transpileModuleToDataUrl(
+    "apps/web/src/rules/matching.ts",
+    [["@dnd/types", campaignTypesUrl]],
+  );
+  const rulesRepositoryUrl = moduleDataUrl(`
+    export async function listRuleSnippetsForUser() { return []; }
+  `);
   const bootstrapUrl = await transpileModuleToDataUrl(
     "apps/web/src/campaigns/bootstrap.ts",
     [
@@ -92,6 +103,9 @@ if (hasTypeScriptRuntime) {
       ["@/campaigns/repository", repositoryUrl],
       ["@/entities/repository", entitiesRepositoryUrl],
       ["@/sessions/repository", sessionsRepositoryUrl],
+      ["@/rules/core-rules", coreRulesUrl],
+      ["@/rules/matching", matchingUrl],
+      ["@/rules/repository", rulesRepositoryUrl],
     ],
   );
   const bootstrapModule = await import(bootstrapUrl);
