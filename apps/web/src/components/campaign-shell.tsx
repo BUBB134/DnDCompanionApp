@@ -7,6 +7,7 @@ import type {
 } from "@dnd/types";
 import { canAccessVisibility, isDungeonMaster } from "@dnd/types";
 import { EmptyState, StatusPill, Surface } from "@dnd/ui";
+import Link from "next/link";
 
 type CampaignShellProps = {
   campaign: Campaign;
@@ -96,10 +97,10 @@ export function CampaignShell({
 
                 {latestSession.unresolvedHooks.length > 0 ? (
                   <div className="grid gap-3 sm:grid-cols-2">
-                    {latestSession.unresolvedHooks.map((hook) => (
+                    {latestSession.unresolvedHooks.map((hook, hookIndex) => (
                       <div
                         className="rounded-lg border border-[#c3943e]/45 bg-[#fffaf0] p-4"
-                        key={hook}
+                        key={`${latestSession.id}-hook-${hookIndex}`}
                       >
                         <p className="text-xs font-semibold uppercase tracking-wide text-[#8b2f39]">
                           Open hook
@@ -182,10 +183,10 @@ export function CampaignShell({
           <Surface className="p-5">
             <h2 className="text-lg font-semibold">Key actions</h2>
             <div className="mt-4 grid gap-3">
-              {visibleActions.map((action) => (
-                <article
-                  className="rounded-lg border border-[#17161f]/10 bg-white p-4"
-                  key={action.title}
+                {visibleActions.map((action) => (
+                  <article
+                    className="rounded-lg border border-[#17161f]/10 bg-white p-4"
+                    key={action.title}
                 >
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <h3 className="font-semibold">{action.title}</h3>
@@ -194,6 +195,14 @@ export function CampaignShell({
                     </StatusPill>
                   </div>
                   <p className="mt-2 text-sm leading-6 text-[#4b4657]">{action.body}</p>
+                  {action.title === "Log latest session" ? (
+                    <Link
+                      className="mt-3 inline-flex min-h-10 items-center rounded-md border border-[#17161f]/15 bg-[#fffaf0] px-3 py-2 text-sm font-semibold transition hover:border-[#1f6f78] focus:outline-none focus:ring-2 focus:ring-[#1f6f78] focus:ring-offset-2"
+                      href="/sessions"
+                    >
+                      Open session editor
+                    </Link>
+                  ) : null}
                 </article>
               ))}
             </div>

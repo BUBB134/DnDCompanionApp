@@ -68,6 +68,9 @@ const typescript = hasTypeScriptRuntime
 if (hasTypeScriptRuntime) {
   const campaignTypesUrl = await transpileModuleToDataUrl("packages/types/src/campaign.ts");
   const localUserUrl = await transpileModuleToDataUrl("apps/web/src/auth/local-user.ts");
+  const databaseIdUrl = await transpileModuleToDataUrl(
+    "apps/web/src/campaigns/database-id.ts",
+  );
   const activeCampaignUrl = moduleDataUrl("export async function getActiveCampaignId() { return null; }");
   const repositoryUrl = moduleDataUrl(`
     export async function getDatabaseCampaignAccessForUser() { return null; }
@@ -76,14 +79,19 @@ if (hasTypeScriptRuntime) {
   const entitiesRepositoryUrl = moduleDataUrl(`
     export async function listEntitySummariesForUser() { return []; }
   `);
+  const sessionsRepositoryUrl = moduleDataUrl(`
+    export async function getLatestSessionForUser() { return null; }
+  `);
   const bootstrapUrl = await transpileModuleToDataUrl(
     "apps/web/src/campaigns/bootstrap.ts",
     [
       ["@dnd/types", campaignTypesUrl],
       ["@/auth/local-user", localUserUrl],
       ["@/campaigns/active-campaign", activeCampaignUrl],
+      ["@/campaigns/database-id", databaseIdUrl],
       ["@/campaigns/repository", repositoryUrl],
       ["@/entities/repository", entitiesRepositoryUrl],
+      ["@/sessions/repository", sessionsRepositoryUrl],
     ],
   );
   const bootstrapModule = await import(bootstrapUrl);
