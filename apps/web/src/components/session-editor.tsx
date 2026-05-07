@@ -2,8 +2,10 @@
 
 import type {
   Campaign,
+  CampaignCharacterSummary,
   CampaignEntitySummary,
   CampaignSession,
+  RuleSnippet,
   SessionNoteBlock,
   SessionNoteBlockType,
 } from "@dnd/types";
@@ -26,20 +28,27 @@ import {
   serializeSessionNoteDocument,
   sessionNoteBlockTypeLabels,
 } from "@/sessions/note-document";
+import { createWikiLinkSummaryItems } from "@/sessions/wiki-links";
 
 type SessionCreateFormProps = {
+  availableCharacters: CampaignCharacterSummary[];
   availableEntities: CampaignEntitySummary[];
+  availableRules: RuleSnippet[];
   campaign: Campaign;
 };
 
 type SessionEditFormProps = {
+  availableCharacters: CampaignCharacterSummary[];
   availableEntities: CampaignEntitySummary[];
+  availableRules: RuleSnippet[];
   campaign: Campaign;
   session: CampaignSession;
 };
 
 export function SessionCreateForm({
+  availableCharacters,
   availableEntities,
+  availableRules,
   campaign,
 }: SessionCreateFormProps) {
   const [state, formAction] = useActionState(
@@ -70,7 +79,9 @@ export function SessionCreateForm({
       />
 
       <SessionCoreFields
+        availableCharacters={availableCharacters}
         availableEntities={availableEntities}
+        availableRules={availableRules}
         state={state}
       />
 
@@ -80,7 +91,9 @@ export function SessionCreateForm({
 }
 
 export function SessionEditForm({
+  availableCharacters,
   availableEntities,
+  availableRules,
   campaign,
   session,
 }: SessionEditFormProps) {
@@ -104,7 +117,9 @@ export function SessionEditForm({
         />
 
         <SessionCoreFields
+          availableCharacters={availableCharacters}
           availableEntities={availableEntities}
+          availableRules={availableRules}
           compact
           state={state}
         />
@@ -119,11 +134,15 @@ export function SessionEditForm({
 }
 
 function SessionCoreFields({
+  availableCharacters,
   availableEntities,
+  availableRules,
   compact = false,
   state,
 }: {
+  availableCharacters: CampaignCharacterSummary[];
   availableEntities: CampaignEntitySummary[];
+  availableRules: RuleSnippet[];
   compact?: boolean;
   state: SessionActionState;
 }) {
@@ -209,6 +228,9 @@ function SessionCoreFields({
       </fieldset>
 
       <SessionNoteBlockEditor
+        availableCharacters={availableCharacters}
+        availableEntities={availableEntities}
+        availableRules={availableRules}
         compact={compact}
         fieldIdPrefix={fieldIdPrefix}
         key={`${fieldIdPrefix}-${state.values.notesDocument}`}
@@ -249,10 +271,16 @@ function SessionCoreFields({
 }
 
 function SessionNoteBlockEditor({
+  availableCharacters,
+  availableEntities,
+  availableRules,
   compact,
   fieldIdPrefix,
   state,
 }: {
+  availableCharacters: CampaignCharacterSummary[];
+  availableEntities: CampaignEntitySummary[];
+  availableRules: RuleSnippet[];
   compact: boolean;
   fieldIdPrefix: string;
   state: SessionActionState;
@@ -273,6 +301,15 @@ function SessionNoteBlockEditor({
   const plainTextNotes = useMemo(
     () => noteDocumentToPlainText(document),
     [document],
+  );
+  const wikiLinkItems = useMemo(
+    () =>
+      createWikiLinkSummaryItems(document, {
+        characters: availableCharacters,
+        entities: availableEntities,
+        rules: availableRules,
+      }),
+    [availableCharacters, availableEntities, availableRules, document],
   );
 
   function updateBlock(
@@ -429,6 +466,23 @@ function SessionNoteBlockEditor({
           </div>
         ))}
       </div>
+      {wikiLinkItems.length > 0 ? (
+        <div className="mt-3 rounded-lg border border-[#1f6f78]/20 bg-white px-3 py-3">
+          <p className="text-xs font-semibold uppercase tracking-wide text-[#1f6f78]">
+            Wiki links
+          </p>
+          <div className="mt-2 flex flex-wrap gap-2">
+            {wikiLinkItems.map((item) => (
+              <span
+                className={getWikiLinkItemClassName(item.tone)}
+                key={`${item.typeLabel}-${item.label}-${item.tone}`}
+              >
+                {item.typeLabel}: {item.label}
+              </span>
+            ))}
+          </div>
+        </div>
+      ) : null}
       {notesError ? (
         <p
           className="mt-2 text-sm text-[#8b2f39]"
@@ -439,6 +493,21 @@ function SessionNoteBlockEditor({
       ) : null}
     </div>
   );
+}
+
+function getWikiLinkItemClassName(itemTone: "create" | "missing" | "resolved") {
+  const baseClassName =
+    "rounded-full border px-2.5 py-1 text-xs font-semibold";
+
+  if (itemTone === "resolved") {
+    return `${baseClassName} border-[#1f6f78]/25 bg-[#e7f5f6] text-[#164f56]`;
+  }
+
+  if (itemTone === "create") {
+    return `${baseClassName} border-[#c3943e]/40 bg-[#fffaf0] text-[#5c4212]`;
+  }
+
+  return `${baseClassName} border-[#8b2f39]/25 bg-[#f9e8ea] text-[#6f2430]`;
 }
 
 function BlockEditorButton({

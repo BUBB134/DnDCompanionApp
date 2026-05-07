@@ -1,14 +1,21 @@
 "use server";
 
+import type { Campaign } from "@dnd/types";
 import { formatDatabaseError } from "@dnd/db";
 import { revalidatePath } from "next/cache";
 import { requireAuthSession } from "@/auth/server";
 import { getCurrentCampaignAccess } from "@/campaigns/bootstrap";
 import { isDatabaseCampaignId } from "@/campaigns/database-id";
+import { listCharacterSummariesForUser } from "@/characters/repository";
+import {
+  createEntityForUser,
+  listEntitySummariesForUser,
+} from "@/entities/repository";
 import {
   createSessionActionState,
   createSessionSubmission,
   updateSessionSubmission,
+  validateSessionValues,
   type SessionActionState,
   type SessionFormValues,
 } from "@/sessions/manage-session";
@@ -16,7 +23,8 @@ import {
   createSessionForUser,
   updateSessionForUser,
 } from "@/sessions/repository";
-import { listEntitySummariesForUser } from "@/entities/repository";
+import { listRuleSnippetsForUser } from "@/rules/repository";
+import { collectWikiEntityCreationRequests } from "@/sessions/wiki-links";
 
 export async function createSessionAction(
   _previousState: SessionActionState,
@@ -42,14 +50,25 @@ export async function createSessionAction(
     };
   }
 
-  const availableEntities = await listAvailableEntities(
+  const availableReferences = await listAvailableReferences(
     session.user.id,
     campaign.id,
     values,
   );
 
-  if ("formError" in availableEntities) {
-    return availableEntities;
+  if ("formError" in availableReferences) {
+    return availableReferences;
+  }
+
+  const preparedReferences = await prepareInlineWikiEntities(
+    session.user.id,
+    campaign,
+    values,
+    availableReferences,
+  );
+
+  if ("formError" in preparedReferences) {
+    return preparedReferences;
   }
 
   const result = await createSessionSubmission(
@@ -58,7 +77,9 @@ export async function createSessionAction(
     campaign,
     values,
     formatDatabaseError,
-    availableEntities.entities,
+    preparedReferences.entities,
+    preparedReferences.rules,
+    preparedReferences.characters,
   );
 
   if (result.ok) {
@@ -92,14 +113,25 @@ export async function updateSessionAction(
     };
   }
 
-  const availableEntities = await listAvailableEntities(
+  const availableReferences = await listAvailableReferences(
     session.user.id,
     campaign.id,
     values,
   );
 
-  if ("formError" in availableEntities) {
-    return availableEntities;
+  if ("formError" in availableReferences) {
+    return availableReferences;
+  }
+
+  const preparedReferences = await prepareInlineWikiEntities(
+    session.user.id,
+    campaign,
+    values,
+    availableReferences,
+  );
+
+  if ("formError" in preparedReferences) {
+    return preparedReferences;
   }
 
   const result = await updateSessionSubmission(
@@ -108,7 +140,9 @@ export async function updateSessionAction(
     campaign,
     values,
     formatDatabaseError,
-    availableEntities.entities,
+    preparedReferences.entities,
+    preparedReferences.rules,
+    preparedReferences.characters,
   );
 
   if (result.ok) {
@@ -142,14 +176,79 @@ function getStringFields(formData: FormData, fieldName: string) {
     .filter((value): value is string => typeof value === "string");
 }
 
-async function listAvailableEntities(
+type AvailableSessionReferences = {
+  characters: Awaited<ReturnType<typeof listCharacterSummariesForUser>>;
+  entities: Awaited<ReturnType<typeof listEntitySummariesForUser>>;
+  rules: Awaited<ReturnType<typeof listRuleSnippetsForUser>>;
+};
+
+async function listAvailableReferences(
   userId: string,
   campaignId: string,
   values: SessionFormValues,
-) {
+): Promise<AvailableSessionReferences | SessionActionState> {
   try {
+    const [characters, entities, rules] = await Promise.all([
+      listCharacterSummariesForUser(userId, campaignId),
+      listEntitySummariesForUser(userId, campaignId),
+      listRuleSnippetsForUser(userId, campaignId),
+    ]);
+
     return {
-      entities: await listEntitySummariesForUser(userId, campaignId),
+      characters,
+      entities,
+      rules,
+    };
+  } catch (error) {
+    return {
+      ...createSessionActionState(values),
+      formError: formatDatabaseError(error),
+    };
+  }
+}
+
+async function prepareInlineWikiEntities(
+  userId: string,
+  campaign: Campaign,
+  values: SessionFormValues,
+  references: AvailableSessionReferences,
+): Promise<AvailableSessionReferences | SessionActionState> {
+  const preflightValidation = validateSessionValues(
+    values,
+    campaign,
+    references.entities,
+    references.rules,
+    references.characters,
+  );
+
+  if (Object.keys(preflightValidation.fieldErrors).length > 0) {
+    return references;
+  }
+
+  const creationRequests = collectWikiEntityCreationRequests(
+    preflightValidation.input.notesDocument,
+    references.entities,
+  );
+
+  if (creationRequests.length === 0) {
+    return references;
+  }
+
+  try {
+    for (const request of creationRequests) {
+      await createEntityForUser(userId, {
+        campaignId: campaign.id,
+        description: "",
+        name: request.name,
+        summary: "",
+        type: request.type,
+        visibility: "player-safe",
+      });
+    }
+
+    return {
+      ...references,
+      entities: await listEntitySummariesForUser(userId, campaign.id),
     };
   } catch (error) {
     return {
