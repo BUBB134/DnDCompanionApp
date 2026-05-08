@@ -93,20 +93,12 @@ if (hasTypeScriptRuntime) {
     "apps/web/src/sessions/note-document.ts",
     [["@dnd/types", campaignTypesUrl]],
   );
-  const wikiLinksUrl = await transpileModuleToDataUrl(
-    "apps/web/src/sessions/wiki-links.ts",
-    [
-      ["@dnd/types", campaignTypesUrl],
-      ["@/sessions/note-document", noteDocumentUrl],
-    ],
-  );
   const noteDocumentModule = await import(noteDocumentUrl);
   const manageSessionModule = await import(
     await transpileModuleToDataUrl("apps/web/src/sessions/manage-session.ts", [
       ["@dnd/types", campaignTypesUrl],
       ["@/campaigns/database-id", databaseIdUrl],
       ["@/sessions/note-document", noteDocumentUrl],
-      ["@/sessions/wiki-links", wikiLinksUrl],
     ]),
   );
 

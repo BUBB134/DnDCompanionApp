@@ -186,7 +186,6 @@ export function CampaignShell({
                 entities.map((entity) => (
                   <article
                     className="rounded-lg border border-[#17161f]/10 bg-[#fffaf0] p-4"
-                    id={`entity-${entity.id}`}
                     key={entity.id}
                   >
                     <div className="flex flex-wrap items-center gap-2">

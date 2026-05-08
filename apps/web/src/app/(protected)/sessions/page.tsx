@@ -1,5 +1,4 @@
 import type {
-  CampaignCharacterSummary,
   CampaignEntitySummary,
   CampaignSession,
   RuleSnippet,
@@ -12,7 +11,6 @@ import {
   getCurrentCampaignAccess,
 } from "@/campaigns/bootstrap";
 import { isDatabaseCampaignId } from "@/campaigns/database-id";
-import { listCharacterSummariesForUser } from "@/characters/repository";
 import { CampaignAccessState } from "@/components/campaign-access-state";
 import { SessionNoteDocumentView } from "@/components/session-note-document-view";
 import {
@@ -36,7 +34,6 @@ export default async function SessionsPage() {
   const session = await requireAuthSession();
   const campaign = await getCurrentCampaignAccess(session);
   const canManageSessions = isDatabaseCampaignId(campaign?.id ?? "");
-  let characters: CampaignCharacterSummary[] = [];
   let taggableEntities: CampaignEntitySummary[] = [];
   let rules: RuleSnippet[] = [];
   let sessions: CampaignSession[] = [];
@@ -48,11 +45,10 @@ export default async function SessionsPage() {
 
   if (canManageSessions) {
     try {
-      [sessions, taggableEntities, rules, characters] = await Promise.all([
+      [sessions, taggableEntities, rules] = await Promise.all([
         listSessionsForUser(session.user.id, campaign.id),
         listEntitySummariesForUser(session.user.id, campaign.id),
         listRuleSnippetsForUser(session.user.id, campaign.id),
-        listCharacterSummariesForUser(session.user.id, campaign.id),
       ]);
     } catch (error) {
       loadError = formatDatabaseError(error);
@@ -112,9 +108,7 @@ export default async function SessionsPage() {
           {canManageSessions ? (
             <Surface className="p-5 sm:p-6">
               <SessionCreateForm
-                availableCharacters={characters}
                 availableEntities={taggableEntities}
-                availableRules={rules}
                 campaign={campaign}
               />
             </Surface>
@@ -163,9 +157,7 @@ export default async function SessionsPage() {
 
                     {campaignSession.notes ? (
                       <SessionNoteDocumentView
-                        characters={characters}
                         document={campaignSession.notesDocument}
-                        entities={taggableEntities}
                         fallbackText={campaignSession.notes}
                         rules={rules}
                       />
@@ -210,9 +202,7 @@ export default async function SessionsPage() {
 
                     {canManageSessions ? (
                       <SessionEditForm
-                        availableCharacters={characters}
                         availableEntities={taggableEntities}
-                        availableRules={rules}
                         campaign={campaign}
                         session={campaignSession}
                       />
