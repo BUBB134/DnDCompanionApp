@@ -1,7 +1,9 @@
 import type {
   Campaign,
+  CampaignCharacterSummary,
   CampaignEntitySummary,
   CampaignSession,
+  RuleSnippet,
   SessionNoteDocument,
 } from "@dnd/types";
 import { isDatabaseCampaignId } from "@/campaigns/database-id";
@@ -12,6 +14,10 @@ import {
   SESSION_NOTE_MAX_BLOCKS,
   SESSION_NOTE_MAX_BLOCK_TEXT_LENGTH,
 } from "@/sessions/note-document";
+import {
+  replaceWikiLinksWithLabels,
+  resolveSessionNoteWikiLinks,
+} from "@/sessions/wiki-links";
 
 const SESSION_TITLE_MAX_LENGTH = 120;
 const SESSION_NOTES_MAX_LENGTH = 10000;
@@ -111,8 +117,16 @@ export async function createSessionSubmission(
   values: SessionFormValues,
   formatError: (error: unknown) => string,
   availableEntities: readonly CampaignEntitySummary[] = [],
+  availableRules: readonly RuleSnippet[] = [],
+  availableCharacters: readonly CampaignCharacterSummary[] = [],
 ): Promise<SessionSubmissionResult> {
-  const validation = validateSessionValues(values, campaign, availableEntities);
+  const validation = validateSessionValues(
+    values,
+    campaign,
+    availableEntities,
+    availableRules,
+    availableCharacters,
+  );
 
   if (hasFieldErrors(validation.fieldErrors)) {
     return {
@@ -165,8 +179,16 @@ export async function updateSessionSubmission(
   values: SessionFormValues,
   formatError: (error: unknown) => string,
   availableEntities: readonly CampaignEntitySummary[] = [],
+  availableRules: readonly RuleSnippet[] = [],
+  availableCharacters: readonly CampaignCharacterSummary[] = [],
 ): Promise<SessionSubmissionResult> {
-  const validation = validateSessionValues(values, campaign, availableEntities);
+  const validation = validateSessionValues(
+    values,
+    campaign,
+    availableEntities,
+    availableRules,
+    availableCharacters,
+  );
   const sessionId = values.sessionId.trim();
 
   if (!sessionId) {
@@ -239,16 +261,27 @@ export function validateSessionValues(
   values: SessionFormValues,
   campaign: Campaign,
   availableEntities: readonly CampaignEntitySummary[] = [],
+  availableRules: readonly RuleSnippet[] = [],
+  availableCharacters: readonly CampaignCharacterSummary[] = [],
 ) {
+  const notesDocument = resolveSessionNoteWikiLinks(
+    deserializeSessionNoteDocument(values.notesDocument, values.notes),
+    {
+      characters: availableCharacters,
+      entities: availableEntities,
+      rules: availableRules,
+    },
+  );
+  const wikiLinkedEntityIds = notesDocument.blocks.flatMap((block) =>
+    block.references
+      .filter((reference) => reference.targetType === "entity")
+      .map((reference) => reference.targetId),
+  );
   const normalizedTaggedEntityIds = normalizeTaggedEntityIds(
-    values.taggedEntityIds,
+    [...values.taggedEntityIds, ...wikiLinkedEntityIds],
     availableEntities,
   );
-  const notesDocument = deserializeSessionNoteDocument(
-    values.notesDocument,
-    values.notes,
-  );
-  const notes = noteDocumentToPlainText(notesDocument);
+  const notes = replaceWikiLinksWithLabels(noteDocumentToPlainText(notesDocument));
   const normalizedValues = {
     campaignId: values.campaignId.trim(),
     notes,

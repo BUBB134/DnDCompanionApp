@@ -22,7 +22,7 @@ export const sessionNoteBlockTypes = [
 ] as const;
 export type SessionNoteBlockType = (typeof sessionNoteBlockTypes)[number];
 
-export const sessionNoteReferenceTypes = ["entity", "rule"] as const;
+export const sessionNoteReferenceTypes = ["character", "entity", "rule"] as const;
 export type SessionNoteReferenceType =
   (typeof sessionNoteReferenceTypes)[number];
 
@@ -90,6 +90,15 @@ export type CampaignEntitySummary = {
 
 export type CampaignEntity = CampaignEntitySummary & {
   description: string;
+};
+
+export type CampaignCharacterSummary = {
+  className?: string | null;
+  id: string;
+  level: number;
+  name: string;
+  summary: string;
+  visibility: Visibility;
 };
 
 export type RuleSnippet = {

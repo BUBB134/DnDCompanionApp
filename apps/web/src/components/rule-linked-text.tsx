@@ -3,20 +3,23 @@ import { splitRuleLinkedText } from "@/rules/matching";
 import { createRuleHref } from "@/rules/routing";
 
 type RuleLinkedTextProps = {
+  as?: "p" | "span";
   className?: string;
   rules: readonly RuleSnippet[];
   text: string;
 };
 
 export function RuleLinkedText({
+  as = "p",
   className,
   rules,
   text,
 }: RuleLinkedTextProps) {
   const parts = splitRuleLinkedText(text, rules);
+  const Component = as;
 
   return (
-    <p className={className}>
+    <Component className={className}>
       {parts.map((part, index) =>
         part.rule ? (
           <a
@@ -30,6 +33,6 @@ export function RuleLinkedText({
           <span key={`text-${index}`}>{part.text}</span>
         ),
       )}
-    </p>
+    </Component>
   );
 }
