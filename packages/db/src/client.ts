@@ -1,7 +1,7 @@
 import pg from "pg";
 import type { QueryResult, QueryResultRow } from "pg";
 import { toDatabaseConnectionError } from "./errors";
-import { resolveDatabaseUrl } from "./env";
+import { resolveDatabaseConnectionConfig } from "./env";
 
 const globalForDatabase = globalThis as typeof globalThis & {
   __dndDatabasePool?: pg.Pool;
@@ -16,9 +16,7 @@ export type DatabaseQueryable = {
 
 export function getDatabasePool() {
   if (!globalForDatabase.__dndDatabasePool) {
-    globalForDatabase.__dndDatabasePool = new pg.Pool({
-      connectionString: resolveDatabaseUrl(),
-    });
+    globalForDatabase.__dndDatabasePool = new pg.Pool(resolveDatabaseConnectionConfig());
   }
 
   return globalForDatabase.__dndDatabasePool;

@@ -13,8 +13,10 @@
   "scripts": {
     "build": "npm --workspace @dnd/types run build && npm --workspace @dnd/env run build && npm --workspace @dnd/db run build && npm --workspace @dnd/ui run build && npm --workspace @dnd/web run build",
     "db:check": "node scripts/check-database.mjs",
+    "db:check:supabase": "node scripts/check-database.mjs --require-ssl --supabase-project=egrmvhfroiumcodkotjv",
     "db:generate": "node scripts/create-migration.mjs",
     "db:migrate": "node scripts/apply-migrations.mjs",
+    "db:migrate:supabase": "node scripts/apply-migrations.mjs --require-ssl --supabase-project=egrmvhfroiumcodkotjv",
     "dev": "npm --workspace @dnd/web run dev",
     "env:check": "node scripts/check-production-env.mjs",
     "install": "node scripts/install-help.mjs",

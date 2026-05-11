@@ -20,6 +20,9 @@ jobs:
       AUTH_PROVIDER: local
       AUTH_SESSION_SECRET: ${{ secrets.AUTH_SESSION_SECRET }}
       DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      DATABASE_CONNECTION_TIMEOUT_MS: 10000
+      DATABASE_IDLE_TIMEOUT_MS: 30000
+      DATABASE_POOL_MAX: 5
       AI_GROUNDING_MODE: retrieval
       OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
       OPENAI_MODEL: ${{ vars.OPENAI_MODEL }}
@@ -45,4 +48,4 @@ jobs:
         run: npm run env:check -- --strict
 
       - name: Check database
-        run: npm run db:check
+        run: npm run db:check:supabase
