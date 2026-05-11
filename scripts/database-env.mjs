@@ -7,6 +7,7 @@ export const databaseEnvFiles = [".env", ".env.local", "apps/web/.env.local"];
 
 const databaseProtocols = new Set(["postgres:", "postgresql:"]);
 const secureSslModes = new Set(["require", "verify-ca", "verify-full"]);
+const supabasePoolerHostSuffix = ".pooler.supabase.com";
 const defaultConnectionTimeoutMillis = 10_000;
 
 export function loadEnvFiles(target = process.env) {
@@ -137,17 +138,23 @@ function resolveSslConfig(parsedUrl, options) {
 }
 
 function matchesSupabaseProject(parsedUrl, projectRef) {
-  return (
-    parsedUrl.hostname.includes(projectRef) ||
-    decodeURIComponent(parsedUrl.username).includes(projectRef)
-  );
+  const normalizedHostname = parsedUrl.hostname.toLowerCase();
+  const normalizedProjectRef = projectRef.toLowerCase();
+  const normalizedUsername = decodeURIComponent(parsedUrl.username).toLowerCase();
+
+  if (normalizedHostname === `db.${normalizedProjectRef}.supabase.co`) {
+    return true;
+  }
+
+  if (!normalizedHostname.endsWith(supabasePoolerHostSuffix)) {
+    return false;
+  }
+
+  return normalizedUsername === `postgres.${normalizedProjectRef}`;
 }
 
 function isSupabasePostgresHost(hostname) {
-  return (
-    hostname.endsWith(".supabase.co") ||
-    hostname.endsWith(".pooler.supabase.com")
-  );
+  return hostname.endsWith(".supabase.co") || hostname.endsWith(supabasePoolerHostSuffix);
 }
 
 function hasSecureSslMode(parsedUrl) {

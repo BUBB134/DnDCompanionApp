@@ -117,6 +117,9 @@ const databaseEnvScript = readText("scripts/database-env.mjs");
 for (const snippet of [
   "supabaseProjectRef",
   "egrmvhfroiumcodkotjv",
+  "supabasePoolerHostSuffix",
+  "normalizedHostname === `db.${normalizedProjectRef}.supabase.co`",
+  "normalizedUsername === `postgres.${normalizedProjectRef}`",
   "sslmode=require",
   "REDACTED",
 ]) {
