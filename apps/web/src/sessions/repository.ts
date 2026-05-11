@@ -54,113 +54,140 @@ export async function getLatestSessionForUser(
 export async function createSessionForUser(
   userId: string,
   input: SessionMutationInput,
+  client?: DatabaseQueryable,
 ) {
-  return withDatabaseTransaction(async (client) => {
-    const result = await client.query<Pick<SessionRow, "id">>(
-      `
-        insert into sessions (
-          campaign_id,
-          title,
-          notes,
-          notes_document,
-          unresolved_hooks
-        )
-        select
-          campaign_memberships.campaign_id,
-          $3,
-          $4,
-          $5::jsonb,
-          $6::jsonb
-        from campaign_memberships
-        where campaign_memberships.user_id = $1
-          and campaign_memberships.campaign_id = $2
-        returning id
-      `,
-      [
-        userId,
-        input.campaignId,
-        input.title,
-        input.notes,
-        JSON.stringify(input.notesDocument),
-        JSON.stringify(input.unresolvedHooks),
-      ],
-    );
-    const sessionId = requireSessionId(
-      result.rows[0],
-      "You do not have access to create sessions for this campaign.",
-    );
+  if (client) {
+    return createSessionForUserWithClient(client, userId, input);
+  }
 
-    await replaceSessionEntityTagsForUser(
-      client,
+  return withDatabaseTransaction((transactionClient) =>
+    createSessionForUserWithClient(transactionClient, userId, input),
+  );
+}
+
+async function createSessionForUserWithClient(
+  client: DatabaseQueryable,
+  userId: string,
+  input: SessionMutationInput,
+) {
+  const result = await client.query<Pick<SessionRow, "id">>(
+    `
+      insert into sessions (
+        campaign_id,
+        title,
+        notes,
+        notes_document,
+        unresolved_hooks
+      )
+      select
+        campaign_memberships.campaign_id,
+        $3,
+        $4,
+        $5::jsonb,
+        $6::jsonb
+      from campaign_memberships
+      where campaign_memberships.user_id = $1
+        and campaign_memberships.campaign_id = $2
+      returning id
+    `,
+    [
       userId,
       input.campaignId,
-      sessionId,
-      input.taggedEntityIds,
-    );
+      input.title,
+      input.notes,
+      JSON.stringify(input.notesDocument),
+      JSON.stringify(input.unresolvedHooks),
+    ],
+  );
+  const sessionId = requireSessionId(
+    result.rows[0],
+    "You do not have access to create sessions for this campaign.",
+  );
 
-    return getSessionForUser(
-      client,
-      userId,
-      input.campaignId,
-      sessionId,
-      "You do not have access to create sessions for this campaign.",
-    );
-  });
+  await replaceSessionEntityTagsForUser(
+    client,
+    userId,
+    input.campaignId,
+    sessionId,
+    input.taggedEntityIds,
+  );
+
+  return getSessionForUser(
+    client,
+    userId,
+    input.campaignId,
+    sessionId,
+    "You do not have access to create sessions for this campaign.",
+  );
 }
 
 export async function updateSessionForUser(
   userId: string,
   sessionId: string,
   input: SessionMutationInput,
+  client?: DatabaseQueryable,
 ) {
-  return withDatabaseTransaction(async (client) => {
-    const result = await client.query<Pick<SessionRow, "id">>(
-      `
-        update sessions
-        set
-          title = $4,
-          notes = $5,
-          notes_document = $6::jsonb,
-          unresolved_hooks = $7::jsonb,
-          updated_at = now()
-        from campaign_memberships
-        where sessions.id = $3
-          and sessions.campaign_id = $2
-          and campaign_memberships.campaign_id = sessions.campaign_id
-          and campaign_memberships.user_id = $1
-        returning sessions.id
-      `,
-      [
-        userId,
-        input.campaignId,
-        sessionId,
-        input.title,
-        input.notes,
-        JSON.stringify(input.notesDocument),
-        JSON.stringify(input.unresolvedHooks),
-      ],
-    );
-    const savedSessionId = requireSessionId(
-      result.rows[0],
-      "You do not have access to update this session.",
-    );
+  if (client) {
+    return updateSessionForUserWithClient(client, userId, sessionId, input);
+  }
 
-    await replaceSessionEntityTagsForUser(
-      client,
+  return withDatabaseTransaction((transactionClient) =>
+    updateSessionForUserWithClient(transactionClient, userId, sessionId, input),
+  );
+}
+
+async function updateSessionForUserWithClient(
+  client: DatabaseQueryable,
+  userId: string,
+  sessionId: string,
+  input: SessionMutationInput,
+) {
+  const result = await client.query<Pick<SessionRow, "id">>(
+    `
+      update sessions
+      set
+        title = $4,
+        notes = $5,
+        notes_document = $6::jsonb,
+        unresolved_hooks = $7::jsonb,
+        updated_at = now()
+      from campaign_memberships
+      where sessions.id = $3
+        and sessions.campaign_id = $2
+        and campaign_memberships.campaign_id = sessions.campaign_id
+        and campaign_memberships.user_id = $1
+      returning sessions.id
+    `,
+    [
       userId,
       input.campaignId,
-      savedSessionId,
-      input.taggedEntityIds,
-    );
+      sessionId,
+      input.title,
+      input.notes,
+      JSON.stringify(input.notesDocument),
+      JSON.stringify(input.unresolvedHooks),
+    ],
+  );
+  const savedSessionId = requireSessionId(
+    result.rows[0],
+    "You do not have access to update this session.",
+  );
 
-    return getSessionForUser(
-      client,
-      userId,
-      input.campaignId,
-      savedSessionId,
-      "You do not have access to update this session.",
-    );
-  });
+  await replaceSessionEntityTagsForUser(
+    client,
+    userId,
+    input.campaignId,
+    savedSessionId,
+    input.taggedEntityIds,
+  );
+
+  return getSessionForUser(
+    client,
+    userId,
+    input.campaignId,
+    savedSessionId,
+    "You do not have access to update this session.",
+  );
 }
 
 async function getSessionForUser(

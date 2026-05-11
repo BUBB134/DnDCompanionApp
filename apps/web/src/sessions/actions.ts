@@ -1,7 +1,11 @@
 "use server";
 
 import type { Campaign } from "@dnd/types";
-import { formatDatabaseError } from "@dnd/db";
+import {
+  formatDatabaseError,
+  withDatabaseTransaction,
+  type DatabaseQueryable,
+} from "@dnd/db";
 import { revalidatePath } from "next/cache";
 import { requireAuthSession } from "@/auth/server";
 import { getCurrentCampaignAccess } from "@/campaigns/bootstrap";
@@ -13,8 +17,8 @@ import {
 } from "@/entities/repository";
 import {
   createSessionActionState,
-  createSessionSubmission,
-  updateSessionSubmission,
+  sessionToFormValues,
+  SESSION_TAGS_MAX_COUNT,
   validateSessionValues,
   type SessionActionState,
   type SessionFormValues,
@@ -50,36 +54,11 @@ export async function createSessionAction(
     };
   }
 
-  const availableReferences = await listAvailableReferences(
-    session.user.id,
-    campaign.id,
-    values,
-  );
-
-  if ("formError" in availableReferences) {
-    return availableReferences;
-  }
-
-  const preparedReferences = await prepareInlineWikiEntities(
+  const result = await saveSessionWithInlineWikiEntities(
+    "create",
     session.user.id,
     campaign,
     values,
-    availableReferences,
-  );
-
-  if ("formError" in preparedReferences) {
-    return preparedReferences;
-  }
-
-  const result = await createSessionSubmission(
-    { createSessionForUser },
-    session.user.id,
-    campaign,
-    values,
-    formatDatabaseError,
-    preparedReferences.entities,
-    preparedReferences.rules,
-    preparedReferences.characters,
   );
 
   if (result.ok) {
@@ -113,36 +92,11 @@ export async function updateSessionAction(
     };
   }
 
-  const availableReferences = await listAvailableReferences(
-    session.user.id,
-    campaign.id,
-    values,
-  );
-
-  if ("formError" in availableReferences) {
-    return availableReferences;
-  }
-
-  const preparedReferences = await prepareInlineWikiEntities(
+  const result = await saveSessionWithInlineWikiEntities(
+    "update",
     session.user.id,
     campaign,
     values,
-    availableReferences,
-  );
-
-  if ("formError" in preparedReferences) {
-    return preparedReferences;
-  }
-
-  const result = await updateSessionSubmission(
-    { updateSessionForUser },
-    session.user.id,
-    campaign,
-    values,
-    formatDatabaseError,
-    preparedReferences.entities,
-    preparedReferences.rules,
-    preparedReferences.characters,
   );
 
   if (result.ok) {
@@ -182,29 +136,136 @@ type AvailableSessionReferences = {
   rules: Awaited<ReturnType<typeof listRuleSnippetsForUser>>;
 };
 
+type SessionSaveMode = "create" | "update";
+
+async function saveSessionWithInlineWikiEntities(
+  mode: SessionSaveMode,
+  userId: string,
+  campaign: Campaign,
+  values: SessionFormValues,
+) {
+  try {
+    return await withDatabaseTransaction(async (client) => {
+      const references = await listAvailableReferences(
+        userId,
+        campaign.id,
+        client,
+      );
+      const initialValidation = validateSessionForSave(
+        mode,
+        values,
+        campaign,
+        references,
+      );
+
+      if (hasFieldErrors(initialValidation.fieldErrors)) {
+        return {
+          ok: false,
+          state: createSessionValidationErrorState(initialValidation),
+        };
+      }
+
+      const preparedReferences = await prepareInlineWikiEntities(
+        userId,
+        campaign,
+        values,
+        references,
+        client,
+      );
+
+      if ("formError" in preparedReferences) {
+        return {
+          ok: false,
+          state: preparedReferences,
+        };
+      }
+
+      const validation = validateSessionForSave(
+        mode,
+        values,
+        campaign,
+        preparedReferences,
+      );
+
+      if (hasFieldErrors(validation.fieldErrors)) {
+        return {
+          ok: false,
+          state: createSessionValidationErrorState(validation),
+        };
+      }
+
+      if (mode === "create") {
+        const session = await createSessionForUser(
+          userId,
+          validation.input,
+          client,
+        );
+
+        return {
+          ok: true,
+          state: {
+            ...createSessionActionState({
+              campaignId: campaign.id,
+            }),
+            savedSessionId: session.id,
+            successMessage: "Session saved.",
+          },
+        };
+      }
+
+      const session = await updateSessionForUser(
+        userId,
+        validation.values.sessionId,
+        validation.input,
+        client,
+      );
+
+      return {
+        ok: true,
+        state: {
+          fieldErrors: {},
+          formError: null,
+          savedSessionId: session.id,
+          successMessage: "Session saved.",
+          values: sessionToFormValues(campaign.id, session),
+        },
+      };
+    });
+  } catch (error) {
+    return {
+      ok: false,
+      state: {
+        ...createSessionActionState(values),
+        formError: formatDatabaseError(error),
+      },
+    };
+  }
+}
+
 async function listAvailableReferences(
   userId: string,
   campaignId: string,
-  values: SessionFormValues,
-): Promise<AvailableSessionReferences | SessionActionState> {
-  try {
-    const [characters, entities, rules] = await Promise.all([
-      listCharacterSummariesForUser(userId, campaignId),
-      listEntitySummariesForUser(userId, campaignId),
-      listRuleSnippetsForUser(userId, campaignId),
-    ]);
+  client: DatabaseQueryable,
+): Promise<AvailableSessionReferences> {
+  const characters = await listCharacterSummariesForUser(
+    userId,
+    campaignId,
+    client,
+  );
+  const entities = await listEntitySummariesForUser(userId, campaignId, client);
+  const rules = await listRuleSnippetsForUser(
+    userId,
+    campaignId,
+    "",
+    "",
+    client,
+  );
 
-    return {
-      characters,
-      entities,
-      rules,
-    };
-  } catch (error) {
-    return {
-      ...createSessionActionState(values),
-      formError: formatDatabaseError(error),
-    };
-  }
+  return {
+    characters,
+    entities,
+    rules,
+  };
 }
 
 async function prepareInlineWikiEntities(
@@ -212,6 +273,7 @@ async function prepareInlineWikiEntities(
   campaign: Campaign,
   values: SessionFormValues,
   references: AvailableSessionReferences,
+  client: DatabaseQueryable,
 ): Promise<AvailableSessionReferences | SessionActionState> {
   const preflightValidation = validateSessionValues(
     values,
@@ -230,32 +292,83 @@ async function prepareInlineWikiEntities(
     references.entities,
   );
 
+  if (
+    preflightValidation.input.taggedEntityIds.length + creationRequests.length >
+    SESSION_TAGS_MAX_COUNT
+  ) {
+    return {
+      fieldErrors: {
+        taggedEntityIds: `Keep tagged entities to ${SESSION_TAGS_MAX_COUNT} or fewer.`,
+      },
+      formError: null,
+      savedSessionId: null,
+      successMessage: null,
+      values: preflightValidation.values,
+    };
+  }
+
   if (creationRequests.length === 0) {
     return references;
   }
 
-  try {
-    for (const request of creationRequests) {
-      await createEntityForUser(userId, {
+  for (const request of creationRequests) {
+    await createEntityForUser(
+      userId,
+      {
         campaignId: campaign.id,
         description: "",
         name: request.name,
         summary: "",
         type: request.type,
         visibility: "player-safe",
-      });
-    }
-
-    return {
-      ...references,
-      entities: await listEntitySummariesForUser(userId, campaign.id),
-    };
-  } catch (error) {
-    return {
-      ...createSessionActionState(values),
-      formError: formatDatabaseError(error),
-    };
+      },
+      client,
+    );
   }
+
+  return {
+    ...references,
+    entities: await listEntitySummariesForUser(userId, campaign.id, client),
+  };
+}
+
+function validateSessionForSave(
+  mode: SessionSaveMode,
+  values: SessionFormValues,
+  campaign: Campaign,
+  references: AvailableSessionReferences,
+) {
+  const validation = validateSessionValues(
+    values,
+    campaign,
+    references.entities,
+    references.rules,
+    references.characters,
+  );
+
+  if (mode === "update" && validation.values.sessionId.length === 0) {
+    validation.fieldErrors.sessionId = "Session id is required.";
+  }
+
+  return validation;
+}
+
+function createSessionValidationErrorState(
+  validation: ReturnType<typeof validateSessionValues>,
+): SessionActionState {
+  return {
+    fieldErrors: validation.fieldErrors,
+    formError: null,
+    savedSessionId: null,
+    successMessage: null,
+    values: validation.values,
+  };
+}
+
+function hasFieldErrors(
+  fieldErrors: ReturnType<typeof validateSessionValues>["fieldErrors"],
+) {
+  return Object.keys(fieldErrors).length > 0;
 }
 
 function revalidateSessionPaths(campaignId: string) {

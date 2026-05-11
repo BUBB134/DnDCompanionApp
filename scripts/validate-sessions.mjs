@@ -101,14 +101,16 @@ if (hasTypeScriptRuntime) {
     ],
   );
   const noteDocumentModule = await import(noteDocumentUrl);
-  const manageSessionModule = await import(
-    await transpileModuleToDataUrl("apps/web/src/sessions/manage-session.ts", [
+  const manageSessionUrl = await transpileModuleToDataUrl(
+    "apps/web/src/sessions/manage-session.ts",
+    [
       ["@dnd/types", campaignTypesUrl],
       ["@/campaigns/database-id", databaseIdUrl],
       ["@/sessions/note-document", noteDocumentUrl],
       ["@/sessions/wiki-links", wikiLinksUrl],
-    ]),
+    ],
   );
+  const manageSessionModule = await import(manageSessionUrl);
 
   const savedCampaign = {
     id: "11111111-1111-5111-8111-111111111111",
@@ -430,6 +432,194 @@ if (hasTypeScriptRuntime) {
       queryTexts.includes("$7::jsonb") &&
       queryTexts.includes("$4::uuid[]"),
     "Session repository queries must gate by membership, store note documents/hooks, and tag visible entities.",
+  );
+
+  const sessionActionsText = readText("apps/web/src/sessions/actions.ts");
+  for (const expectedText of [
+    "withDatabaseTransaction",
+    "prepareInlineWikiEntities",
+    "createEntityForUser(",
+    "updateSessionForUser(",
+    "client",
+  ]) {
+    expect(
+      sessionActionsText.includes(expectedText),
+      `Session actions must keep inline entity preparation and session writes transaction-scoped: ${expectedText}`,
+    );
+  }
+
+  const transactionalDbStubUrl = moduleDataUrl(`
+    export const events = [];
+    export const committedEntities = [];
+
+    export function formatDatabaseError(error) {
+      return error instanceof Error ? error.message : "Unexpected failure";
+    }
+
+    export async function withDatabaseTransaction(callback) {
+      const client = {
+        pendingEntities: [],
+        async query() {
+          throw new Error("Unexpected raw query in action transaction stub.");
+        }
+      };
+
+      events.push("begin");
+
+      try {
+        const result = await callback(client);
+        committedEntities.push(...client.pendingEntities);
+        events.push("commit");
+        return result;
+      } catch (error) {
+        client.pendingEntities = [];
+        events.push("rollback");
+        throw error;
+      }
+    }
+  `);
+  const transactionalDbStub = await import(transactionalDbStubUrl);
+  const entityRepositoryStubUrl = moduleDataUrl(`
+    export const committedEntities = [];
+
+    export async function listEntitySummariesForUser(_userId, _campaignId, client) {
+      return [...committedEntities, ...(client?.pendingEntities ?? [])];
+    }
+
+    export async function createEntityForUser(_userId, input, client) {
+      const entity = {
+        id: input.name === "Blackwater" ?
+          "66666666-6666-5666-8666-666666666666" :
+          "55555555-5555-5555-8555-555555555555",
+        name: input.name,
+        summary: input.summary,
+        type: input.type,
+        visibility: input.visibility
+      };
+
+      if (client) {
+        client.pendingEntities.push(entity);
+      } else {
+        committedEntities.push(entity);
+      }
+
+      return {
+        ...entity,
+        description: input.description
+      };
+    }
+  `);
+  const entityRepositoryStub = await import(entityRepositoryStubUrl);
+  const authServerStubUrl = moduleDataUrl(`
+    export async function requireAuthSession() {
+      return {
+        user: {
+          email: "dm@local.test",
+          id: "user-1"
+        }
+      };
+    }
+  `);
+  const campaignBootstrapStubUrl = moduleDataUrl(`
+    export async function getCurrentCampaignAccess(_session, campaignId) {
+      if (campaignId !== "11111111-1111-5111-8111-111111111111") {
+        return null;
+      }
+
+      return {
+        id: campaignId,
+        name: "Saved Ashen Coast",
+        role: "dm"
+      };
+    }
+  `);
+  const characterRepositoryStubUrl = moduleDataUrl(`
+    export async function listCharacterSummariesForUser() {
+      return [];
+    }
+  `);
+  const rulesRepositoryStubUrl = moduleDataUrl(`
+    export async function listRuleSnippetsForUser() {
+      return [];
+    }
+  `);
+  const sessionRepositoryStubUrl = moduleDataUrl(`
+    export async function createSessionForUser() {
+      throw new Error("Create should not run in update regression.");
+    }
+
+    export async function updateSessionForUser(_userId, sessionId) {
+      if (sessionId === "stale-session") {
+        throw new Error("You do not have access to update this session.");
+      }
+
+      if (sessionId === "unauthorized-session") {
+        throw new Error("You do not have access to update this session.");
+      }
+
+      throw new Error("Unexpected session id in update regression.");
+    }
+  `);
+  const nextCacheStubUrl = moduleDataUrl(`
+    export function revalidatePath() {}
+  `);
+  const sessionActionsModule = await import(
+    await transpileModuleToDataUrl("apps/web/src/sessions/actions.ts", [
+      ["@dnd/types", campaignTypesUrl],
+      ["@dnd/db", transactionalDbStubUrl],
+      ["next/cache", nextCacheStubUrl],
+      ["@/auth/server", authServerStubUrl],
+      ["@/campaigns/bootstrap", campaignBootstrapStubUrl],
+      ["@/campaigns/database-id", databaseIdUrl],
+      ["@/characters/repository", characterRepositoryStubUrl],
+      ["@/entities/repository", entityRepositoryStubUrl],
+      ["@/sessions/manage-session", manageSessionUrl],
+      ["@/sessions/repository", sessionRepositoryStubUrl],
+      ["@/rules/repository", rulesRepositoryStubUrl],
+      ["@/sessions/wiki-links", wikiLinksUrl],
+    ]),
+  );
+  const createUpdateFormData = (sessionId, noteText) => {
+    const formData = new FormData();
+
+    formData.set("campaignId", savedCampaign.id);
+    formData.set("notes", "");
+    formData.set(
+      "notesDocument",
+      noteDocumentModule.serializeSessionNoteDocument(
+        noteDocumentModule.createSessionNoteDocumentFromPlainText(noteText),
+      ),
+    );
+    formData.set("sessionId", sessionId);
+    formData.set("title", "The drowned door");
+    formData.set("unresolvedHooks", "");
+
+    return formData;
+  };
+  const staleUpdateState = await sessionActionsModule.updateSessionAction(
+    manageSessionModule.createSessionActionState(),
+    createUpdateFormData("stale-session", "Met [[npc: Captain Thorn]]."),
+  );
+  const unauthorizedUpdateState = await sessionActionsModule.updateSessionAction(
+    manageSessionModule.createSessionActionState(),
+    createUpdateFormData("unauthorized-session", "Reached [[location: Blackwater]]."),
+  );
+
+  expect(
+    staleUpdateState.formError === "You do not have access to update this session." &&
+      unauthorizedUpdateState.formError ===
+        "You do not have access to update this session.",
+    "Invalid and unauthorized session updates must surface update access failures.",
+  );
+  expect(
+    transactionalDbStub.events.filter((event) => event === "rollback").length ===
+      2 &&
+      transactionalDbStub.events.every((event) => event !== "commit"),
+    "Invalid and unauthorized session updates must roll back the action transaction.",
+  );
+  expect(
+    entityRepositoryStub.committedEntities.length === 0,
+    "Inline wiki entity creation must not persist when the session update rolls back.",
   );
 }
 

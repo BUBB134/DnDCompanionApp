@@ -4,7 +4,7 @@ import type {
   EntityType,
   Visibility,
 } from "@dnd/types";
-import { queryDatabase } from "@dnd/db";
+import { queryDatabase, type DatabaseQueryable } from "@dnd/db";
 import type { EntityMutationInput } from "@/entities/manage-entity";
 
 type EntityRow = {
@@ -17,7 +17,15 @@ type EntityRow = {
 };
 
 export async function listEntitiesForUser(userId: string, campaignId: string) {
-  const result = await queryDatabase<EntityRow>(
+  return listEntitiesForUserWithClient(defaultDatabaseClient, userId, campaignId);
+}
+
+async function listEntitiesForUserWithClient(
+  client: DatabaseQueryable,
+  userId: string,
+  campaignId: string,
+) {
+  const result = await client.query<EntityRow>(
     `
       select
         entities.id,
@@ -46,8 +54,9 @@ export async function listEntitiesForUser(userId: string, campaignId: string) {
 export async function listEntitySummariesForUser(
   userId: string,
   campaignId: string,
+  client: DatabaseQueryable = defaultDatabaseClient,
 ): Promise<CampaignEntitySummary[]> {
-  const entities = await listEntitiesForUser(userId, campaignId);
+  const entities = await listEntitiesForUserWithClient(client, userId, campaignId);
 
   return entities.map((entity) => ({
     id: entity.id,
@@ -61,8 +70,9 @@ export async function listEntitySummariesForUser(
 export async function createEntityForUser(
   userId: string,
   input: EntityMutationInput,
+  client: DatabaseQueryable = defaultDatabaseClient,
 ) {
-  const result = await queryDatabase<EntityRow>(
+  const result = await client.query<EntityRow>(
     `
       insert into entities (
         campaign_id,
@@ -104,6 +114,10 @@ export async function createEntityForUser(
     "You do not have access to create this entity.",
   );
 }
+
+const defaultDatabaseClient: DatabaseQueryable = {
+  query: queryDatabase,
+};
 
 export async function updateEntityForUser(
   userId: string,

@@ -1,5 +1,5 @@
 import type { RuleSnippet, RuleSnippetCategory, Visibility } from "@dnd/types";
-import { queryDatabase } from "@dnd/db";
+import { queryDatabase, type DatabaseQueryable } from "@dnd/db";
 
 type RuleSnippetRow = {
   aliases: unknown;
@@ -17,10 +17,11 @@ export async function listRuleSnippetsForUser(
   campaignId: string,
   query = "",
   category = "",
+  client: DatabaseQueryable = defaultDatabaseClient,
 ): Promise<RuleSnippet[]> {
   const normalizedQuery = query.trim();
   const normalizedCategory = category.trim();
-  const result = await queryDatabase<RuleSnippetRow>(
+  const result = await client.query<RuleSnippetRow>(
     `
       select
         rule_snippets.id,
@@ -68,6 +69,10 @@ export async function listRuleSnippetsForUser(
 
   return result.rows.map(mapRuleSnippetRow);
 }
+
+const defaultDatabaseClient: DatabaseQueryable = {
+  query: queryDatabase,
+};
 
 function mapRuleSnippetRow(row: RuleSnippetRow): RuleSnippet {
   return {

@@ -1,5 +1,5 @@
 import type { CampaignCharacterSummary, Visibility } from "@dnd/types";
-import { queryDatabase } from "@dnd/db";
+import { queryDatabase, type DatabaseQueryable } from "@dnd/db";
 
 type CharacterSummaryRow = {
   class_name: string | null;
@@ -13,8 +13,9 @@ type CharacterSummaryRow = {
 export async function listCharacterSummariesForUser(
   userId: string,
   campaignId: string,
+  client: DatabaseQueryable = defaultDatabaseClient,
 ): Promise<CampaignCharacterSummary[]> {
-  const result = await queryDatabase<CharacterSummaryRow>(
+  const result = await client.query<CharacterSummaryRow>(
     `
       select
         characters.id,
@@ -39,6 +40,10 @@ export async function listCharacterSummariesForUser(
 
   return result.rows.map(mapCharacterSummaryRow);
 }
+
+const defaultDatabaseClient: DatabaseQueryable = {
+  query: queryDatabase,
+};
 
 function mapCharacterSummaryRow(
   row: CharacterSummaryRow,
