@@ -23,7 +23,7 @@ const SESSION_TITLE_MAX_LENGTH = 120;
 const SESSION_NOTES_MAX_LENGTH = 10000;
 const SESSION_HOOK_MAX_LENGTH = 180;
 const SESSION_HOOKS_MAX_COUNT = 12;
-const SESSION_TAGS_MAX_COUNT = 24;
+export const SESSION_TAGS_MAX_COUNT = 24;
 
 export type SessionFormValues = {
   campaignId: string;
