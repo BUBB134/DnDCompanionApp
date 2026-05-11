@@ -7,8 +7,8 @@ DND-18 establishes the MVP vendor and environment contract. It does not provisio
 | Concern | MVP vendor/configuration | Notes |
 | --- | --- | --- |
 | Deployment | Vercel | `vercel.json` pins the root install, build, and dev commands used by the monorepo. Preview deployments should map to `NEXT_PUBLIC_APP_ENV=preview`; production should map to `NEXT_PUBLIC_APP_ENV=production`. The runtime also infers preview/production from Vercel's `VERCEL_ENV` when the public flag is absent. |
-| Database | Managed Postgres | Use a production Postgres provider with pooled connections and a separate preview database or branch. `DATABASE_URL` must use `postgres://` or `postgresql://`. |
-| Migrations | Repository SQL migrations | Run `npm run db:migrate` against preview before promotion and production during release. The migration runner records applied files in `schema_migrations` and wraps each migration in a transaction. |
+| Database | Supabase Postgres | Use project `egrmvhfroiumcodkotjv` with a direct or pooler Postgres URL stored only in environment secrets. `DATABASE_URL` must use `postgres://` or `postgresql://` and include `sslmode=require`. See `docs/engineering/supabase-postgres.md`. |
+| Migrations | Repository SQL migrations | Run `npm run db:migrate:supabase` against preview before promotion and production during release. The migration runner records applied files in `schema_migrations` and wraps each migration in a transaction. |
 | Auth | Local signed session provider | `AUTH_PROVIDER=local` is the only supported MVP provider. Preview and production require `AUTH_SESSION_SECRET` so local auth cookies are HMAC-signed. |
 | AI | OpenAI API | Set `AI_GROUNDING_MODE=retrieval` only when `OPENAI_API_KEY` is present. Keep model choice in `OPENAI_MODEL` so rate limits and cost can be adjusted per environment. |
 | Storage | None for current MVP | `STORAGE_PROVIDER=none` is expected until uploads are introduced. `vercel-blob` is reserved behind `BLOB_READ_WRITE_TOKEN`. |
@@ -22,7 +22,10 @@ DND-18 establishes the MVP vendor and environment contract. It does not provisio
 | `NEXT_PUBLIC_SENTRY_DSN` | Browser | Optional | Browser-safe Sentry DSN when client reporting is enabled. |
 | `AUTH_PROVIDER` | Server | All environments | Currently `local`. |
 | `AUTH_SESSION_SECRET` | Server secret | Preview/production | Secret used to sign auth session cookies. Minimum 32 characters. |
-| `DATABASE_URL` | Server secret | Preview/production | Postgres connection string for app data and migrations. |
+| `DATABASE_URL` | Server secret | Preview/production/local Supabase dev | Supabase Postgres connection string for app data and migrations. Must keep `sslmode=require`. |
+| `DATABASE_POOL_MAX` | Server | Optional | Max app connection pool size. Start at `3` for preview and `5` for production. |
+| `DATABASE_CONNECTION_TIMEOUT_MS` | Server | Optional | Postgres connection timeout in milliseconds. Defaults to `10000`. |
+| `DATABASE_IDLE_TIMEOUT_MS` | Server | Optional | Idle pooled connection timeout in milliseconds. Defaults to `30000`. |
 | `AI_GROUNDING_MODE` | Server | All environments | `disabled`, `local`, or `retrieval`. Retrieval requires OpenAI credentials. |
 | `OPENAI_API_KEY` | Server secret | Retrieval/strict smoke | OpenAI credential used by future AI retrieval and recap flows. |
 | `OPENAI_MODEL` | Server | Optional | Model override for AI workflows and rate-limit/cost tuning. |
@@ -36,10 +39,10 @@ DND-18 establishes the MVP vendor and environment contract. It does not provisio
 
 1. Create Vercel preview and production environments for the repository.
 2. Configure preview with `NEXT_PUBLIC_APP_ENV=preview` and production with `NEXT_PUBLIC_APP_ENV=production`.
-3. Add environment-specific `DATABASE_URL`, `AUTH_SESSION_SECRET`, and OpenAI secrets in Vercel.
+3. Add environment-specific `DATABASE_URL`, `DATABASE_POOL_MAX`, `AUTH_SESSION_SECRET`, and OpenAI secrets in Vercel.
 4. Add the same secret names to GitHub environments named `preview` and `production` for the manual Integration Smoke workflow.
 5. Run `npm run env:check -- --env=production --strict` locally or in the deployment shell before first release.
-6. Run `npm run db:migrate` against preview, validate with `npm run db:check`, then repeat for production during release.
+6. Run `npm run db:migrate:supabase` against preview, validate with `npm run db:check:supabase`, then repeat for production during release.
 
 ## CI and smoke checks
 
@@ -49,7 +52,7 @@ The `Integration Smoke` workflow is manual because it uses protected GitHub envi
 
 ```bash
 npm run env:check -- --strict
-npm run db:check
+npm run db:check:supabase
 ```
 
 Run this workflow against `preview` after preview secrets are created and against `production` before or immediately after a production promotion.

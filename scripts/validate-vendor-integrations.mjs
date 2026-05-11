@@ -17,6 +17,9 @@ const requiredEnvKeys = [
   "NEXT_PUBLIC_SENTRY_DSN",
   "AUTH_PROVIDER",
   "AUTH_SESSION_SECRET",
+  "DATABASE_CONNECTION_TIMEOUT_MS",
+  "DATABASE_IDLE_TIMEOUT_MS",
+  "DATABASE_POOL_MAX",
   "DATABASE_URL",
   "AI_GROUNDING_MODE",
   "OPENAI_API_KEY",
@@ -52,6 +55,7 @@ for (const snippet of [
   "assertValidRuntimeEnv",
   "validateRuntimeEnv",
   "AUTH_SESSION_SECRET",
+  "DATABASE_POOL_MAX",
   "OBSERVABILITY_PROVIDER",
   "STORAGE_PROVIDER",
   "BLOB_READ_WRITE_TOKEN",
@@ -79,7 +83,7 @@ for (const snippet of [
   "workflow_dispatch:",
   "environment: ${{ inputs.target }}",
   "run: npm run env:check -- --strict",
-  "run: npm run db:check",
+  "run: npm run db:check:supabase",
 ]) {
   expect(
     smokeWorkflow.includes(snippet),
@@ -87,14 +91,26 @@ for (const snippet of [
   );
 }
 
+const productionEnvCheck = readText("scripts/check-production-env.mjs");
+for (const snippet of [
+  "DATABASE_POOL_MAX",
+  "sslmode=require",
+  "must replace the placeholder database password",
+]) {
+  expect(
+    productionEnvCheck.includes(snippet),
+    `Production env check is missing Supabase validation: ${snippet}`,
+  );
+}
+
 const productionDocs = readText("docs/engineering/production-integrations.md");
 for (const snippet of [
   "Vercel",
-  "Postgres",
+  "Supabase Postgres",
   "OpenAI",
   "Sentry",
   "`npm run env:check -- --env=production --strict`",
-  "`npm run db:migrate`",
+  "`npm run db:migrate:supabase`",
 ]) {
   expect(
     productionDocs.includes(snippet),

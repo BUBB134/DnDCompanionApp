@@ -43,6 +43,8 @@ If you want to try a different user during local development, update the bootstr
 - `npm run db:generate -- <name>` scaffolds a new SQL migration file.
 - `npm run db:migrate` applies local Postgres migrations.
 - `npm run db:check` verifies that `DATABASE_URL` is configured and reachable.
+- `npm run db:migrate:supabase` applies migrations after verifying the configured Supabase project and SSL mode.
+- `npm run db:check:supabase` verifies the configured Supabase project and runs a live connection check.
 - `npm run env:check -- --env=production --strict` validates production integration environment wiring.
 - `npm run dev` starts the web app locally.
 - `npm run build` builds shared packages and the web app.
@@ -60,15 +62,22 @@ If you want to try a different user during local development, update the bootstr
 
 ## Database Workflow
 
-The baseline Postgres schema lives in `packages/db/src/schema.ts`, and checked-in SQL migrations live in `packages/db/migrations`.
+The baseline Postgres schema lives in `packages/db/src/schema.ts`, and checked-in SQL migrations live in `packages/db/migrations`. The hosted Supabase setup is documented in `docs/engineering/supabase-postgres.md`.
 
-For local development:
+For Supabase-backed local development:
 
 1. Copy `.env.example` to `apps/web/.env.local`.
-2. Start or point `DATABASE_URL` at a local Postgres instance.
+2. Replace the placeholder password in `DATABASE_URL` with the Supabase database password.
+3. Keep `sslmode=require` in the URL and URL-encode special password characters.
+4. Run `npm run db:check:supabase` to validate the hosted connection.
+5. Run `npm run db:migrate:supabase` when migrations need to be applied to Supabase.
+
+For isolated local-only database work:
+
+1. Point `DATABASE_URL` at a local Postgres instance.
+2. Run `npm run db:check` to validate connectivity.
 3. Run `npm run db:generate -- <migration-name>` when you need a new migration file.
 4. Run `npm run db:migrate` to apply migrations locally.
-5. Run `npm run db:check` if you want a quick connectivity/configuration check.
 
 ## Production Integrations
 
@@ -76,8 +85,8 @@ The MVP production contract is documented in `docs/engineering/production-integr
 
 - Deploy the monorepo through Vercel using `vercel.json`.
 - Configure preview with `NEXT_PUBLIC_APP_ENV=preview` and production with `NEXT_PUBLIC_APP_ENV=production`.
-- Set `DATABASE_URL`, `AUTH_SESSION_SECRET`, and AI/observability secrets in Vercel and matching GitHub environments.
-- Use `npm run env:check -- --env=production --strict` and `npm run db:check` to validate environment wiring before promotion.
+- Set `DATABASE_URL`, `DATABASE_POOL_MAX`, `AUTH_SESSION_SECRET`, and AI/observability secrets in Vercel and matching GitHub environments.
+- Use `npm run env:check -- --env=production --strict` and `npm run db:check:supabase` to validate environment wiring before promotion.
 
 ## Workspace Layout
 
@@ -97,6 +106,7 @@ packages/
 - `docs/engineering/architecture.md`
 - `docs/engineering/branch_protection.md`
 - `docs/engineering/production-integrations.md`
+- `docs/engineering/supabase-postgres.md`
 - `docs/engineering/working-agreement.md`
 - `docs/engineering/code_review.md`
 - `docs/engineering/definition_of_done.md`

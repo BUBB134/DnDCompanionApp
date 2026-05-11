@@ -17,6 +17,9 @@ export type ServerEnv = {
   AUTH_PROVIDER: AuthProvider;
   AUTH_SESSION_SECRET?: string;
   BLOB_READ_WRITE_TOKEN?: string;
+  DATABASE_CONNECTION_TIMEOUT_MS?: string;
+  DATABASE_IDLE_TIMEOUT_MS?: string;
+  DATABASE_POOL_MAX?: string;
   DATABASE_URL?: string;
   LOG_LEVEL: LogLevel;
   OBSERVABILITY_PROVIDER: ObservabilityProvider;
@@ -58,6 +61,9 @@ export function readServerEnv(source: EnvSource): ServerEnv {
     AUTH_PROVIDER: pickValue(source.AUTH_PROVIDER, authProviders, "local"),
     AUTH_SESSION_SECRET: emptyToUndefined(source.AUTH_SESSION_SECRET),
     BLOB_READ_WRITE_TOKEN: emptyToUndefined(source.BLOB_READ_WRITE_TOKEN),
+    DATABASE_CONNECTION_TIMEOUT_MS: emptyToUndefined(source.DATABASE_CONNECTION_TIMEOUT_MS),
+    DATABASE_IDLE_TIMEOUT_MS: emptyToUndefined(source.DATABASE_IDLE_TIMEOUT_MS),
+    DATABASE_POOL_MAX: emptyToUndefined(source.DATABASE_POOL_MAX),
     DATABASE_URL: emptyToUndefined(source.DATABASE_URL),
     LOG_LEVEL: pickValue(source.LOG_LEVEL, logLevels, "info"),
     OBSERVABILITY_PROVIDER: pickValue(
@@ -114,6 +120,22 @@ export function validateRuntimeEnv(source: EnvSource): RuntimeEnvValidationIssue
   if (serverEnv.DATABASE_URL) {
     validatePostgresUrl("DATABASE_URL", serverEnv.DATABASE_URL, issues);
   }
+
+  validateOptionalPositiveInteger(
+    "DATABASE_POOL_MAX",
+    serverEnv.DATABASE_POOL_MAX,
+    issues,
+  );
+  validateOptionalPositiveInteger(
+    "DATABASE_CONNECTION_TIMEOUT_MS",
+    serverEnv.DATABASE_CONNECTION_TIMEOUT_MS,
+    issues,
+  );
+  validateOptionalPositiveInteger(
+    "DATABASE_IDLE_TIMEOUT_MS",
+    serverEnv.DATABASE_IDLE_TIMEOUT_MS,
+    issues,
+  );
 
   if (serverEnv.AI_GROUNDING_MODE === "retrieval") {
     requireValue("OPENAI_API_KEY", serverEnv.OPENAI_API_KEY, issues);
@@ -258,6 +280,20 @@ function validatePostgresUrl(
       message: `${key} must start with postgres:// or postgresql://.`,
     });
   }
+
+  if (hasPlaceholderSecret(parsedUrl.password)) {
+    issues.push({
+      key,
+      message: `${key} must replace the placeholder database password before use.`,
+    });
+  }
+
+  if (isSupabasePostgresHost(parsedUrl.hostname) && !hasRequiredSslMode(parsedUrl)) {
+    issues.push({
+      key,
+      message: `${key} for Supabase must include sslmode=require, sslmode=verify-ca, or sslmode=verify-full.`,
+    });
+  }
 }
 
 function validateUrl(
@@ -273,5 +309,45 @@ function validateUrl(
       message: `${key} must be a valid URL.`,
     });
   }
+}
+
+function validateOptionalPositiveInteger(
+  key: string,
+  value: string | undefined,
+  issues: RuntimeEnvValidationIssue[],
+) {
+  if (!value) {
+    return;
+  }
+
+  if (!/^\d+$/u.test(value) || Number(value) <= 0) {
+    issues.push({
+      key,
+      message: `${key} must be a positive integer.`,
+    });
+  }
+}
+
+function hasPlaceholderSecret(value: string) {
+  const normalizedValue = value.toLowerCase();
+
+  return (
+    normalizedValue.includes("replace_with") ||
+    normalizedValue.includes("your-password") ||
+    normalizedValue.includes("your_password")
+  );
+}
+
+function isSupabasePostgresHost(hostname: string) {
+  return (
+    hostname.endsWith(".supabase.co") ||
+    hostname.endsWith(".pooler.supabase.com")
+  );
+}
+
+function hasRequiredSslMode(parsedUrl: URL) {
+  const sslMode = parsedUrl.searchParams.get("sslmode");
+
+  return sslMode === "require" || sslMode === "verify-ca" || sslMode === "verify-full";
 }
 

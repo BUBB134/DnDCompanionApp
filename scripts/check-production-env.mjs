@@ -76,6 +76,17 @@ function validateEnvironment(source, { strict }) {
   if (readValue(source.DATABASE_URL).length > 0) {
     validatePostgresUrl("DATABASE_URL", source.DATABASE_URL, issues);
   }
+  validateOptionalPositiveInteger("DATABASE_POOL_MAX", source.DATABASE_POOL_MAX, issues);
+  validateOptionalPositiveInteger(
+    "DATABASE_CONNECTION_TIMEOUT_MS",
+    source.DATABASE_CONNECTION_TIMEOUT_MS,
+    issues,
+  );
+  validateOptionalPositiveInteger(
+    "DATABASE_IDLE_TIMEOUT_MS",
+    source.DATABASE_IDLE_TIMEOUT_MS,
+    issues,
+  );
 
   if (groundingMode === "retrieval" || strict) {
     requireValue("OPENAI_API_KEY", source.OPENAI_API_KEY, issues);
@@ -277,6 +288,20 @@ function validatePostgresUrl(key, value, issues) {
       message: `${key} must start with postgres:// or postgresql://.`,
     });
   }
+
+  if (hasPlaceholderSecret(parsedUrl.password)) {
+    issues.push({
+      key,
+      message: `${key} must replace the placeholder database password before use.`,
+    });
+  }
+
+  if (isSupabasePostgresHost(parsedUrl.hostname) && !hasRequiredSslMode(parsedUrl)) {
+    issues.push({
+      key,
+      message: `${key} for Supabase must include sslmode=require, sslmode=verify-ca, or sslmode=verify-full.`,
+    });
+  }
 }
 
 function validateUrl(key, value, issues) {
@@ -288,4 +313,40 @@ function validateUrl(key, value, issues) {
       message: `${key} must be a valid URL.`,
     });
   }
+}
+
+function validateOptionalPositiveInteger(key, value, issues) {
+  if (readValue(value).length === 0) {
+    return;
+  }
+
+  if (!/^\d+$/u.test(value) || Number(value) <= 0) {
+    issues.push({
+      key,
+      message: `${key} must be a positive integer.`,
+    });
+  }
+}
+
+function hasPlaceholderSecret(value) {
+  const normalizedValue = value.toLowerCase();
+
+  return (
+    normalizedValue.includes("replace_with") ||
+    normalizedValue.includes("your-password") ||
+    normalizedValue.includes("your_password")
+  );
+}
+
+function isSupabasePostgresHost(hostname) {
+  return (
+    hostname.endsWith(".supabase.co") ||
+    hostname.endsWith(".pooler.supabase.com")
+  );
+}
+
+function hasRequiredSslMode(parsedUrl) {
+  const sslMode = parsedUrl.searchParams.get("sslmode");
+
+  return sslMode === "require" || sslMode === "verify-ca" || sslMode === "verify-full";
 }
