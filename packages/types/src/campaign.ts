@@ -30,6 +30,7 @@ export type CampaignSummary = {
   activeSessionId?: string;
   id: string;
   name: string;
+  setup?: CampaignSetup | null;
   summary?: string | null;
 };
 
@@ -44,6 +45,13 @@ export type CampaignAccess = CampaignSummary & {
 };
 
 export type Campaign = CampaignAccess;
+
+export type CampaignSetup = {
+  onboardingCompletedAt?: string | null;
+  ruleset: string;
+  startingLocation?: string | null;
+  tone?: string | null;
+};
 
 export type SessionSummary = {
   id: string;

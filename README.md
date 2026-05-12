@@ -105,6 +105,7 @@ packages/
 - `docs/product/PRD.md`
 - `docs/engineering/architecture.md`
 - `docs/engineering/branch_protection.md`
+- `docs/engineering/campaign-onboarding.md`
 - `docs/engineering/production-integrations.md`
 - `docs/engineering/supabase-postgres.md`
 - `docs/engineering/working-agreement.md`

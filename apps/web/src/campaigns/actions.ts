@@ -24,8 +24,13 @@ export async function createCampaignAction(
     { createCampaignForUser },
     session.user,
     {
+      firstSessionTitle: getStringField(formData, "firstSessionTitle"),
       name: getStringField(formData, "name"),
+      openingHook: getStringField(formData, "openingHook"),
+      ruleset: getStringField(formData, "ruleset"),
+      startingLocation: getStringField(formData, "startingLocation"),
       summary: getStringField(formData, "summary"),
+      tone: getStringField(formData, "tone"),
     },
     formatDatabaseError,
   );

@@ -40,6 +40,10 @@ export const baselineSchemaStatements = [
     id uuid primary key default gen_random_uuid(),
     name text not null,
     summary text,
+    ruleset text not null default 'D&D 5e',
+    tone text,
+    starting_location text,
+    onboarding_completed_at timestamptz,
     created_by_user_id uuid references users (id) on delete set null,
     created_at timestamptz not null default now(),
     updated_at timestamptz not null default now()
