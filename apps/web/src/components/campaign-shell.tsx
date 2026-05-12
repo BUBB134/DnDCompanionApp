@@ -53,6 +53,11 @@ const campaignActions: readonly CampaignAction[] = [
     title: "Prepare DM notes",
     visibility: "dm-only",
   },
+  {
+    body: "Bring players into the campaign once secure invite links are available.",
+    title: "Invite players",
+    visibility: "dm-only",
+  },
 ] as const;
 
 export function CampaignShell({
@@ -79,6 +84,17 @@ export function CampaignShell({
             <p className="mt-2 max-w-2xl text-sm leading-6 text-[#4b4657]">
               {campaign.summary}
             </p>
+          ) : null}
+          {campaign.setup ? (
+            <div className="mt-3 flex flex-wrap gap-2">
+              <StatusPill tone="teal">{campaign.setup.ruleset}</StatusPill>
+              {campaign.setup.tone ? (
+                <StatusPill tone="gold">{campaign.setup.tone}</StatusPill>
+              ) : null}
+              {campaign.setup.startingLocation ? (
+                <StatusPill tone="red">{campaign.setup.startingLocation}</StatusPill>
+              ) : null}
+            </div>
           ) : null}
         </div>
         <StatusPill tone="teal">Role: {campaign.role.toUpperCase()}</StatusPill>
@@ -167,6 +183,22 @@ export function CampaignShell({
                 </p>
               </div>
             ) : null}
+
+            {isDm && campaign.setup ? (
+              <div className="rounded-lg border border-[#1f6f78]/25 bg-[#e7f5f6] p-4">
+                <p className="text-xs font-semibold uppercase text-[#1f6f78]">
+                  Setup context
+                </p>
+                <div className="mt-3 grid gap-3 sm:grid-cols-3">
+                  <SetupDetail label="Ruleset" value={campaign.setup.ruleset} />
+                  <SetupDetail label="Tone" value={campaign.setup.tone} />
+                  <SetupDetail
+                    label="Opening"
+                    value={campaign.setup.startingLocation}
+                  />
+                </div>
+              </div>
+            ) : null}
           </div>
         </Surface>
 
@@ -236,6 +268,11 @@ export function CampaignShell({
                       Open rules panel
                     </Link>
                   ) : null}
+                  {action.title === "Invite players" ? (
+                    <span className="mt-3 inline-flex min-h-10 items-center rounded-md border border-[#17161f]/15 bg-[#fffaf0] px-3 py-2 text-sm font-semibold text-[#4b4657]">
+                      Ready for invite flow
+                    </span>
+                  ) : null}
                 </article>
               ))}
             </div>
@@ -263,3 +300,19 @@ export function CampaignShell({
   );
 }
 
+function SetupDetail({
+  label,
+  value,
+}: {
+  label: string;
+  value?: string | null;
+}) {
+  return (
+    <div>
+      <p className="text-xs font-semibold uppercase text-[#1f6f78]">{label}</p>
+      <p className="mt-1 text-sm leading-6 text-[#17161f]">
+        {value || "Not set yet"}
+      </p>
+    </div>
+  );
+}

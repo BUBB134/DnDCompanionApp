@@ -36,11 +36,14 @@ if (hasTypeScriptRuntime) {
     export const CampaignRole = undefined;
   `);
 
-  const createCampaignModule = await import(
-    await transpileModuleToDataUrl(typescript, "apps/web/src/campaigns/create-campaign.ts", [
+  const createCampaignModuleUrl = await transpileModuleToDataUrl(
+    typescript,
+    "apps/web/src/campaigns/create-campaign.ts",
+    [
       ["@dnd/types", typesStubModuleUrl],
-    ]),
+    ],
   );
+  const createCampaignModule = await import(createCampaignModuleUrl);
   const dbStubModuleUrl = moduleTextToDataUrl(`
     export async function queryDatabase() {
       throw new Error("queryDatabase should not be called in this validation.");
@@ -54,6 +57,7 @@ if (hasTypeScriptRuntime) {
     await transpileModuleToDataUrl(typescript, "apps/web/src/campaigns/repository.ts", [
       ["@dnd/db", dbStubModuleUrl],
       ["@dnd/types", typesStubModuleUrl],
+      ["@/campaigns/create-campaign", createCampaignModuleUrl],
     ]),
   );
 
@@ -132,13 +136,17 @@ if (hasTypeScriptRuntime) {
       async query(text, values = []) {
         queries.push({ text, values });
 
-        if (text.includes("returning id, name, summary")) {
+        if (text.includes("insert into campaigns")) {
           return {
             rows: [
               {
                 id: "campaign-ashen-coast",
                 name: "Ashen Coast",
+                onboarding_completed_at: "2026-05-12T20:00:00.000Z",
+                ruleset: values[3],
+                starting_location: values[5],
                 summary: "Storm-lashed mysteries",
+                tone: values[4],
               },
             ],
           };

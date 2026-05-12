@@ -29,9 +29,8 @@ export default async function CampaignsPage() {
           Create and open your campaigns
         </h2>
         <p className="mt-2 max-w-3xl text-sm leading-6 text-[#4b4657]">
-          This flow now uses the authenticated user plus Postgres-backed campaign and
-          membership records. Creating a campaign makes you the DM and drops you into
-          that campaign context right away.
+          Guided setup stores the first useful campaign details, assigns the creator
+          as DM, and opens the campaign context right away.
         </p>
       </section>
 
@@ -80,6 +79,19 @@ export default async function CampaignsPage() {
                         {campaign.summary ||
                           "No summary yet. Start light and build the campaign in play."}
                       </p>
+                      {campaign.setup ? (
+                        <div className="mt-3 flex flex-wrap gap-2">
+                          <StatusPill tone="teal">{campaign.setup.ruleset}</StatusPill>
+                          {campaign.setup.tone ? (
+                            <StatusPill tone="gold">{campaign.setup.tone}</StatusPill>
+                          ) : null}
+                          {campaign.setup.startingLocation ? (
+                            <StatusPill tone="red">
+                              {campaign.setup.startingLocation}
+                            </StatusPill>
+                          ) : null}
+                        </div>
+                      ) : null}
                     </div>
 
                     <form action={openCampaignAction} className="sm:shrink-0">
