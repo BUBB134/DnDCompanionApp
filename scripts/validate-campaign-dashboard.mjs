@@ -93,6 +93,9 @@ if (hasTypeScriptRuntime) {
   const rulesRepositoryUrl = moduleDataUrl(`
     export async function listRuleSnippetsForUser() { return []; }
   `);
+  const campaignInvitesUrl = moduleDataUrl(`
+    export async function getActiveCampaignInviteForUser() { return null; }
+  `);
   const bootstrapUrl = await transpileModuleToDataUrl(
     "apps/web/src/campaigns/bootstrap.ts",
     [
@@ -106,6 +109,7 @@ if (hasTypeScriptRuntime) {
       ["@/rules/core-rules", coreRulesUrl],
       ["@/rules/matching", matchingUrl],
       ["@/rules/repository", rulesRepositoryUrl],
+      ["@/campaigns/invites", campaignInvitesUrl],
     ],
   );
   const bootstrapModule = await import(bootstrapUrl);

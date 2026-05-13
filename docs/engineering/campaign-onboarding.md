@@ -35,4 +35,5 @@ This keeps the dashboard and session workflow aligned immediately after create.
 ## Invite Handoff
 
 The dashboard exposes invite onboarding as the next DM action, but secure
-shareable invite-token generation belongs to DND-34.
+shareable invite-token generation belongs to DND-34. See
+`docs/engineering/campaign-invites.md` for the invite-token model.

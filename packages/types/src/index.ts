@@ -25,6 +25,7 @@ export type {
   CampaignMembership,
   Campaign,
   CampaignRole,
+  CampaignInviteSummary,
   CampaignSession,
   CampaignSetup,
   CampaignSummary,

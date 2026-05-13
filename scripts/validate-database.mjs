@@ -55,6 +55,8 @@ for (const tableName of [
   '"users"',
   '"campaigns"',
   '"campaign_memberships"',
+  '"campaign_invites"',
+  '"campaign_invite_acceptances"',
   '"sessions"',
   '"characters"',
   '"entities"',

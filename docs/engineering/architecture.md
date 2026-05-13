@@ -13,6 +13,7 @@
 - User
 - Campaign
 - CampaignMembership
+- CampaignInvite
 - Session
 - Character
 - Entity

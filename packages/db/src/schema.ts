@@ -11,6 +11,8 @@ export const coreTableNames = [
   "users",
   "campaigns",
   "campaign_memberships",
+  "campaign_invites",
+  "campaign_invite_acceptances",
   "sessions",
   "characters",
   "entities",
@@ -55,6 +57,25 @@ export const baselineSchemaStatements = [
     role campaign_role not null,
     joined_at timestamptz not null default now(),
     constraint campaign_memberships_campaign_user_unique unique (campaign_id, user_id)
+  );`,
+  `create table campaign_invites (
+    id uuid primary key default gen_random_uuid(),
+    campaign_id uuid not null references campaigns (id) on delete cascade,
+    token_hash text not null unique,
+    created_by_user_id uuid references users (id) on delete set null,
+    expires_at timestamptz not null,
+    revoked_at timestamptz,
+    created_at timestamptz not null default now()
+  );`,
+  `create index campaign_invites_campaign_active_idx
+    on campaign_invites (campaign_id, expires_at)
+    where revoked_at is null;`,
+  `create table campaign_invite_acceptances (
+    id uuid primary key default gen_random_uuid(),
+    invite_id uuid not null references campaign_invites (id) on delete cascade,
+    user_id uuid not null references users (id) on delete cascade,
+    accepted_at timestamptz not null default now(),
+    constraint campaign_invite_acceptances_invite_user_unique unique (invite_id, user_id)
   );`,
   `create table sessions (
     id uuid primary key default gen_random_uuid(),

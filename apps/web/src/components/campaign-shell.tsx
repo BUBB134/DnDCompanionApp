@@ -1,6 +1,7 @@
 import type {
   Campaign,
   CampaignEntitySummary,
+  CampaignInviteSummary,
   RuleSnippet,
   SessionSummary,
   Visibility,
@@ -8,12 +9,14 @@ import type {
 import { canAccessVisibility, isDungeonMaster } from "@dnd/types";
 import { EmptyState, StatusPill, Surface } from "@dnd/ui";
 import Link from "next/link";
+import { CampaignInvitePanel } from "@/components/campaign-invite-panel";
 import { RuleCard } from "@/components/rule-card";
 
 type CampaignShellProps = {
   campaign: Campaign;
   dmBrief?: string | null;
   entities: CampaignEntitySummary[];
+  invite: CampaignInviteSummary | null;
   latestSession: SessionSummary | null;
   rules: RuleSnippet[];
 };
@@ -53,17 +56,13 @@ const campaignActions: readonly CampaignAction[] = [
     title: "Prepare DM notes",
     visibility: "dm-only",
   },
-  {
-    body: "Bring players into the campaign once secure invite links are available.",
-    title: "Invite players",
-    visibility: "dm-only",
-  },
 ] as const;
 
 export function CampaignShell({
   campaign,
   dmBrief,
   entities,
+  invite,
   latestSession,
   rules,
 }: CampaignShellProps) {
@@ -268,13 +267,14 @@ export function CampaignShell({
                       Open rules panel
                     </Link>
                   ) : null}
-                  {action.title === "Invite players" ? (
-                    <span className="mt-3 inline-flex min-h-10 items-center rounded-md border border-[#17161f]/15 bg-[#fffaf0] px-3 py-2 text-sm font-semibold text-[#4b4657]">
-                      Ready for invite flow
-                    </span>
-                  ) : null}
                 </article>
               ))}
+              {isDm ? (
+                <CampaignInvitePanel
+                  activeInvite={invite}
+                  campaignId={campaign.id}
+                />
+              ) : null}
             </div>
           </Surface>
 

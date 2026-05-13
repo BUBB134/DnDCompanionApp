@@ -2,6 +2,7 @@ import type {
   AuthSession,
   Campaign,
   CampaignEntitySummary,
+  CampaignInviteSummary,
   CampaignMembership,
   RuleSnippet,
   SessionSummary,
@@ -14,6 +15,7 @@ import {
 import { createLocalUserId } from "@/auth/local-user";
 import { getActiveCampaignId } from "@/campaigns/active-campaign";
 import { isDatabaseCampaignId } from "@/campaigns/database-id";
+import { getActiveCampaignInviteForUser as getDatabaseCampaignInviteForUser } from "@/campaigns/invites";
 import {
   getDatabaseCampaignAccessForUser,
   listDatabaseCampaignsForUser,
@@ -40,6 +42,7 @@ export type CampaignDashboardData = {
   campaign: Campaign;
   dmBrief: string | null;
   entities: CampaignEntitySummary[];
+  invite: CampaignInviteSummary | null;
   latestSession: SessionSummary | null;
   rules: RuleSnippet[];
 };
@@ -158,12 +161,17 @@ export async function getCampaignHomeData(
   const databaseRules = isSavedCampaign
     ? await getCurrentDatabaseRuleSnippets(session.user.id, campaign.id)
     : null;
+  const databaseInvite =
+    isSavedCampaign && isDungeonMaster(campaign.role)
+      ? await getCurrentDatabaseCampaignInvite(session.user.id, campaign.id)
+      : null;
 
   return buildCampaignDashboardData(
     campaign,
     databaseEntities ?? undefined,
     databaseLatestSession,
     databaseRules ?? undefined,
+    databaseInvite,
   );
 }
 
@@ -182,6 +190,9 @@ export async function getSelectedCampaignDashboardData(
     await listEntitySummariesForUser(userId, campaign.id),
     await getLatestSessionForUser(userId, campaign.id),
     await listRuleSnippetsForUser(userId, campaign.id),
+    isDungeonMaster(campaign.role)
+      ? await getDatabaseCampaignInviteForUser(userId, campaign.id)
+      : null,
   );
 }
 
@@ -190,6 +201,7 @@ export function buildCampaignDashboardData(
   entities?: CampaignEntitySummary[],
   latestSessionOverride?: RuleSourceSession | null,
   rules?: RuleSnippet[],
+  invite?: CampaignInviteSummary | null,
 ): CampaignDashboardData {
   const latestSession =
     latestSessionOverride === undefined
@@ -209,6 +221,7 @@ export function buildCampaignDashboardData(
         bootstrapEntities.filter((entity) => entity.campaignId === campaign.id),
         campaign.role,
       ),
+    invite: isDungeonMaster(campaign.role) ? invite ?? null : null,
     latestSession,
     rules: latestSession
       ? findReferencedRules(
@@ -246,6 +259,14 @@ async function getCurrentDatabaseLatestSession(userId: string, campaignId: strin
 async function getCurrentDatabaseRuleSnippets(userId: string, campaignId: string) {
   try {
     return await listRuleSnippetsForUser(userId, campaignId);
+  } catch {
+    return null;
+  }
+}
+
+async function getCurrentDatabaseCampaignInvite(userId: string, campaignId: string) {
+  try {
+    return await getDatabaseCampaignInviteForUser(userId, campaignId);
   } catch {
     return null;
   }
