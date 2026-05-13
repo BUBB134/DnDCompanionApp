@@ -1,4 +1,3 @@
-import { formatDatabaseError } from "@dnd/db";
 import { EmptyState, StatusPill, Surface } from "@dnd/ui";
 import Link from "next/link";
 import { getAuthSession } from "@/auth/server";
@@ -9,20 +8,36 @@ type CampaignInvitePageProps = {
   params: Promise<{
     token: string;
   }>;
+  searchParams: Promise<{
+    status?: string | string[];
+  }>;
 };
 
 export default async function CampaignInvitePage({
   params,
+  searchParams,
 }: CampaignInvitePageProps) {
-  const { token } = await params;
-  const session = await getAuthSession();
+  const [{ token }, query] = await Promise.all([params, searchParams]);
+  const forcedStatus = getForcedInviteStatus(query.status);
   let invite: CampaignInviteLookup | null = null;
   let loadError: string | null = null;
+
+  if (forcedStatus) {
+    return (
+      <InvitePageFrame>
+        <UnavailableInviteContent status={forcedStatus} />
+      </InvitePageFrame>
+    );
+  }
+
+  const session = await getAuthSession();
 
   try {
     invite = await getCampaignInvite(token);
   } catch (error) {
-    loadError = formatDatabaseError(error);
+    console.error("Failed to load campaign invite.", error);
+    loadError =
+      "Invite details are temporarily unavailable. Try again shortly or ask the DM for a fresh link.";
   }
 
   if (loadError || !invite) {
@@ -118,7 +133,7 @@ function ReadyInviteContent({
 function UnavailableInviteContent({
   status,
 }: {
-  status: "expired" | "invalid" | "revoked";
+  status: "expired" | "invalid" | "revoked" | "unavailable";
 }) {
   const copy = {
     expired: {
@@ -132,6 +147,10 @@ function UnavailableInviteContent({
     revoked: {
       body: "The DM has revoked this invite link. Ask for a new one to join.",
       title: "This invite link was revoked",
+    },
+    unavailable: {
+      body: "The invite could not be processed right now. Try again shortly or ask the DM for a fresh link.",
+      title: "Invite details are temporarily unavailable",
     },
   }[status];
 
@@ -163,4 +182,8 @@ function formatInviteDate(value: string) {
     dateStyle: "medium",
     timeStyle: "short",
   }).format(new Date(value));
+}
+
+function getForcedInviteStatus(status: string | string[] | undefined) {
+  return status === "unavailable" ? status : null;
 }

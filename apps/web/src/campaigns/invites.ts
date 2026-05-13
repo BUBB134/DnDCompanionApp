@@ -50,6 +50,11 @@ export type GenerateCampaignInviteActionState = {
   inviteUrl: string | null;
 };
 
+export type RevokeCampaignInviteActionState = {
+  formError: string | null;
+  revokedInviteId: string | null;
+};
+
 export type CampaignInviteLookup =
   | {
       status: "invalid";
@@ -74,6 +79,11 @@ export const initialGenerateCampaignInviteActionState: GenerateCampaignInviteAct
   formError: null,
   inviteId: null,
   inviteUrl: null,
+};
+
+export const initialRevokeCampaignInviteActionState: RevokeCampaignInviteActionState = {
+  formError: null,
+  revokedInviteId: null,
 };
 
 export class CampaignInviteError extends Error {
@@ -138,7 +148,6 @@ export async function createCampaignInviteForUser(
         set revoked_at = now()
         where campaign_id = $1
           and revoked_at is null
-          and expires_at > now()
       `,
       [campaignId],
     );
@@ -324,11 +333,14 @@ async function assertCanManageCampaignInvites(
 ) {
   const result = await client.query<{ role: CampaignRole }>(
     `
-      select role
-      from campaign_memberships
-      where campaign_id = $1
-        and user_id = $2
+      select campaign_memberships.role
+      from campaigns
+      inner join campaign_memberships
+        on campaign_memberships.campaign_id = campaigns.id
+      where campaigns.id = $1
+        and campaign_memberships.user_id = $2
       limit 1
+      for update of campaigns
     `,
     [campaignId, userId],
   );

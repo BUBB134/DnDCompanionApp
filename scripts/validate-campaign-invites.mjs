@@ -23,6 +23,7 @@ for (const snippet of [
   '"campaign_invite_acceptances"',
   "token_hash text not null unique",
   "revoked_at timestamptz",
+  "campaign_invites_campaign_unrevoked_unique_idx",
   "campaign_invite_acceptances_invite_user_unique",
 ]) {
   expect(schemaText.includes(snippet), `Invite schema is missing: ${snippet}`);
@@ -33,6 +34,7 @@ for (const snippet of [
   "create table if not exists campaign_invites",
   "token_hash text not null unique",
   "create index if not exists campaign_invites_campaign_active_idx",
+  "create unique index if not exists campaign_invites_campaign_unrevoked_unique_idx",
   "create table if not exists campaign_invite_acceptances",
 ]) {
   expect(migrationText.includes(snippet), `Invite migration is missing: ${snippet}`);
@@ -45,6 +47,7 @@ for (const snippet of [
   "campaign_memberships.role = 'dm'",
   "values ($1, $2, 'player')",
   "on conflict (campaign_id, user_id) do nothing",
+  "for update of campaigns",
   "for update of campaign_invites",
   "revoked_at is null",
 ]) {

@@ -70,6 +70,9 @@ export const baselineSchemaStatements = [
   `create index campaign_invites_campaign_active_idx
     on campaign_invites (campaign_id, expires_at)
     where revoked_at is null;`,
+  `create unique index campaign_invites_campaign_unrevoked_unique_idx
+    on campaign_invites (campaign_id)
+    where revoked_at is null;`,
   `create table campaign_invite_acceptances (
     id uuid primary key default gen_random_uuid(),
     invite_id uuid not null references campaign_invites (id) on delete cascade,

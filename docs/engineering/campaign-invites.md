@@ -9,6 +9,10 @@ Invite tokens are shown to the DM once, then stored as SHA-256 token hashes in
 revokes the current active invite for that campaign so a DM can rotate access
 without managing a list of links.
 
+Invite rotation locks the campaign row inside the transaction and the schema
+also enforces one unrevoked invite per campaign. This keeps two simultaneous
+generate requests from leaving multiple active links behind.
+
 `campaign_invite_acceptances` records which signed-in users accepted a link.
 Campaign membership remains the source of truth for access, and the
 `campaign_memberships` unique constraint prevents duplicate joins.

@@ -2,6 +2,7 @@
 
 import { formatDatabaseError } from "@dnd/db";
 import type { Route } from "next";
+import { revalidatePath } from "next/cache";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { getAuthSession, requireAuthSession } from "@/auth/server";
@@ -16,8 +17,10 @@ import {
   CampaignInviteError,
   createCampaignInviteForUser,
   initialGenerateCampaignInviteActionState,
+  initialRevokeCampaignInviteActionState,
   revokeCampaignInviteForUser,
   type GenerateCampaignInviteActionState,
+  type RevokeCampaignInviteActionState,
 } from "@/campaigns/invites";
 import {
   createCampaignForUser,
@@ -109,17 +112,37 @@ export async function generateCampaignInviteAction(
   }
 }
 
-export async function revokeCampaignInviteAction(formData: FormData) {
+export async function revokeCampaignInviteAction(
+  _previousState: RevokeCampaignInviteActionState =
+    initialRevokeCampaignInviteActionState,
+  formData: FormData,
+): Promise<RevokeCampaignInviteActionState> {
+  void _previousState;
   const session = await requireAuthSession();
   const campaignId = getStringField(formData, "campaignId");
   const inviteId = getStringField(formData, "inviteId");
 
   if (!campaignId || !inviteId) {
-    redirect("/campaigns");
+    return {
+      ...initialRevokeCampaignInviteActionState,
+      formError: "Choose an active invite link before revoking it.",
+    };
   }
 
-  await revokeCampaignInviteForUser(session.user.id, campaignId, inviteId);
-  redirect(`/campaigns/${campaignId}`);
+  try {
+    await revokeCampaignInviteForUser(session.user.id, campaignId, inviteId);
+    revalidatePath(`/campaigns/${campaignId}`);
+
+    return {
+      formError: null,
+      revokedInviteId: inviteId,
+    };
+  } catch (error) {
+    return {
+      ...initialRevokeCampaignInviteActionState,
+      formError: formatCampaignInviteError(error),
+    };
+  }
 }
 
 export async function acceptCampaignInviteAction(formData: FormData) {
@@ -136,7 +159,14 @@ export async function acceptCampaignInviteAction(formData: FormData) {
     redirect(`/sign-in?next=${encodeURIComponent(tokenPath)}`);
   }
 
-  const result = await acceptCampaignInviteForUser(session.user, token);
+  let result: Awaited<ReturnType<typeof acceptCampaignInviteForUser>>;
+
+  try {
+    result = await acceptCampaignInviteForUser(session.user, token);
+  } catch (error) {
+    console.error("Failed to accept campaign invite.", error);
+    redirect(`${tokenPath}?status=unavailable` as Route);
+  }
 
   if (result.status === "accepted" || result.status === "already-member") {
     await setActiveCampaignId(result.campaign.id);

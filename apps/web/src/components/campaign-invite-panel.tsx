@@ -19,6 +19,11 @@ const initialInviteState = {
   inviteUrl: null,
 };
 
+const initialRevokeInviteState = {
+  formError: null,
+  revokedInviteId: null,
+};
+
 export function CampaignInvitePanel({
   activeInvite,
   campaignId,
@@ -27,8 +32,22 @@ export function CampaignInvitePanel({
     generateCampaignInviteAction,
     initialInviteState,
   );
-  const displayedInviteId = state.inviteId ?? activeInvite?.id ?? null;
-  const displayedExpiresAt = state.expiresAt ?? activeInvite?.expiresAt ?? null;
+  const [revokeState, revokeAction, isRevokePending] = useActionState(
+    revokeCampaignInviteAction,
+    initialRevokeInviteState,
+  );
+  const generatedInviteId =
+    state.inviteId === revokeState.revokedInviteId ? null : state.inviteId;
+  const currentActiveInvite =
+    activeInvite?.id === revokeState.revokedInviteId ? null : activeInvite;
+  const displayedInviteId = generatedInviteId ?? currentActiveInvite?.id ?? null;
+  const displayedExpiresAt =
+    generatedInviteId && state.expiresAt
+      ? state.expiresAt
+      : currentActiveInvite?.expiresAt ?? null;
+  const displayedInviteUrl =
+    generatedInviteId && state.inviteUrl ? state.inviteUrl : null;
+  const formError = state.formError ?? revokeState.formError;
 
   return (
     <article className="rounded-lg border border-[#17161f]/10 bg-white p-4">
@@ -45,17 +64,17 @@ export function CampaignInvitePanel({
         </span>
       </div>
 
-      {state.formError ? (
+      {formError ? (
         <div
           className="mt-3 rounded-md border border-[#8b2f39]/25 bg-[#f9e8ea] px-3 py-2 text-sm text-[#6f2430]"
           role="alert"
         >
-          {state.formError}
+          {formError}
         </div>
       ) : null}
 
       <div className="mt-3 grid gap-3">
-        {state.inviteUrl ? (
+        {displayedInviteUrl ? (
           <label className="grid gap-2">
             <span className="text-xs font-semibold uppercase text-[#1f6f78]">
               Generated invite link
@@ -64,10 +83,10 @@ export function CampaignInvitePanel({
               className="min-h-11 w-full rounded-md border border-[#17161f]/15 bg-[#fffaf0] px-3 text-sm outline-none focus:border-[#1f6f78] focus:ring-2 focus:ring-[#1f6f78]/25"
               onFocus={(event) => event.currentTarget.select()}
               readOnly
-              value={state.inviteUrl}
+              value={displayedInviteUrl}
             />
           </label>
-        ) : activeInvite ? (
+        ) : currentActiveInvite ? (
           <div className="rounded-md border border-[#1f6f78]/25 bg-[#e7f5f6] px-3 py-2">
             <p className="text-sm font-semibold text-[#164f56]">
               Active invite link exists
@@ -102,21 +121,22 @@ export function CampaignInvitePanel({
           >
             {isPending
               ? "Generating..."
-              : activeInvite || state.inviteUrl
+              : currentActiveInvite || displayedInviteUrl
                 ? "Rotate invite link"
                 : "Generate invite link"}
           </button>
         </form>
 
         {displayedInviteId ? (
-          <form action={revokeCampaignInviteAction}>
+          <form action={revokeAction}>
             <input name="campaignId" type="hidden" value={campaignId} />
             <input name="inviteId" type="hidden" value={displayedInviteId} />
             <button
               className="min-h-10 w-full rounded-md border border-[#17161f]/15 bg-white px-3 py-2 text-sm font-semibold transition hover:border-[#8b2f39] focus:outline-none focus:ring-2 focus:ring-[#8b2f39] focus:ring-offset-2 sm:w-auto"
+              disabled={isRevokePending}
               type="submit"
             >
-              Revoke active link
+              {isRevokePending ? "Revoking..." : "Revoke active link"}
             </button>
           </form>
         ) : null}
