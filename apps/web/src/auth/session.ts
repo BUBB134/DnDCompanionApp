@@ -17,7 +17,14 @@ import {
 export const AUTH_COOKIE_NAME = "dnd_local_session";
 export const AUTH_COOKIE_MAX_AGE_SECONDS = 60 * 60 * 24 * 7;
 
-const PROTECTED_RETURN_PATHS = ["/", "/campaigns", "/entities", "/rules", "/sessions"] as const;
+const PROTECTED_RETURN_PATHS = [
+  "/",
+  "/campaigns",
+  "/entities",
+  "/invite",
+  "/rules",
+  "/sessions",
+] as const;
 const SIGNED_SESSION_TOKEN_PREFIX = "local-v2.";
 const UNSIGNED_SESSION_TOKEN_PREFIX = "local-v1.";
 

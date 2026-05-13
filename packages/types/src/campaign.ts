@@ -40,6 +40,14 @@ export type CampaignMembership = {
   userId: string;
 };
 
+export type CampaignInviteSummary = {
+  campaignId: string;
+  createdAt: string;
+  expiresAt: string;
+  id: string;
+  revokedAt?: string | null;
+};
+
 export type CampaignAccess = CampaignSummary & {
   role: CampaignRole;
 };
