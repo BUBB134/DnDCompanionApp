@@ -10,7 +10,8 @@ import type {
   SessionNoteBlockType,
 } from "@dnd/types";
 import { sessionNoteBlockTypes } from "@dnd/types";
-import { useActionState, useMemo, useState } from "react";
+import type { KeyboardEvent } from "react";
+import { useActionState, useEffect, useMemo, useRef, useState } from "react";
 import { useFormStatus } from "react-dom";
 import {
   createSessionAction,
@@ -28,6 +29,12 @@ import {
   serializeSessionNoteDocument,
   sessionNoteBlockTypeLabels,
 } from "@/sessions/note-document";
+import {
+  createSessionNoteSuggestions,
+  getActiveWikiLinkTrigger,
+  type ActiveWikiLinkTrigger,
+  type SessionNoteSuggestion,
+} from "@/sessions/inline-suggestions";
 import { createWikiLinkSummaryItems } from "@/sessions/wiki-links";
 
 type SessionCreateFormProps = {
@@ -43,6 +50,12 @@ type SessionEditFormProps = {
   availableRules: RuleSnippet[];
   campaign: Campaign;
   session: CampaignSession;
+};
+
+type ActiveSuggestionState = {
+  blockId: string;
+  cursorOffset: number;
+  selectedIndex: number;
 };
 
 export function SessionCreateForm({
@@ -291,8 +304,22 @@ function SessionNoteBlockEditor({
       state.values.notes,
     ),
   );
+  const [activeSuggestion, setActiveSuggestion] =
+    useState<ActiveSuggestionState | null>(null);
+  const pendingCursorRef = useRef<{
+    blockId: string;
+    cursorOffset: number;
+  } | null>(null);
+  const textareaRefs = useRef<Record<string, HTMLTextAreaElement | null>>({});
   const notesError =
     state.fieldErrors.notesDocument ?? state.fieldErrors.notes ?? null;
+  const activeBlock = activeSuggestion
+    ? (document.blocks.find((block) => block.id === activeSuggestion.blockId) ??
+      null)
+    : null;
+  const activeTrigger = activeBlock
+    ? getActiveWikiLinkTrigger(activeBlock.text, activeSuggestion?.cursorOffset ?? 0)
+    : null;
 
   const serializedDocument = useMemo(
     () => serializeSessionNoteDocument(document),
@@ -311,6 +338,50 @@ function SessionNoteBlockEditor({
       }),
     [availableCharacters, availableEntities, availableRules, document],
   );
+  const activeSuggestions = useMemo(
+    () =>
+      activeTrigger
+        ? createSessionNoteSuggestions(activeTrigger, {
+            characters: availableCharacters,
+            document,
+            entities: availableEntities,
+            rules: availableRules,
+          })
+        : [],
+    [
+      activeTrigger,
+      availableCharacters,
+      availableEntities,
+      availableRules,
+      document,
+    ],
+  );
+  const selectedSuggestionIndex =
+    activeSuggestions.length > 0 && activeSuggestion
+      ? Math.min(activeSuggestion.selectedIndex, activeSuggestions.length - 1)
+      : -1;
+
+  useEffect(() => {
+    const pendingCursor = pendingCursorRef.current;
+
+    if (!pendingCursor) {
+      return;
+    }
+
+    pendingCursorRef.current = null;
+
+    const textarea = textareaRefs.current[pendingCursor.blockId];
+
+    if (!textarea) {
+      return;
+    }
+
+    textarea.focus();
+    textarea.setSelectionRange(
+      pendingCursor.cursorOffset,
+      pendingCursor.cursorOffset,
+    );
+  }, [document]);
 
   function updateBlock(
     blockId: string,
@@ -329,6 +400,98 @@ function SessionNoteBlockEditor({
           : block,
       ),
     }));
+  }
+
+  function updateActiveSuggestion(
+    blockId: string,
+    text: string,
+    cursorOffset: number | null,
+  ) {
+    const trigger =
+      cursorOffset === null
+        ? null
+        : getActiveWikiLinkTrigger(text, cursorOffset);
+
+    setActiveSuggestion(
+      trigger
+        ? {
+            blockId,
+            cursorOffset: trigger.cursorOffset,
+            selectedIndex: 0,
+          }
+        : null,
+    );
+  }
+
+  function selectActiveSuggestion(suggestion: SessionNoteSuggestion) {
+    if (!activeBlock || !activeTrigger) {
+      return;
+    }
+
+    applySuggestion(activeBlock, activeTrigger, suggestion);
+  }
+
+  function applySuggestion(
+    block: SessionNoteBlock,
+    trigger: ActiveWikiLinkTrigger,
+    suggestion: SessionNoteSuggestion,
+  ) {
+    const nextText = `${block.text.slice(0, trigger.startOffset)}${
+      suggestion.replacement
+    }${block.text.slice(trigger.cursorOffset)}`;
+    const cursorOffset = trigger.startOffset + suggestion.replacement.length;
+
+    pendingCursorRef.current = {
+      blockId: block.id,
+      cursorOffset,
+    };
+    setActiveSuggestion(null);
+    updateBlock(block.id, { text: nextText });
+  }
+
+  function handleBlockKeyDown(
+    event: KeyboardEvent<HTMLTextAreaElement>,
+    block: SessionNoteBlock,
+  ) {
+    if (activeSuggestion?.blockId !== block.id || activeSuggestions.length === 0) {
+      return;
+    }
+
+    if (event.key === "ArrowDown") {
+      event.preventDefault();
+      setActiveSuggestion({
+        ...activeSuggestion,
+        selectedIndex:
+          (selectedSuggestionIndex + 1) % activeSuggestions.length,
+      });
+      return;
+    }
+
+    if (event.key === "ArrowUp") {
+      event.preventDefault();
+      setActiveSuggestion({
+        ...activeSuggestion,
+        selectedIndex:
+          (selectedSuggestionIndex - 1 + activeSuggestions.length) %
+          activeSuggestions.length,
+      });
+      return;
+    }
+
+    if (event.key === "Escape") {
+      event.preventDefault();
+      setActiveSuggestion(null);
+      return;
+    }
+
+    if (event.key === "Enter" || event.key === "Tab") {
+      event.preventDefault();
+      const suggestion = activeSuggestions[selectedSuggestionIndex];
+
+      if (suggestion) {
+        selectActiveSuggestion(suggestion);
+      }
+    }
   }
 
   function addBlock(afterIndex: number) {
@@ -392,79 +555,156 @@ function SessionNoteBlockEditor({
       <input name="notes" type="hidden" value={plainTextNotes} />
       <input name="notesDocument" type="hidden" value={serializedDocument} />
       <div className="mt-2 grid gap-3">
-        {document.blocks.map((block, index) => (
-          <div
-            className="rounded-lg border border-[#17161f]/10 bg-white p-3"
-            key={block.id}
-          >
-            <div className="flex flex-wrap items-center gap-2">
+        {document.blocks.map((block, index) => {
+          const isSuggestingForBlock =
+            activeSuggestion?.blockId === block.id &&
+            activeTrigger !== null &&
+            activeSuggestions.length > 0;
+          const suggestionListId =
+            `${fieldIdPrefix}-session-notes-suggestions-${block.id}`;
+
+          return (
+            <div
+              className="rounded-lg border border-[#17161f]/10 bg-white p-3"
+              key={block.id}
+              onBlur={(event) => {
+                const nextTarget = event.relatedTarget;
+
+                if (
+                  !(nextTarget instanceof Node) ||
+                  !event.currentTarget.contains(nextTarget)
+                ) {
+                  setActiveSuggestion(null);
+                }
+              }}
+            >
+              <div className="flex flex-wrap items-center gap-2">
+                <label
+                  className="sr-only"
+                  htmlFor={`${fieldIdPrefix}-session-block-type-${block.id}`}
+                >
+                  Block type
+                </label>
+                <select
+                  className="min-h-9 rounded-md border border-[#17161f]/15 bg-[#fffaf0] px-2 text-sm font-semibold outline-none transition focus:border-[#1f6f78] focus:ring-2 focus:ring-[#1f6f78]/25"
+                  id={`${fieldIdPrefix}-session-block-type-${block.id}`}
+                  onChange={(event) =>
+                    updateBlock(block.id, {
+                      type: event.target.value as SessionNoteBlockType,
+                    })
+                  }
+                  value={block.type}
+                >
+                  {sessionNoteBlockTypes.map((type) => (
+                    <option key={type} value={type}>
+                      {sessionNoteBlockTypeLabels[type]}
+                    </option>
+                  ))}
+                </select>
+                <div className="ml-auto flex flex-wrap gap-2">
+                  <BlockEditorButton
+                    disabled={index === 0}
+                    label="Up"
+                    onClick={() => moveBlock(index, -1)}
+                  />
+                  <BlockEditorButton
+                    disabled={index === document.blocks.length - 1}
+                    label="Down"
+                    onClick={() => moveBlock(index, 1)}
+                  />
+                  <BlockEditorButton
+                    label="Add"
+                    onClick={() => addBlock(index)}
+                  />
+                  <BlockEditorButton
+                    disabled={
+                      document.blocks.length === 1 && block.text.length === 0
+                    }
+                    label="Remove"
+                    onClick={() => removeBlock(block.id)}
+                  />
+                </div>
+              </div>
               <label
                 className="sr-only"
-                htmlFor={`${fieldIdPrefix}-session-block-type-${block.id}`}
+                htmlFor={`${fieldIdPrefix}-session-notes-block-${index}`}
               >
-                Block type
+                Note block {index + 1}
               </label>
-              <select
-                className="min-h-9 rounded-md border border-[#17161f]/15 bg-[#fffaf0] px-2 text-sm font-semibold outline-none transition focus:border-[#1f6f78] focus:ring-2 focus:ring-[#1f6f78]/25"
-                id={`${fieldIdPrefix}-session-block-type-${block.id}`}
-                onChange={(event) =>
-                  updateBlock(block.id, {
-                    type: event.target.value as SessionNoteBlockType,
-                  })
+              <textarea
+                aria-activedescendant={
+                  isSuggestingForBlock
+                    ? `${suggestionListId}-${selectedSuggestionIndex}`
+                    : undefined
                 }
-                value={block.type}
-              >
-                {sessionNoteBlockTypes.map((type) => (
-                  <option key={type} value={type}>
-                    {sessionNoteBlockTypeLabels[type]}
-                  </option>
-                ))}
-              </select>
-              <div className="ml-auto flex flex-wrap gap-2">
-                <BlockEditorButton
-                  disabled={index === 0}
-                  label="Up"
-                  onClick={() => moveBlock(index, -1)}
-                />
-                <BlockEditorButton
-                  disabled={index === document.blocks.length - 1}
-                  label="Down"
-                  onClick={() => moveBlock(index, 1)}
-                />
-                <BlockEditorButton
-                  label="Add"
-                  onClick={() => addBlock(index)}
-                />
-                <BlockEditorButton
-                  disabled={
-                    document.blocks.length === 1 && block.text.length === 0
+                aria-autocomplete="list"
+                aria-controls={isSuggestingForBlock ? suggestionListId : undefined}
+                aria-describedby={
+                  notesError ? `${fieldIdPrefix}-session-notes-error` : undefined
+                }
+                aria-invalid={notesError ? true : undefined}
+                className="mt-3 min-h-36 w-full resize-y rounded-md border border-[#17161f]/15 bg-[#fffaf0] px-3 py-3 text-base leading-7 outline-none transition focus:border-[#1f6f78] focus:ring-2 focus:ring-[#1f6f78]/25"
+                id={`${fieldIdPrefix}-session-notes-block-${index}`}
+                onChange={(event) => {
+                  updateBlock(block.id, { text: event.target.value });
+                  updateActiveSuggestion(
+                    block.id,
+                    event.target.value,
+                    event.target.selectionStart,
+                  );
+                }}
+                onClick={(event) =>
+                  updateActiveSuggestion(
+                    block.id,
+                    event.currentTarget.value,
+                    event.currentTarget.selectionStart,
+                  )
+                }
+                onFocus={(event) =>
+                  updateActiveSuggestion(
+                    block.id,
+                    event.currentTarget.value,
+                    event.currentTarget.selectionStart,
+                  )
+                }
+                onKeyDown={(event) => handleBlockKeyDown(event, block)}
+                onKeyUp={(event) => {
+                  if (
+                    activeSuggestion?.blockId === block.id &&
+                    [
+                      "ArrowDown",
+                      "ArrowUp",
+                      "Enter",
+                      "Escape",
+                      "Tab",
+                    ].includes(event.key)
+                  ) {
+                    return;
                   }
-                  label="Remove"
-                  onClick={() => removeBlock(block.id)}
+
+                  updateActiveSuggestion(
+                    block.id,
+                    event.currentTarget.value,
+                    event.currentTarget.selectionStart,
+                  );
+                }}
+                ref={(element) => {
+                  textareaRefs.current[block.id] = element;
+                }}
+                rows={compact ? 4 : 5}
+                value={block.text}
+              />
+              {isSuggestingForBlock ? (
+                <SessionNoteSuggestionList
+                  id={suggestionListId}
+                  onSelect={selectActiveSuggestion}
+                  selectedIndex={selectedSuggestionIndex}
+                  suggestions={activeSuggestions}
                 />
-              </div>
+              ) : null}
             </div>
-            <label
-              className="sr-only"
-              htmlFor={`${fieldIdPrefix}-session-notes-block-${index}`}
-            >
-              Note block {index + 1}
-            </label>
-            <textarea
-              aria-describedby={
-                notesError ? `${fieldIdPrefix}-session-notes-error` : undefined
-              }
-              aria-invalid={notesError ? true : undefined}
-              className="mt-3 min-h-36 w-full resize-y rounded-md border border-[#17161f]/15 bg-[#fffaf0] px-3 py-3 text-base leading-7 outline-none transition focus:border-[#1f6f78] focus:ring-2 focus:ring-[#1f6f78]/25"
-              id={`${fieldIdPrefix}-session-notes-block-${index}`}
-              onChange={(event) =>
-                updateBlock(block.id, { text: event.target.value })
-              }
-              rows={compact ? 4 : 5}
-              value={block.text}
-            />
-          </div>
-        ))}
+          );
+        })}
       </div>
       {wikiLinkItems.length > 0 ? (
         <div className="mt-3 rounded-lg border border-[#1f6f78]/20 bg-white px-3 py-3">
@@ -508,6 +748,79 @@ function getWikiLinkItemClassName(itemTone: "create" | "missing" | "resolved") {
   }
 
   return `${baseClassName} border-[#8b2f39]/25 bg-[#f9e8ea] text-[#6f2430]`;
+}
+
+function SessionNoteSuggestionList({
+  id,
+  onSelect,
+  selectedIndex,
+  suggestions,
+}: {
+  id: string;
+  onSelect: (suggestion: SessionNoteSuggestion) => void;
+  selectedIndex: number;
+  suggestions: SessionNoteSuggestion[];
+}) {
+  return (
+    <div
+      className="mt-2 overflow-hidden rounded-lg border border-[#1f6f78]/25 bg-white shadow-sm"
+      id={id}
+      role="listbox"
+    >
+      {suggestions.map((suggestion, index) => (
+        <button
+          aria-selected={index === selectedIndex}
+          className={getSuggestionButtonClassName(index === selectedIndex)}
+          id={`${id}-${index}`}
+          key={suggestion.id}
+          onClick={() => onSelect(suggestion)}
+          onMouseDown={(event) => event.preventDefault()}
+          role="option"
+          type="button"
+        >
+          <span className="min-w-0">
+            <span className="block truncate font-semibold text-[#17161f]">
+              {suggestion.label}
+            </span>
+            <span className="mt-0.5 block truncate text-xs text-[#4b4657]">
+              {suggestion.detail}
+            </span>
+          </span>
+          <span className={getSuggestionTypeClassName(suggestion.kind)}>
+            {suggestion.typeLabel}
+          </span>
+        </button>
+      ))}
+    </div>
+  );
+}
+
+function getSuggestionButtonClassName(isSelected: boolean) {
+  const baseClassName =
+    "flex w-full items-center gap-3 px-3 py-2 text-left text-sm outline-none transition";
+
+  return isSelected
+    ? `${baseClassName} bg-[#e7f5f6]`
+    : `${baseClassName} bg-white hover:bg-[#fffaf0] focus:bg-[#e7f5f6]`;
+}
+
+function getSuggestionTypeClassName(kind: SessionNoteSuggestion["kind"]) {
+  const baseClassName =
+    "ml-auto shrink-0 rounded-full border px-2 py-0.5 text-xs font-semibold";
+
+  if (kind === "rule") {
+    return `${baseClassName} border-[#1f6f78]/25 bg-[#e7f5f6] text-[#164f56]`;
+  }
+
+  if (kind === "create-entity") {
+    return `${baseClassName} border-[#c3943e]/40 bg-[#fffaf0] text-[#5c4212]`;
+  }
+
+  if (kind === "character") {
+    return `${baseClassName} border-[#17161f]/15 bg-[#f4f2ec] text-[#2d2937]`;
+  }
+
+  return `${baseClassName} border-[#8b2f39]/20 bg-[#f9e8ea] text-[#6f2430]`;
 }
 
 function BlockEditorButton({

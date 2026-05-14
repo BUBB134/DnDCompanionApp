@@ -42,6 +42,13 @@ session save by using an entity type prefix such as `[[npc: Captain Thorn]]`,
 `[[location: Sunken Lighthouse]]`, `[[quest: Missing Lantern]]`,
 `[[faction: Red Sashes]]`, or `[[item: Tide Key]]`.
 
+While editing, typing an open wiki reference such as `[[cap`,
+`[[rule: pro`, or `[[npc: Captain Thorn` surfaces inline suggestions for
+visible campaign entities, rule snippets, characters, and typed entity creation.
+Selecting a suggestion only writes wiki syntax back into the block text; save
+validation remains the source of truth for reference metadata, visibility
+filtering, and inline entity creation.
+
 ## Validation
 
 `apps/web/src/sessions/note-document.ts` owns parsing, normalization, plain-text

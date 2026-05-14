@@ -7,6 +7,7 @@ const failures = [];
 
 const requiredFiles = [
   "apps/web/src/characters/repository.ts",
+  "apps/web/src/sessions/inline-suggestions.ts",
   "apps/web/src/sessions/wiki-links.ts",
   "apps/web/src/sessions/actions.ts",
   "apps/web/src/sessions/manage-session.ts",
@@ -41,6 +42,19 @@ for (const expectedText of [
   expect(
     sessionActionsText.includes(expectedText),
     `Session actions must wire wiki link persistence: ${expectedText}`,
+  );
+}
+
+const sessionEditorText = readText("apps/web/src/components/session-editor.tsx");
+for (const expectedText of [
+  "createSessionNoteSuggestions",
+  "aria-autocomplete=\"list\"",
+  "role=\"listbox\"",
+  "onKeyDown",
+]) {
+  expect(
+    sessionEditorText.includes(expectedText),
+    `Session editor must expose inline note suggestions: ${expectedText}`,
   );
 }
 
@@ -96,7 +110,16 @@ if (hasTypeScriptRuntime) {
       ["@/sessions/note-document", noteDocumentUrl],
     ],
   );
+  const inlineSuggestionsUrl = await transpileModuleToDataUrl(
+    "apps/web/src/sessions/inline-suggestions.ts",
+    [
+      ["@dnd/types", campaignTypesUrl],
+      ["@/sessions/note-document", noteDocumentUrl],
+      ["@/sessions/wiki-links", wikiLinksUrl],
+    ],
+  );
   const wikiLinksModule = await import(wikiLinksUrl);
+  const inlineSuggestionsModule = await import(inlineSuggestionsUrl);
   const noteDocumentModule = await import(noteDocumentUrl);
   const manageSessionModule = await import(
     await transpileModuleToDataUrl("apps/web/src/sessions/manage-session.ts", [
@@ -214,6 +237,61 @@ if (hasTypeScriptRuntime) {
         (item) => item.tone === "resolved" && item.label === "Captain Thorn",
       ),
     "Editor wiki summary must distinguish resolved links from inline entity creation.",
+  );
+
+  const entityTrigger = inlineSuggestionsModule.getActiveWikiLinkTrigger(
+    "Met [[cap",
+    "Met [[cap".length,
+  );
+  const entitySuggestions =
+    inlineSuggestionsModule.createSessionNoteSuggestions(entityTrigger, {
+      characters: [mira],
+      document: noteDocument,
+      entities: [captainThorn, lighthouse],
+      rules: [prone],
+    });
+  expect(
+    entitySuggestions[0]?.label === "Captain Thorn" &&
+      entitySuggestions[0]?.metadata.targetType === "entity",
+    "Inline suggestions must rank matching campaign entities with metadata first.",
+  );
+
+  const ruleTrigger = inlineSuggestionsModule.getActiveWikiLinkTrigger(
+    "Rules: [[rule: pro",
+    "Rules: [[rule: pro".length,
+  );
+  const ruleSuggestions =
+    inlineSuggestionsModule.createSessionNoteSuggestions(ruleTrigger, {
+      characters: [mira],
+      document: noteDocument,
+      entities: [captainThorn, lighthouse],
+      rules: [prone],
+    });
+  expect(
+    ruleSuggestions[0]?.replacement === "[[rule: Prone]]" &&
+      ruleSuggestions[0]?.metadata.targetType === "rule",
+    "Inline suggestions must complete rule references with rule metadata.",
+  );
+
+  const createTrigger = inlineSuggestionsModule.getActiveWikiLinkTrigger(
+    "Found [[npc: Blackwater Jack",
+    "Found [[npc: Blackwater Jack".length,
+  );
+  const createSuggestions =
+    inlineSuggestionsModule.createSessionNoteSuggestions(createTrigger, {
+      characters: [mira],
+      document: noteDocument,
+      entities: [captainThorn, lighthouse],
+      rules: [prone],
+    });
+  expect(
+    createSuggestions.some(
+      (suggestion) =>
+        suggestion.kind === "create-entity" &&
+        suggestion.replacement === "[[npc: Blackwater Jack]]" &&
+        suggestion.metadata.source === "inline-create",
+    ),
+    "Inline suggestions must offer typed entity creation through wiki syntax.",
   );
 }
 
