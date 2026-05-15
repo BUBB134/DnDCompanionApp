@@ -46,6 +46,7 @@ If you want to try a different user during local development, update the bootstr
 - `npm run db:migrate:supabase` applies migrations after verifying the configured Supabase project and SSL mode.
 - `npm run db:check:supabase` verifies the configured Supabase project and runs a live connection check.
 - `npm run env:check -- --env=production --strict` validates production integration environment wiring.
+- `npm run env:check:supabase -- --env=preview` validates required Supabase provider variables for an environment.
 - `npm run dev` starts the web app locally.
 - `npm run build` builds shared packages and the web app.
 - `npm run lint` runs ESLint.
@@ -86,6 +87,7 @@ The MVP production contract is documented in `docs/engineering/production-integr
 - Deploy the monorepo through Vercel using `vercel.json`.
 - Configure preview with `NEXT_PUBLIC_APP_ENV=preview` and production with `NEXT_PUBLIC_APP_ENV=production`.
 - Set `DATABASE_URL`, `DATABASE_POOL_MAX`, `AUTH_SESSION_SECRET`, and AI/observability secrets in Vercel and matching GitHub environments.
+- Set `APP_BASE_URL`, `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, and `SUPABASE_SERVICE_ROLE_KEY` in preview and production.
 - Use `npm run env:check -- --env=production --strict` and `npm run db:check:supabase` to validate environment wiring before promotion.
 
 ## Workspace Layout

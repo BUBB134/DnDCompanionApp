@@ -17,9 +17,13 @@ const requiredFiles = [
 
 const requiredEnvKeys = [
   "NEXT_PUBLIC_APP_ENV",
+  "APP_BASE_URL",
+  "NEXT_PUBLIC_SUPABASE_URL",
+  "NEXT_PUBLIC_SUPABASE_ANON_KEY",
   "NEXT_PUBLIC_SENTRY_DSN",
   "AUTH_PROVIDER",
   "AUTH_SESSION_SECRET",
+  "SUPABASE_SERVICE_ROLE_KEY",
   "DATABASE_CONNECTION_TIMEOUT_MS",
   "DATABASE_IDLE_TIMEOUT_MS",
   "DATABASE_POOL_MAX",
@@ -44,6 +48,13 @@ expect(
   "Missing env:check root script.",
 );
 expect(
+  rootPackage.scripts?.["env:check:supabase"]?.includes("--require-supabase") &&
+    rootPackage.scripts?.["env:check:supabase"]?.includes(
+      "--supabase-project=egrmvhfroiumcodkotjv",
+    ),
+  "Missing env:check:supabase root script.",
+);
+expect(
   rootPackage.scripts?.["deploy:check"] === "node scripts/check-deployment.mjs",
   "Missing deploy:check root script.",
 );
@@ -61,8 +72,13 @@ const envPackage = readText("packages/env/src/index.ts");
 for (const snippet of [
   "assertValidRuntimeEnv",
   "validateRuntimeEnv",
+  "APP_BASE_URL",
   "AUTH_SESSION_SECRET",
   "DATABASE_POOL_MAX",
+  "NEXT_PUBLIC_SUPABASE_URL",
+  "SUPABASE_SERVICE_ROLE_KEY",
+  "sb_publishable_",
+  "safeDecodeURIComponent",
   "OBSERVABILITY_PROVIDER",
   "STORAGE_PROVIDER",
   "BLOB_READ_WRITE_TOKEN",
@@ -89,6 +105,8 @@ const smokeWorkflow = readText(".github/workflows/integration-smoke.yml");
 for (const snippet of [
   "workflow_dispatch:",
   "environment: ${{ inputs.target }}",
+  "APP_BASE_URL: ${{ vars.APP_BASE_URL }}",
+  "SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}",
   "run: npm run env:check -- --strict",
   "run: npm run db:check:supabase",
 ]) {
@@ -140,6 +158,10 @@ for (const snippet of [
 const productionEnvCheck = readText("scripts/check-production-env.mjs");
 for (const snippet of [
   "DATABASE_POOL_MAX",
+  "NEXT_PUBLIC_SUPABASE_URL",
+  "SUPABASE_SERVICE_ROLE_KEY",
+  "sb_publishable_",
+  "safeDecodeURIComponent",
   "sslmode=require",
   "must replace the placeholder database password",
 ]) {
@@ -158,6 +180,7 @@ for (const snippet of [
   "OpenAI",
   "Sentry",
   "`npm run env:check -- --env=production --strict`",
+  "`npm run env:check:supabase -- --env=preview`",
   "`npm run db:migrate:supabase`",
 ]) {
   expect(

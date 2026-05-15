@@ -9,11 +9,14 @@ export type EnvSource = Record<string, string | undefined>;
 
 export type PublicEnv = {
   NEXT_PUBLIC_APP_ENV: AppEnvironment;
+  NEXT_PUBLIC_SUPABASE_ANON_KEY?: string;
+  NEXT_PUBLIC_SUPABASE_URL?: string;
   NEXT_PUBLIC_SENTRY_DSN?: string;
 };
 
 export type ServerEnv = {
   AI_GROUNDING_MODE: GroundingMode;
+  APP_BASE_URL?: string;
   AUTH_PROVIDER: AuthProvider;
   AUTH_SESSION_SECRET?: string;
   BLOB_READ_WRITE_TOKEN?: string;
@@ -27,6 +30,7 @@ export type ServerEnv = {
   OPENAI_MODEL?: string;
   SENTRY_DSN?: string;
   STORAGE_PROVIDER: StorageProvider;
+  SUPABASE_SERVICE_ROLE_KEY?: string;
   VERCEL_ENV?: string;
 };
 
@@ -43,6 +47,13 @@ const observabilityProviders = ["console", "sentry"] as const;
 const storageProviders = ["none", "vercel-blob"] as const;
 const nonLocalAppEnvironments = new Set<AppEnvironment>(["preview", "production"]);
 const postgresProtocols = new Set(["postgres:", "postgresql:"]);
+const secureSslModes = new Set(["require", "verify-ca", "verify-full"]);
+const supabaseProjectRef = "egrmvhfroiumcodkotjv";
+const supabaseProjectUrl = `https://${supabaseProjectRef}.supabase.co`;
+const supabaseDirectHost = `db.${supabaseProjectRef}.supabase.co`;
+const supabasePoolerHostSuffix = ".pooler.supabase.com";
+const supabaseAnonKeyPrefixes = ["sb_publishable_"] as const;
+const supabaseServiceKeyPrefixes = ["sb_secret_"] as const;
 
 export function readPublicEnv(source: EnvSource): PublicEnv {
   return {
@@ -51,6 +62,10 @@ export function readPublicEnv(source: EnvSource): PublicEnv {
       appEnvironments,
       inferAppEnvironment(source),
     ),
+    NEXT_PUBLIC_SUPABASE_ANON_KEY: emptyToUndefined(
+      source.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+    ),
+    NEXT_PUBLIC_SUPABASE_URL: emptyToUndefined(source.NEXT_PUBLIC_SUPABASE_URL),
     NEXT_PUBLIC_SENTRY_DSN: emptyToUndefined(source.NEXT_PUBLIC_SENTRY_DSN),
   };
 }
@@ -58,6 +73,7 @@ export function readPublicEnv(source: EnvSource): PublicEnv {
 export function readServerEnv(source: EnvSource): ServerEnv {
   return {
     AI_GROUNDING_MODE: pickValue(source.AI_GROUNDING_MODE, groundingModes, "disabled"),
+    APP_BASE_URL: emptyToUndefined(source.APP_BASE_URL),
     AUTH_PROVIDER: pickValue(source.AUTH_PROVIDER, authProviders, "local"),
     AUTH_SESSION_SECRET: emptyToUndefined(source.AUTH_SESSION_SECRET),
     BLOB_READ_WRITE_TOKEN: emptyToUndefined(source.BLOB_READ_WRITE_TOKEN),
@@ -75,6 +91,7 @@ export function readServerEnv(source: EnvSource): ServerEnv {
     OPENAI_MODEL: emptyToUndefined(source.OPENAI_MODEL),
     SENTRY_DSN: emptyToUndefined(source.SENTRY_DSN),
     STORAGE_PROVIDER: pickValue(source.STORAGE_PROVIDER, storageProviders, "none"),
+    SUPABASE_SERVICE_ROLE_KEY: emptyToUndefined(source.SUPABASE_SERVICE_ROLE_KEY),
     VERCEL_ENV: emptyToUndefined(source.VERCEL_ENV),
   };
 }
@@ -103,8 +120,28 @@ export function validateRuntimeEnv(source: EnvSource): RuntimeEnvValidationIssue
   const serverEnv = readServerEnv(source);
 
   if (isNonLocalAppEnvironment(publicEnv.NEXT_PUBLIC_APP_ENV)) {
+    requireValue("APP_BASE_URL", serverEnv.APP_BASE_URL, issues);
     requireValue("DATABASE_URL", serverEnv.DATABASE_URL, issues);
     requireValue("AUTH_SESSION_SECRET", serverEnv.AUTH_SESSION_SECRET, issues);
+    requireValue(
+      "NEXT_PUBLIC_SUPABASE_URL",
+      publicEnv.NEXT_PUBLIC_SUPABASE_URL,
+      issues,
+    );
+    requireValue(
+      "NEXT_PUBLIC_SUPABASE_ANON_KEY",
+      publicEnv.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+      issues,
+    );
+    requireValue(
+      "SUPABASE_SERVICE_ROLE_KEY",
+      serverEnv.SUPABASE_SERVICE_ROLE_KEY,
+      issues,
+    );
+  }
+
+  if (serverEnv.APP_BASE_URL) {
+    validateAppBaseUrl("APP_BASE_URL", serverEnv.APP_BASE_URL, issues);
   }
 
   if (
@@ -118,8 +155,36 @@ export function validateRuntimeEnv(source: EnvSource): RuntimeEnvValidationIssue
   }
 
   if (serverEnv.DATABASE_URL) {
-    validatePostgresUrl("DATABASE_URL", serverEnv.DATABASE_URL, issues);
+    validatePostgresUrl(
+      "DATABASE_URL",
+      serverEnv.DATABASE_URL,
+      publicEnv.NEXT_PUBLIC_APP_ENV,
+      issues,
+    );
   }
+
+  if (publicEnv.NEXT_PUBLIC_SUPABASE_URL) {
+    validateSupabaseProjectUrl(
+      "NEXT_PUBLIC_SUPABASE_URL",
+      publicEnv.NEXT_PUBLIC_SUPABASE_URL,
+      issues,
+    );
+  }
+
+  validateSupabaseKey(
+    "NEXT_PUBLIC_SUPABASE_ANON_KEY",
+    publicEnv.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+    supabaseAnonKeyPrefixes,
+    "a Supabase anon JWT or publishable key",
+    issues,
+  );
+  validateSupabaseKey(
+    "SUPABASE_SERVICE_ROLE_KEY",
+    serverEnv.SUPABASE_SERVICE_ROLE_KEY,
+    supabaseServiceKeyPrefixes,
+    "a Supabase service-role JWT or secret key",
+    issues,
+  );
 
   validateOptionalPositiveInteger(
     "DATABASE_POOL_MAX",
@@ -260,6 +325,7 @@ function validateVercelEnvironment(
 function validatePostgresUrl(
   key: string,
   value: string,
+  appEnvironment: AppEnvironment,
   issues: RuntimeEnvValidationIssue[],
 ) {
   let parsedUrl: URL;
@@ -294,6 +360,16 @@ function validatePostgresUrl(
       message: `${key} for Supabase must include sslmode=require, sslmode=verify-ca, or sslmode=verify-full.`,
     });
   }
+
+  if (
+    isNonLocalAppEnvironment(appEnvironment) &&
+    !matchesSupabaseProject(parsedUrl, supabaseProjectRef)
+  ) {
+    issues.push({
+      key,
+      message: `${key} must target Supabase project ${supabaseProjectRef}. Use ${supabaseDirectHost} or the matching Supabase pooler endpoint.`,
+    });
+  }
 }
 
 function validateUrl(
@@ -307,6 +383,94 @@ function validateUrl(
     issues.push({
       key,
       message: `${key} must be a valid URL.`,
+    });
+  }
+}
+
+function validateAppBaseUrl(
+  key: string,
+  value: string,
+  issues: RuntimeEnvValidationIssue[],
+) {
+  let parsedUrl: URL;
+
+  try {
+    parsedUrl = new URL(value);
+  } catch {
+    issues.push({
+      key,
+      message: `${key} must be a valid URL.`,
+    });
+    return;
+  }
+
+  if (parsedUrl.protocol !== "http:" && parsedUrl.protocol !== "https:") {
+    issues.push({
+      key,
+      message: `${key} must start with http:// or https://.`,
+    });
+  }
+
+  if (
+    parsedUrl.pathname !== "/" ||
+    parsedUrl.search.length > 0 ||
+    parsedUrl.hash.length > 0
+  ) {
+    issues.push({
+      key,
+      message: `${key} must be an origin without a path, query string, or hash.`,
+    });
+  }
+}
+
+function validateSupabaseProjectUrl(
+  key: string,
+  value: string,
+  issues: RuntimeEnvValidationIssue[],
+) {
+  let parsedUrl: URL;
+
+  try {
+    parsedUrl = new URL(value);
+  } catch {
+    issues.push({
+      key,
+      message: `${key} must be a valid Supabase project URL.`,
+    });
+    return;
+  }
+
+  if (parsedUrl.toString().replace(/\/$/u, "") !== supabaseProjectUrl) {
+    issues.push({
+      key,
+      message: `${key} must be ${supabaseProjectUrl}.`,
+    });
+  }
+}
+
+function validateSupabaseKey(
+  key: string,
+  value: string | undefined,
+  allowedModernPrefixes: readonly string[],
+  expectedDescription: string,
+  issues: RuntimeEnvValidationIssue[],
+) {
+  if (!value) {
+    return;
+  }
+
+  if (hasPlaceholderSecret(value)) {
+    issues.push({
+      key,
+      message: `${key} must replace the placeholder Supabase key before use.`,
+    });
+    return;
+  }
+
+  if (!isJwtLikeValue(value) && !hasAllowedPrefix(value, allowedModernPrefixes)) {
+    issues.push({
+      key,
+      message: `${key} must be ${expectedDescription}.`,
     });
   }
 }
@@ -341,13 +505,50 @@ function hasPlaceholderSecret(value: string) {
 function isSupabasePostgresHost(hostname: string) {
   return (
     hostname.endsWith(".supabase.co") ||
-    hostname.endsWith(".pooler.supabase.com")
+    hostname.endsWith(supabasePoolerHostSuffix)
   );
 }
 
 function hasRequiredSslMode(parsedUrl: URL) {
-  const sslMode = parsedUrl.searchParams.get("sslmode");
+  return secureSslModes.has(parsedUrl.searchParams.get("sslmode") ?? "");
+}
 
-  return sslMode === "require" || sslMode === "verify-ca" || sslMode === "verify-full";
+function matchesSupabaseProject(parsedUrl: URL, projectRef: string) {
+  const normalizedHostname = parsedUrl.hostname.toLowerCase();
+  const normalizedProjectRef = projectRef.toLowerCase();
+
+  if (normalizedHostname === `db.${normalizedProjectRef}.supabase.co`) {
+    return true;
+  }
+
+  if (!normalizedHostname.endsWith(supabasePoolerHostSuffix)) {
+    return false;
+  }
+
+  const decodedUsername = safeDecodeURIComponent(parsedUrl.username);
+
+  if (!decodedUsername) {
+    return false;
+  }
+
+  const normalizedUsername = decodedUsername.toLowerCase();
+
+  return normalizedUsername === `postgres.${normalizedProjectRef}`;
+}
+
+function isJwtLikeValue(value: string) {
+  return /^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/u.test(value);
+}
+
+function hasAllowedPrefix(value: string, allowedPrefixes: readonly string[]) {
+  return allowedPrefixes.some((prefix) => value.startsWith(prefix));
+}
+
+function safeDecodeURIComponent(value: string) {
+  try {
+    return decodeURIComponent(value);
+  } catch {
+    return undefined;
+  }
 }
 
