@@ -8,6 +8,9 @@ const logLevels = ["debug", "error", "info", "warn"];
 const observabilityProviders = ["console", "sentry"];
 const storageProviders = ["none", "vercel-blob"];
 const databaseProtocols = new Set(["postgres:", "postgresql:"]);
+const secureSslModes = new Set(["require", "verify-ca", "verify-full"]);
+const defaultSupabaseProjectRef = "egrmvhfroiumcodkotjv";
+const supabasePoolerHostSuffix = ".pooler.supabase.com";
 const envFiles = [".env", ".env.local", "apps/web/.env.local"];
 
 const options = parseOptions(process.argv.slice(2));
@@ -36,7 +39,7 @@ console.log(
   `Production integration environment check passed for ${resolvedEnvironment}.`,
 );
 
-function validateEnvironment(source, { strict }) {
+function validateEnvironment(source, { strict, supabaseProject }) {
   const issues = [];
   const appEnvironment = pickValue(
     source.NEXT_PUBLIC_APP_ENV,
@@ -65,8 +68,31 @@ function validateEnvironment(source, { strict }) {
   validateVercelEnvironment(source, issues);
 
   if (appEnvironment !== "local") {
+    requireValue("APP_BASE_URL", source.APP_BASE_URL, issues);
     requireValue("DATABASE_URL", source.DATABASE_URL, issues);
     requireValue("AUTH_SESSION_SECRET", source.AUTH_SESSION_SECRET, issues);
+    requireValue("NEXT_PUBLIC_SUPABASE_URL", source.NEXT_PUBLIC_SUPABASE_URL, issues);
+    requireValue(
+      "NEXT_PUBLIC_SUPABASE_ANON_KEY",
+      source.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+      issues,
+    );
+    requireValue("SUPABASE_SERVICE_ROLE_KEY", source.SUPABASE_SERVICE_ROLE_KEY, issues);
+  }
+
+  if (strict) {
+    requireValue("APP_BASE_URL", source.APP_BASE_URL, issues);
+    requireValue("NEXT_PUBLIC_SUPABASE_URL", source.NEXT_PUBLIC_SUPABASE_URL, issues);
+    requireValue(
+      "NEXT_PUBLIC_SUPABASE_ANON_KEY",
+      source.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+      issues,
+    );
+    requireValue("SUPABASE_SERVICE_ROLE_KEY", source.SUPABASE_SERVICE_ROLE_KEY, issues);
+  }
+
+  if (readValue(source.APP_BASE_URL).length > 0) {
+    validateAppBaseUrl("APP_BASE_URL", source.APP_BASE_URL, issues);
   }
 
   if (readValue(source.AUTH_SESSION_SECRET).length > 0) {
@@ -74,8 +100,28 @@ function validateEnvironment(source, { strict }) {
   }
 
   if (readValue(source.DATABASE_URL).length > 0) {
-    validatePostgresUrl("DATABASE_URL", source.DATABASE_URL, issues);
+    validatePostgresUrl(
+      "DATABASE_URL",
+      source.DATABASE_URL,
+      appEnvironment,
+      supabaseProject,
+      issues,
+    );
   }
+  if (readValue(source.NEXT_PUBLIC_SUPABASE_URL).length > 0) {
+    validateSupabaseProjectUrl(
+      "NEXT_PUBLIC_SUPABASE_URL",
+      source.NEXT_PUBLIC_SUPABASE_URL,
+      supabaseProject,
+      issues,
+    );
+  }
+  validateSupabaseKey(
+    "NEXT_PUBLIC_SUPABASE_ANON_KEY",
+    source.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+    issues,
+  );
+  validateSupabaseKey("SUPABASE_SERVICE_ROLE_KEY", source.SUPABASE_SERVICE_ROLE_KEY, issues);
   validateOptionalPositiveInteger("DATABASE_POOL_MAX", source.DATABASE_POOL_MAX, issues);
   validateOptionalPositiveInteger(
     "DATABASE_CONNECTION_TIMEOUT_MS",
@@ -113,6 +159,7 @@ function validateEnvironment(source, { strict }) {
 
 function parseOptions(args) {
   const targetEnvironment = readOption(args, "--env");
+  const supabaseProject = readOption(args, "--supabase-project") ?? defaultSupabaseProjectRef;
 
   if (targetEnvironment && !appEnvironments.includes(targetEnvironment)) {
     throw new Error(`--env must be one of: ${appEnvironments.join(", ")}`);
@@ -120,6 +167,7 @@ function parseOptions(args) {
 
   return {
     strict: args.includes("--strict"),
+    supabaseProject,
     targetEnvironment,
   };
 }
@@ -269,7 +317,7 @@ function validateMinimumLength(key, value, minimumLength, issues) {
   }
 }
 
-function validatePostgresUrl(key, value, issues) {
+function validatePostgresUrl(key, value, appEnvironment, supabaseProject, issues) {
   let parsedUrl;
 
   try {
@@ -302,6 +350,16 @@ function validatePostgresUrl(key, value, issues) {
       message: `${key} for Supabase must include sslmode=require, sslmode=verify-ca, or sslmode=verify-full.`,
     });
   }
+
+  if (
+    appEnvironment !== "local" &&
+    !matchesSupabaseProject(parsedUrl, supabaseProject)
+  ) {
+    issues.push({
+      key,
+      message: `${key} must target Supabase project ${supabaseProject}. Use db.${supabaseProject}.supabase.co or the matching Supabase pooler endpoint.`,
+    });
+  }
 }
 
 function validateUrl(key, value, issues) {
@@ -311,6 +369,82 @@ function validateUrl(key, value, issues) {
     issues.push({
       key,
       message: `${key} must be a valid URL.`,
+    });
+  }
+}
+
+function validateAppBaseUrl(key, value, issues) {
+  let parsedUrl;
+
+  try {
+    parsedUrl = new URL(value);
+  } catch {
+    issues.push({
+      key,
+      message: `${key} must be a valid URL.`,
+    });
+    return;
+  }
+
+  if (parsedUrl.protocol !== "http:" && parsedUrl.protocol !== "https:") {
+    issues.push({
+      key,
+      message: `${key} must start with http:// or https://.`,
+    });
+  }
+
+  if (
+    parsedUrl.pathname !== "/" ||
+    parsedUrl.search.length > 0 ||
+    parsedUrl.hash.length > 0
+  ) {
+    issues.push({
+      key,
+      message: `${key} must be an origin without a path, query string, or hash.`,
+    });
+  }
+}
+
+function validateSupabaseProjectUrl(key, value, supabaseProject, issues) {
+  let parsedUrl;
+
+  try {
+    parsedUrl = new URL(value);
+  } catch {
+    issues.push({
+      key,
+      message: `${key} must be a valid Supabase project URL.`,
+    });
+    return;
+  }
+
+  const expectedUrl = `https://${supabaseProject}.supabase.co`;
+
+  if (parsedUrl.toString().replace(/\/$/u, "") !== expectedUrl) {
+    issues.push({
+      key,
+      message: `${key} must be ${expectedUrl}.`,
+    });
+  }
+}
+
+function validateSupabaseKey(key, value, issues) {
+  if (readValue(value).length === 0) {
+    return;
+  }
+
+  if (hasPlaceholderSecret(value)) {
+    issues.push({
+      key,
+      message: `${key} must replace the placeholder Supabase key before use.`,
+    });
+    return;
+  }
+
+  if (!isJwtLikeValue(value)) {
+    issues.push({
+      key,
+      message: `${key} must look like a Supabase JWT key.`,
     });
   }
 }
@@ -341,12 +475,30 @@ function hasPlaceholderSecret(value) {
 function isSupabasePostgresHost(hostname) {
   return (
     hostname.endsWith(".supabase.co") ||
-    hostname.endsWith(".pooler.supabase.com")
+    hostname.endsWith(supabasePoolerHostSuffix)
   );
 }
 
 function hasRequiredSslMode(parsedUrl) {
-  const sslMode = parsedUrl.searchParams.get("sslmode");
+  return secureSslModes.has(parsedUrl.searchParams.get("sslmode") ?? "");
+}
 
-  return sslMode === "require" || sslMode === "verify-ca" || sslMode === "verify-full";
+function matchesSupabaseProject(parsedUrl, projectRef) {
+  const normalizedHostname = parsedUrl.hostname.toLowerCase();
+  const normalizedProjectRef = projectRef.toLowerCase();
+  const normalizedUsername = decodeURIComponent(parsedUrl.username).toLowerCase();
+
+  if (normalizedHostname === `db.${normalizedProjectRef}.supabase.co`) {
+    return true;
+  }
+
+  if (!normalizedHostname.endsWith(supabasePoolerHostSuffix)) {
+    return false;
+  }
+
+  return normalizedUsername === `postgres.${normalizedProjectRef}`;
+}
+
+function isJwtLikeValue(value) {
+  return /^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/u.test(value);
 }

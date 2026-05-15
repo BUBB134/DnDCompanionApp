@@ -7,7 +7,8 @@ DND-18 establishes the MVP vendor and environment contract. It does not provisio
 | Concern | MVP vendor/configuration | Notes |
 | --- | --- | --- |
 | Deployment | Vercel | `vercel.json` pins the root install, build, and dev commands used by the monorepo. Preview deployments should map to `NEXT_PUBLIC_APP_ENV=preview`; production should map to `NEXT_PUBLIC_APP_ENV=production`. The runtime also infers preview/production from Vercel's `VERCEL_ENV` when the public flag is absent. |
-| Database | Supabase Postgres | Use project `egrmvhfroiumcodkotjv` with a direct or pooler Postgres URL stored only in environment secrets. `DATABASE_URL` must use `postgres://` or `postgresql://` and include `sslmode=require`. See `docs/engineering/supabase-postgres.md`. |
+| Supabase project | Supabase | Use project `egrmvhfroiumcodkotjv` for the public project URL, anon key, service role key, and Postgres URL. Store anon key as an environment variable and the service role key as a server-only secret. |
+| Database | Supabase Postgres | Use project `egrmvhfroiumcodkotjv` with a direct or pooler Postgres URL stored only in environment secrets. `DATABASE_URL` must use `postgres://` or `postgresql://`, target the project, and include `sslmode=require`. See `docs/engineering/supabase-postgres.md`. |
 | Migrations | Repository SQL migrations | Run `npm run db:migrate:supabase` against preview before promotion and production during release. The migration runner records applied files in `schema_migrations` and wraps each migration in a transaction. |
 | Auth | Local signed session provider | `AUTH_PROVIDER=local` is the only supported MVP provider. Preview and production require `AUTH_SESSION_SECRET` so local auth cookies are HMAC-signed. |
 | AI | OpenAI API | Set `AI_GROUNDING_MODE=retrieval` only when `OPENAI_API_KEY` is present. Keep model choice in `OPENAI_MODEL` so rate limits and cost can be adjusted per environment. |
@@ -34,9 +35,13 @@ Keep the linked `.vercel/project.json` file local and untracked. Contributors ca
 | Variable | Scope | Required | Purpose |
 | --- | --- | --- | --- |
 | `NEXT_PUBLIC_APP_ENV` | Browser/server | All environments | `local`, `preview`, or `production`. Controls strict runtime validation. |
+| `APP_BASE_URL` | Server | Preview/production, strict smoke | Canonical app origin such as `https://dnd-companion.example.com`. Use this origin when configuring Supabase auth redirect allow-lists. |
+| `NEXT_PUBLIC_SUPABASE_URL` | Browser/server | Preview/production, strict smoke | Supabase project API URL. Must be `https://egrmvhfroiumcodkotjv.supabase.co`. |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Browser/server | Preview/production, strict smoke | Supabase anon JWT key for browser-safe future client access. RLS remains the data boundary. |
 | `NEXT_PUBLIC_SENTRY_DSN` | Browser | Optional | Browser-safe Sentry DSN when client reporting is enabled. |
 | `AUTH_PROVIDER` | Server | All environments | Currently `local`. |
 | `AUTH_SESSION_SECRET` | Server secret | Preview/production | Secret used to sign auth session cookies. Minimum 32 characters. |
+| `SUPABASE_SERVICE_ROLE_KEY` | Server secret | Preview/production, strict smoke | Supabase service role JWT for server-only maintenance and future privileged data paths. Never expose to client components. |
 | `DATABASE_URL` | Server secret | Preview/production/local Supabase dev | Supabase Postgres connection string for app data and migrations. Must keep `sslmode=require`. |
 | `DATABASE_POOL_MAX` | Server | Optional | Max app connection pool size. Start at `3` for preview and `5` for production. |
 | `DATABASE_CONNECTION_TIMEOUT_MS` | Server | Optional | Postgres connection timeout in milliseconds. Defaults to `10000`. |
@@ -54,11 +59,12 @@ Keep the linked `.vercel/project.json` file local and untracked. Contributors ca
 
 1. Create Vercel preview and production environments for the repository.
 2. Configure preview with `NEXT_PUBLIC_APP_ENV=preview` and production with `NEXT_PUBLIC_APP_ENV=production`.
-3. Add environment-specific `DATABASE_URL`, `DATABASE_POOL_MAX`, `AUTH_SESSION_SECRET`, and OpenAI secrets in Vercel.
-4. Add the same secret names to GitHub environments named `preview` and `production` for the manual Integration Smoke workflow.
-5. Run `npm run env:check -- --env=production --strict` locally or in the deployment shell before first release.
-6. Run `npm run db:migrate:supabase` against preview, validate with `npm run db:check:supabase`, then repeat for production during release.
-7. After Vercel reports the deployment ready, run `npm run deploy:check -- --url=<deployment-url> --expect-env=preview` or `npm run deploy:check -- --url=<deployment-url> --expect-env=production`.
+3. Add environment-specific `APP_BASE_URL`, `DATABASE_URL`, `DATABASE_POOL_MAX`, `AUTH_SESSION_SECRET`, `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, and OpenAI secrets in Vercel.
+4. Add the same variable and secret names to GitHub environments named `preview` and `production` for the manual Integration Smoke workflow.
+5. In Supabase Auth settings, allow the local, preview, and production app origins from `APP_BASE_URL`; future callback routes should stay on those origins.
+6. Run `npm run env:check:supabase -- --env=preview` and `npm run env:check -- --env=production --strict` locally or in the deployment shell before first release.
+7. Run `npm run db:migrate:supabase` against preview, validate with `npm run db:check:supabase`, then repeat for production during release.
+8. After Vercel reports the deployment ready, run `npm run deploy:check -- --url=<deployment-url> --expect-env=preview` or `npm run deploy:check -- --url=<deployment-url> --expect-env=production`.
 
 ## CI and smoke checks
 
@@ -68,6 +74,7 @@ The `Integration Smoke` workflow is manual because it uses protected GitHub envi
 
 ```bash
 npm run env:check -- --strict
+npm run env:check:supabase -- --env=preview
 npm run db:check:supabase
 ```
 
@@ -83,7 +90,7 @@ Use the preview deployment URL from the pull request for `preview`, and the prod
 
 ## Runtime validation
 
-The web app calls `assertValidRuntimeEnv(process.env)` during server startup. Local development defaults are permissive. Preview and production fail fast when critical configuration is missing or malformed, including unsigned auth sessions, invalid Postgres URLs, retrieval mode without OpenAI credentials, Sentry mode without a DSN, or blob storage without a token.
+The web app calls `assertValidRuntimeEnv(process.env)` during server startup. Local development defaults are permissive. Preview and production fail fast when critical configuration is missing or malformed, including unsigned auth sessions, missing Supabase project URL or keys, invalid Postgres URLs, retrieval mode without OpenAI credentials, Sentry mode without a DSN, or blob storage without a token.
 
 The deployed `/api/health` route performs the same runtime environment validation and then runs a minimal `select 1` against the configured database. Failures are surfaced as HTTP 503 and logged in Vercel runtime logs for debugging without returning raw credentials or connection strings to the caller.
 
