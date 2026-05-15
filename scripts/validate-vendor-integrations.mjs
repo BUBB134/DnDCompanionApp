@@ -48,9 +48,10 @@ expect(
   "Missing env:check root script.",
 );
 expect(
-  rootPackage.scripts?.["env:check:supabase"]?.includes(
-    "--supabase-project=egrmvhfroiumcodkotjv",
-  ),
+  rootPackage.scripts?.["env:check:supabase"]?.includes("--require-supabase") &&
+    rootPackage.scripts?.["env:check:supabase"]?.includes(
+      "--supabase-project=egrmvhfroiumcodkotjv",
+    ),
   "Missing env:check:supabase root script.",
 );
 expect(
@@ -76,6 +77,8 @@ for (const snippet of [
   "DATABASE_POOL_MAX",
   "NEXT_PUBLIC_SUPABASE_URL",
   "SUPABASE_SERVICE_ROLE_KEY",
+  "sb_publishable_",
+  "safeDecodeURIComponent",
   "OBSERVABILITY_PROVIDER",
   "STORAGE_PROVIDER",
   "BLOB_READ_WRITE_TOKEN",
@@ -157,6 +160,8 @@ for (const snippet of [
   "DATABASE_POOL_MAX",
   "NEXT_PUBLIC_SUPABASE_URL",
   "SUPABASE_SERVICE_ROLE_KEY",
+  "sb_publishable_",
+  "safeDecodeURIComponent",
   "sslmode=require",
   "must replace the placeholder database password",
 ]) {

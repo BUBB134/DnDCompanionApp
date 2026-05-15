@@ -52,6 +52,8 @@ const supabaseProjectRef = "egrmvhfroiumcodkotjv";
 const supabaseProjectUrl = `https://${supabaseProjectRef}.supabase.co`;
 const supabaseDirectHost = `db.${supabaseProjectRef}.supabase.co`;
 const supabasePoolerHostSuffix = ".pooler.supabase.com";
+const supabaseAnonKeyPrefixes = ["sb_publishable_"] as const;
+const supabaseServiceKeyPrefixes = ["sb_secret_"] as const;
 
 export function readPublicEnv(source: EnvSource): PublicEnv {
   return {
@@ -172,11 +174,15 @@ export function validateRuntimeEnv(source: EnvSource): RuntimeEnvValidationIssue
   validateSupabaseKey(
     "NEXT_PUBLIC_SUPABASE_ANON_KEY",
     publicEnv.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+    supabaseAnonKeyPrefixes,
+    "a Supabase anon JWT or publishable key",
     issues,
   );
   validateSupabaseKey(
     "SUPABASE_SERVICE_ROLE_KEY",
     serverEnv.SUPABASE_SERVICE_ROLE_KEY,
+    supabaseServiceKeyPrefixes,
+    "a Supabase service-role JWT or secret key",
     issues,
   );
 
@@ -445,6 +451,8 @@ function validateSupabaseProjectUrl(
 function validateSupabaseKey(
   key: string,
   value: string | undefined,
+  allowedModernPrefixes: readonly string[],
+  expectedDescription: string,
   issues: RuntimeEnvValidationIssue[],
 ) {
   if (!value) {
@@ -459,10 +467,10 @@ function validateSupabaseKey(
     return;
   }
 
-  if (!isJwtLikeValue(value)) {
+  if (!isJwtLikeValue(value) && !hasAllowedPrefix(value, allowedModernPrefixes)) {
     issues.push({
       key,
-      message: `${key} must look like a Supabase JWT key.`,
+      message: `${key} must be ${expectedDescription}.`,
     });
   }
 }
@@ -508,7 +516,6 @@ function hasRequiredSslMode(parsedUrl: URL) {
 function matchesSupabaseProject(parsedUrl: URL, projectRef: string) {
   const normalizedHostname = parsedUrl.hostname.toLowerCase();
   const normalizedProjectRef = projectRef.toLowerCase();
-  const normalizedUsername = decodeURIComponent(parsedUrl.username).toLowerCase();
 
   if (normalizedHostname === `db.${normalizedProjectRef}.supabase.co`) {
     return true;
@@ -518,10 +525,30 @@ function matchesSupabaseProject(parsedUrl: URL, projectRef: string) {
     return false;
   }
 
+  const decodedUsername = safeDecodeURIComponent(parsedUrl.username);
+
+  if (!decodedUsername) {
+    return false;
+  }
+
+  const normalizedUsername = decodedUsername.toLowerCase();
+
   return normalizedUsername === `postgres.${normalizedProjectRef}`;
 }
 
 function isJwtLikeValue(value: string) {
   return /^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/u.test(value);
+}
+
+function hasAllowedPrefix(value: string, allowedPrefixes: readonly string[]) {
+  return allowedPrefixes.some((prefix) => value.startsWith(prefix));
+}
+
+function safeDecodeURIComponent(value: string) {
+  try {
+    return decodeURIComponent(value);
+  } catch {
+    return undefined;
+  }
 }
 

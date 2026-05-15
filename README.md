@@ -46,7 +46,7 @@ If you want to try a different user during local development, update the bootstr
 - `npm run db:migrate:supabase` applies migrations after verifying the configured Supabase project and SSL mode.
 - `npm run db:check:supabase` verifies the configured Supabase project and runs a live connection check.
 - `npm run env:check -- --env=production --strict` validates production integration environment wiring.
-- `npm run env:check:supabase -- --env=preview` validates strict Supabase provider variables for an environment.
+- `npm run env:check:supabase -- --env=preview` validates required Supabase provider variables for an environment.
 - `npm run dev` starts the web app locally.
 - `npm run build` builds shared packages and the web app.
 - `npm run lint` runs ESLint.

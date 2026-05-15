@@ -37,11 +37,11 @@ Keep the linked `.vercel/project.json` file local and untracked. Contributors ca
 | `NEXT_PUBLIC_APP_ENV` | Browser/server | All environments | `local`, `preview`, or `production`. Controls strict runtime validation. |
 | `APP_BASE_URL` | Server | Preview/production, strict smoke | Canonical app origin such as `https://dnd-companion.example.com`. Use this origin when configuring Supabase auth redirect allow-lists. |
 | `NEXT_PUBLIC_SUPABASE_URL` | Browser/server | Preview/production, strict smoke | Supabase project API URL. Must be `https://egrmvhfroiumcodkotjv.supabase.co`. |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Browser/server | Preview/production, strict smoke | Supabase anon JWT key for browser-safe future client access. RLS remains the data boundary. |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Browser/server | Preview/production, strict smoke | Supabase publishable key (`sb_publishable_...`) or legacy anon JWT for browser-safe future client access. RLS remains the data boundary. |
 | `NEXT_PUBLIC_SENTRY_DSN` | Browser | Optional | Browser-safe Sentry DSN when client reporting is enabled. |
 | `AUTH_PROVIDER` | Server | All environments | Currently `local`. |
 | `AUTH_SESSION_SECRET` | Server secret | Preview/production | Secret used to sign auth session cookies. Minimum 32 characters. |
-| `SUPABASE_SERVICE_ROLE_KEY` | Server secret | Preview/production, strict smoke | Supabase service role JWT for server-only maintenance and future privileged data paths. Never expose to client components. |
+| `SUPABASE_SERVICE_ROLE_KEY` | Server secret | Preview/production, strict smoke | Supabase secret key (`sb_secret_...`) or legacy service role JWT for server-only maintenance and future privileged data paths. Never expose to client components. |
 | `DATABASE_URL` | Server secret | Preview/production/local Supabase dev | Supabase Postgres connection string for app data and migrations. Must keep `sslmode=require`. |
 | `DATABASE_POOL_MAX` | Server | Optional | Max app connection pool size. Start at `3` for preview and `5` for production. |
 | `DATABASE_CONNECTION_TIMEOUT_MS` | Server | Optional | Postgres connection timeout in milliseconds. Defaults to `10000`. |

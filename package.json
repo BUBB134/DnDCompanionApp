@@ -20,7 +20,7 @@
     "deploy:check": "node scripts/check-deployment.mjs",
     "dev": "npm --workspace @dnd/web run dev",
     "env:check": "node scripts/check-production-env.mjs",
-    "env:check:supabase": "node scripts/check-production-env.mjs --strict --supabase-project=egrmvhfroiumcodkotjv",
+    "env:check:supabase": "node scripts/check-production-env.mjs --require-supabase --supabase-project=egrmvhfroiumcodkotjv",
     "install": "node scripts/install-help.mjs",
     "lint": "eslint . --max-warnings=0",
     "test": "node scripts/validate-workspace.mjs && node scripts/validate-repository-guardrails.mjs && node scripts/validate-auth.mjs && node scripts/validate-pwa-shell.mjs && node scripts/validate-database.mjs && node scripts/validate-campaign-access.mjs && node scripts/validate-campaign-dashboard.mjs && node scripts/validate-campaign-creation.mjs && node scripts/validate-campaign-onboarding.mjs && node scripts/validate-campaign-invites.mjs && node scripts/validate-entities.mjs && node scripts/validate-sessions.mjs && node scripts/validate-rules.mjs && node scripts/validate-wiki-links.mjs && node scripts/validate-vendor-integrations.mjs",
