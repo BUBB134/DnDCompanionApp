@@ -82,9 +82,13 @@ if (hasTypeScriptRuntime) {
   const sessionsRepositoryUrl = moduleDataUrl(`
     export async function getLatestSessionForUser() { return null; }
   `);
+  const domainContentUrl = await transpileModuleToDataUrl(
+    "packages/db/src/domain-content.ts",
+    [["@dnd/types", campaignTypesUrl]],
+  );
   const coreRulesUrl = await transpileModuleToDataUrl(
     "apps/web/src/rules/core-rules.ts",
-    [["@dnd/types", campaignTypesUrl]],
+    [["@dnd/db/domain-content", domainContentUrl]],
   );
   const matchingUrl = await transpileModuleToDataUrl(
     "apps/web/src/rules/matching.ts",

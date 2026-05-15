@@ -109,6 +109,7 @@ packages/
 - `docs/engineering/branch_protection.md`
 - `docs/engineering/campaign-invites.md`
 - `docs/engineering/campaign-onboarding.md`
+- `docs/engineering/domain-content.md`
 - `docs/engineering/production-integrations.md`
 - `docs/engineering/supabase-postgres.md`
 - `docs/engineering/working-agreement.md`

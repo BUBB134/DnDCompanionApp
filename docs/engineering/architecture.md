@@ -32,6 +32,13 @@ projection so editing can evolve toward inline references and graph retrieval
 without breaking current previews, rules matching, or search. See
 `docs/engineering/session-note-editor.md`.
 
+## Domain content
+Rules, conditions, mechanics, and future gameplay reference content are persisted
+as database-backed domain content instead of page/component constants. Baseline
+seed content lives in the DB package and is loaded through permission-aware
+repositories, with nullable campaign ownership reserved for future
+campaign-specific overrides. See `docs/engineering/domain-content.md`.
+
 ## Entity strategy
 Use a generic `Entity` model for MVP with a `type` field:
 - npc
