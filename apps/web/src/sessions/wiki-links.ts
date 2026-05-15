@@ -297,9 +297,14 @@ function findEntityReference(
   entities: readonly CampaignEntitySummary[],
   type?: EntityType,
 ) {
+  const normalizedId = label.trim();
   const normalizedLabel = normalizeWikiLabel(label);
 
   return entities.find(
+    (entity) =>
+      entity.id === normalizedId &&
+      (type === undefined || entity.type === type),
+  ) ?? entities.find(
     (entity) =>
       normalizeWikiLabel(entity.name) === normalizedLabel &&
       (type === undefined || entity.type === type),

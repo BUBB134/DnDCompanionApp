@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next";
+import { connection } from "next/server";
 import { AuthProvider } from "@/auth/provider";
 import { getAuthSession } from "@/auth/server";
 import { validateRuntimeEnvironment } from "@/env/runtime";
@@ -30,6 +31,7 @@ export default async function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  await connection();
   validateRuntimeEnvironment();
 
   const session = await getAuthSession();
