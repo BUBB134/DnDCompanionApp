@@ -457,6 +457,10 @@ function SessionNoteBlockEditor({
       return;
     }
 
+    if (isComposingText(event)) {
+      return;
+    }
+
     if (event.key === "ArrowDown") {
       event.preventDefault();
       setActiveSuggestion({
@@ -669,6 +673,10 @@ function SessionNoteBlockEditor({
                 }
                 onKeyDown={(event) => handleBlockKeyDown(event, block)}
                 onKeyUp={(event) => {
+                  if (event.key === "Escape") {
+                    return;
+                  }
+
                   if (
                     activeSuggestion?.blockId === block.id &&
                     [
@@ -733,6 +741,10 @@ function SessionNoteBlockEditor({
       ) : null}
     </div>
   );
+}
+
+function isComposingText(event: KeyboardEvent<HTMLTextAreaElement>) {
+  return event.nativeEvent.isComposing || event.nativeEvent.keyCode === 229;
 }
 
 function getWikiLinkItemClassName(itemTone: "create" | "missing" | "resolved") {

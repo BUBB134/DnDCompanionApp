@@ -214,7 +214,7 @@ function createEntityCandidates(
           targetId: entity.id,
           targetType: "entity",
         },
-        replacement: createEntityReplacement(trigger, entity),
+        replacement: createEntityReplacement(entity),
         searchText: createSearchText(entity.name, entity.summary, entity.type),
         sortLabel: entity.name,
         typeLabel,
@@ -325,15 +325,8 @@ function createInlineEntityCreationCandidates(
     }));
 }
 
-function createEntityReplacement(
-  trigger: ActiveWikiLinkTrigger,
-  entity: CampaignEntitySummary,
-) {
-  if (trigger.prefix === entity.type) {
-    return `[[${entity.type}: ${entity.name}]]`;
-  }
-
-  return `[[${entity.name}]]`;
+function createEntityReplacement(entity: CampaignEntitySummary) {
+  return `[[entity: ${entity.id}|${entity.name}]]`;
 }
 
 function collectMentionUsage(document: SessionNoteDocument): MentionUsage {

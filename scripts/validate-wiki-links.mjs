@@ -142,6 +142,13 @@ if (hasTypeScriptRuntime) {
     type: "npc",
     visibility: "player-safe",
   };
+  const duplicateCaptainThorn = {
+    id: "55555555-5555-5555-8555-555555555555",
+    name: "Captain Thorn",
+    summary: "A different privateer with the same name.",
+    type: "npc",
+    visibility: "player-safe",
+  };
   const lighthouse = {
     id: "33333333-3333-5333-8333-333333333333",
     name: "Sunken Lighthouse",
@@ -198,6 +205,22 @@ if (hasTypeScriptRuntime) {
     "Wiki links must resolve entities, rules, and characters into note metadata.",
   );
 
+  const identityDocument =
+    noteDocumentModule.createSessionNoteDocumentFromPlainText(
+      `Met [[entity: ${captainThorn.id}|Captain Thorn]].`,
+    );
+  const identityResolvedDocument =
+    wikiLinksModule.resolveSessionNoteWikiLinks(identityDocument, {
+      characters: [mira],
+      entities: [duplicateCaptainThorn, captainThorn],
+      rules: [prone],
+    });
+  expect(
+    identityResolvedDocument.blocks[0]?.references[0]?.targetId ===
+      captainThorn.id,
+    "Selected entity suggestions must preserve entity identity when names duplicate.",
+  );
+
   const validation = manageSessionModule.validateSessionValues(
     {
       campaignId: campaign.id,
@@ -252,7 +275,9 @@ if (hasTypeScriptRuntime) {
     });
   expect(
     entitySuggestions[0]?.label === "Captain Thorn" &&
-      entitySuggestions[0]?.metadata.targetType === "entity",
+      entitySuggestions[0]?.metadata.targetType === "entity" &&
+      entitySuggestions[0]?.replacement ===
+        `[[entity: ${captainThorn.id}|Captain Thorn]]`,
     "Inline suggestions must rank matching campaign entities with metadata first.",
   );
 
