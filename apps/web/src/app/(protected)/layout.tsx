@@ -2,6 +2,7 @@ import { readPublicEnv } from "@dnd/env";
 import { requireAuthSession } from "@/auth/server";
 import { getCurrentCampaignAccess } from "@/campaigns/bootstrap";
 import { ProtectedAppShell } from "@/components/protected-app-shell";
+import { validateRuntimeEnvironment } from "@/env/runtime";
 
 type ProtectedLayoutProps = {
   children: React.ReactNode;
@@ -9,6 +10,8 @@ type ProtectedLayoutProps = {
 
 export default async function ProtectedLayout({ children }: ProtectedLayoutProps) {
   const session = await requireAuthSession();
+  validateRuntimeEnvironment();
+
   const env = readPublicEnv(process.env);
   const campaign = await getCurrentCampaignAccess(session);
 

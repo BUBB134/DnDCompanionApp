@@ -21,7 +21,7 @@ if (failures.length === 0) {
 }
 
 if (failures.length > 0) {
-  console.error("Deployment health check failed:");
+  console.error("Deployment check failed:");
   for (const failure of failures) {
     console.error(`- ${failure}`);
   }
@@ -56,32 +56,31 @@ function readOption(args, name) {
 }
 
 async function checkDeployment(url, checkOptions) {
-  const healthUrl = resolveHealthUrl(url);
+  const healthUrl = resolveDeploymentUrl(url, "/api/health");
+  const signInUrl = resolveDeploymentUrl(url, "/sign-in?next=%2F");
 
-  if (!healthUrl) {
+  if (!healthUrl || !signInUrl) {
     fail(`Invalid deployment URL: ${url}`);
     return;
   }
 
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), checkOptions.timeoutMs);
+  const payload = await checkHealthEndpoint(healthUrl, checkOptions);
+  await checkSignInRoute(signInUrl, checkOptions);
 
-  let response;
-
-  try {
-    response = await fetch(healthUrl, {
-      headers: { accept: "application/json" },
-      signal: controller.signal,
-    });
-  } catch (error) {
-    fail(
-      error instanceof Error && error.name === "AbortError"
-        ? `Timed out after ${checkOptions.timeoutMs}ms requesting ${healthUrl}.`
-        : `Unable to request ${healthUrl}.`,
+  if (failures.length === 0 && payload) {
+    console.log(
+      `Deployment checks passed for ${new URL("/", healthUrl).origin} (${payload.environment}).`,
     );
-    return;
-  } finally {
-    clearTimeout(timeout);
+  }
+}
+
+async function checkHealthEndpoint(healthUrl, checkOptions) {
+  const response = await requestUrl(healthUrl, checkOptions, {
+    accept: "application/json",
+  });
+
+  if (!response) {
+    return null;
   }
 
   const payload = await readJson(response);
@@ -92,23 +91,80 @@ async function checkDeployment(url, checkOptions) {
 
   if (!payload || typeof payload !== "object") {
     fail("Health endpoint did not return a JSON object.");
-    return;
+    return null;
   }
 
   validatePayload(payload, checkOptions);
 
-  if (failures.length === 0) {
-    console.log(
-      `Deployment health check passed for ${healthUrl} (${payload.environment}).`,
-    );
+  return payload;
+}
+
+async function checkSignInRoute(signInUrl, checkOptions) {
+  const response = await requestUrl(
+    signInUrl,
+    checkOptions,
+    {
+      accept: "text/html",
+    },
+    {
+      redirect: "manual",
+    },
+  );
+
+  if (!response) {
+    return;
+  }
+
+  const body = await response.text();
+
+  if (response.redirected || isRedirectStatus(response.status)) {
+    fail("Sign-in route redirected instead of rendering directly.");
+  }
+
+  if (!response.ok) {
+    fail(`Sign-in route returned HTTP ${response.status}.`);
+  }
+
+  if (!body.includes("<form") || !body.includes('name="email"')) {
+    fail("Sign-in route did not render the expected sign-in form.");
   }
 }
 
-function resolveHealthUrl(url) {
+async function requestUrl(url, checkOptions, headers, requestOptions = {}) {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), checkOptions.timeoutMs);
+
+  let response;
+
+  try {
+    response = await fetch(url, {
+      headers,
+      redirect: requestOptions.redirect ?? "follow",
+      signal: controller.signal,
+    });
+  } catch (error) {
+    fail(
+      error instanceof Error && error.name === "AbortError"
+        ? `Timed out after ${checkOptions.timeoutMs}ms requesting ${url}.`
+        : `Unable to request ${url}.`,
+    );
+    return null;
+  } finally {
+    clearTimeout(timeout);
+  }
+
+  return response;
+}
+
+function isRedirectStatus(status) {
+  return status >= 300 && status < 400;
+}
+
+function resolveDeploymentUrl(url, path) {
   const normalizedUrl = /^https?:\/\//u.test(url) ? url : `https://${url}`;
 
   try {
-    return new URL("/api/health", normalizedUrl).toString();
+    return new URL(path, normalizedUrl).toString();
   } catch {
     return null;
   }

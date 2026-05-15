@@ -16,6 +16,7 @@ import {
 
 export const AUTH_COOKIE_NAME = "dnd_local_session";
 export const AUTH_COOKIE_MAX_AGE_SECONDS = 60 * 60 * 24 * 7;
+const AUTH_SESSION_SECRET_MIN_LENGTH = 32;
 
 const PROTECTED_RETURN_PATHS = [
   "/",
@@ -74,6 +75,16 @@ export async function encodeAuthSession(
   )}`;
 }
 
+export function canCreateAuthSessionToken(source: EnvSource = process.env) {
+  const sessionSecret = readServerEnv(source).AUTH_SESSION_SECRET;
+
+  if (sessionSecret && !hasValidAuthSessionSecret(sessionSecret)) {
+    return false;
+  }
+
+  return !requiresSignedAuthSession(source) || Boolean(sessionSecret);
+}
+
 export async function decodeAuthSession(
   cookieValue: string | null | undefined,
   now = new Date(),
@@ -126,6 +137,10 @@ export async function hasAuthSessionCookie(
 
 function requiresSignedAuthSession(source: EnvSource) {
   return isNonLocalAppEnvironment(readPublicEnv(source).NEXT_PUBLIC_APP_ENV);
+}
+
+function hasValidAuthSessionSecret(sessionSecret: string) {
+  return sessionSecret.trim().length >= AUTH_SESSION_SECRET_MIN_LENGTH;
 }
 
 async function signValue(value: string, secret: string) {

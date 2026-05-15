@@ -80,17 +80,17 @@ npm run db:check:supabase
 
 Run this workflow against `preview` after preview secrets are created and against `production` before or immediately after a production promotion.
 
-The `Deployment Smoke` workflow validates an already-built Vercel URL through the deployed app's `/api/health` route:
+The `Deployment Smoke` workflow validates an already-built Vercel URL through the deployed app's `/api/health` route and the public `/sign-in?next=%2F` route:
 
 ```bash
 npm run deploy:check -- --url=<deployment-url> --expect-env=preview
 ```
 
-Use the preview deployment URL from the pull request for `preview`, and the production deployment URL after promotion for `production`. The health endpoint returns only environment/check status and does not expose secrets. A passing result requires runtime environment validation and database connectivity to succeed.
+Use the preview deployment URL from the pull request for `preview`, and the production deployment URL after promotion for `production`. The health endpoint returns only environment/check status and does not expose secrets. A passing result requires runtime environment validation, database connectivity, and a non-500 sign-in render with the expected form.
 
 ## Runtime validation
 
-The web app calls `assertValidRuntimeEnv(process.env)` during server startup. Local development defaults are permissive. Preview and production fail fast when critical configuration is missing or malformed, including unsigned auth sessions, missing Supabase project URL or keys, invalid Postgres URLs, retrieval mode without OpenAI credentials, Sentry mode without a DSN, or blob storage without a token.
+The root app layout reports runtime environment issues to server logs without blocking the public sign-in route. Local development defaults are permissive. Preview and production protected app routes still call `assertValidRuntimeEnv(process.env)` after authentication, so critical configuration problems fail before users enter the app shell. The sign-in form is disabled when `AUTH_SESSION_SECRET` is missing in a non-local environment, because production auth cookies must be signed.
 
 The deployed `/api/health` route performs the same runtime environment validation and then runs a minimal `select 1` against the configured database. Failures are surfaced as HTTP 503 and logged in Vercel runtime logs for debugging without returning raw credentials or connection strings to the caller.
 
