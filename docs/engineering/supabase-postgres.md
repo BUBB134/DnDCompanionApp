@@ -63,6 +63,7 @@ npm run env:check -- --env=preview
 npm run db:check:supabase
 npm run db:migrate:supabase
 npm run db:check:supabase
+npm run deploy:check -- --url=<preview-deployment-url> --expect-env=preview
 ```
 
 The `db:*:supabase` scripts verify that `DATABASE_URL` targets project `egrmvhfroiumcodkotjv`, requires SSL, redacts the secret when printing the target, and then performs the same live database operation as the generic scripts.

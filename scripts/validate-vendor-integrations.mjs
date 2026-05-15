@@ -6,8 +6,11 @@ const rootDir = dirname(dirname(fileURLToPath(import.meta.url)));
 const failures = [];
 
 const requiredFiles = [
+  ".github/workflows/deployment-smoke.yml",
   ".github/workflows/integration-smoke.yml",
+  "apps/web/src/app/api/health/route.ts",
   "docs/engineering/production-integrations.md",
+  "scripts/check-deployment.mjs",
   "scripts/check-production-env.mjs",
   "vercel.json",
 ];
@@ -39,6 +42,10 @@ const rootPackage = readJson("package.json");
 expect(
   rootPackage.scripts?.["env:check"] === "node scripts/check-production-env.mjs",
   "Missing env:check root script.",
+);
+expect(
+  rootPackage.scripts?.["deploy:check"] === "node scripts/check-deployment.mjs",
+  "Missing deploy:check root script.",
 );
 expect(
   rootPackage.scripts?.test?.includes("node scripts/validate-vendor-integrations.mjs"),
@@ -91,6 +98,45 @@ for (const snippet of [
   );
 }
 
+const deploymentSmokeWorkflow = readText(".github/workflows/deployment-smoke.yml");
+for (const snippet of [
+  "workflow_dispatch:",
+  "deployment_url:",
+  "environment: ${{ inputs.target }}",
+  "run: npm run deploy:check -- --url=\"${{ inputs.deployment_url }}\" --expect-env=\"${{ inputs.target }}\"",
+]) {
+  expect(
+    deploymentSmokeWorkflow.includes(snippet),
+    `Deployment smoke workflow is missing expected configuration: ${snippet}`,
+  );
+}
+
+const healthRoute = readText("apps/web/src/app/api/health/route.ts");
+for (const snippet of [
+  "export const runtime = \"nodejs\"",
+  "validateRuntimeEnv(process.env)",
+  "await queryDatabase(\"select 1\")",
+  "\"cache-control\": \"no-store\"",
+]) {
+  expect(
+    healthRoute.includes(snippet),
+    `Deployment health route is missing expected behavior: ${snippet}`,
+  );
+}
+
+const deploymentCheck = readText("scripts/check-deployment.mjs");
+for (const snippet of [
+  "DEPLOYMENT_URL",
+  "--expect-env",
+  "/api/health",
+  "Database connectivity check did not pass.",
+]) {
+  expect(
+    deploymentCheck.includes(snippet),
+    `Deployment check script is missing expected behavior: ${snippet}`,
+  );
+}
+
 const productionEnvCheck = readText("scripts/check-production-env.mjs");
 for (const snippet of [
   "DATABASE_POOL_MAX",
@@ -105,6 +151,8 @@ for (const snippet of [
 
 const productionDocs = readText("docs/engineering/production-integrations.md");
 for (const snippet of [
+  "/api/health",
+  "`npm run deploy:check -- --url=<deployment-url> --expect-env=preview`",
   "Vercel",
   "Supabase Postgres",
   "OpenAI",

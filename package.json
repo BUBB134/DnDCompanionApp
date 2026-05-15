@@ -17,6 +17,7 @@
     "db:generate": "node scripts/create-migration.mjs",
     "db:migrate": "node scripts/apply-migrations.mjs",
     "db:migrate:supabase": "node scripts/apply-migrations.mjs --require-ssl --supabase-project=egrmvhfroiumcodkotjv",
+    "deploy:check": "node scripts/check-deployment.mjs",
     "dev": "npm --workspace @dnd/web run dev",
     "env:check": "node scripts/check-production-env.mjs",
     "install": "node scripts/install-help.mjs",
