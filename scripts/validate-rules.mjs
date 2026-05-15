@@ -134,6 +134,7 @@ for (const expectedSql of [
   "rule_snippets.campaign_id = $2",
   "rule_snippets.campaign_id is null",
   "not exists",
+  "campaign_rule_snippets.visibility = 'player-safe'",
   "rule_snippets.visibility = 'player-safe'",
   "unnest(rule_snippets.aliases)",
   "rule_snippets.body ilike",
@@ -246,6 +247,12 @@ if (hasTypeScriptRuntime) {
     dbStubModule.queries[0]?.values[2] === "condition" &&
       dbStubModule.queries[0]?.values[3] === "prone",
     "Rules repository must pass category and search query parameters.",
+  );
+  expect(
+    dbStubModule.queries[0]?.text.includes(
+      "campaign_rule_snippets.visibility = 'player-safe'",
+    ) && dbStubModule.queries[0]?.text.includes("campaign_memberships.role = 'dm'"),
+    "Rules repository must only suppress global rows when a visible campaign override exists.",
   );
 }
 

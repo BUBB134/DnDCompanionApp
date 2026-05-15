@@ -59,6 +59,10 @@ export async function listRuleSnippetsForUser(
               from rule_snippets campaign_rule_snippets
               where campaign_rule_snippets.campaign_id = $2
                 and campaign_rule_snippets.slug = rule_snippets.slug
+                and (
+                  campaign_memberships.role = 'dm'
+                  or campaign_rule_snippets.visibility = 'player-safe'
+                )
             )
           )
         )
