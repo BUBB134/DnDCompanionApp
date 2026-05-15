@@ -14,6 +14,21 @@ DND-18 establishes the MVP vendor and environment contract. It does not provisio
 | Storage | None for current MVP | `STORAGE_PROVIDER=none` is expected until uploads are introduced. `vercel-blob` is reserved behind `BLOB_READ_WRITE_TOKEN`. |
 | Observability | Console baseline, Sentry-ready | `OBSERVABILITY_PROVIDER=console` is the default. Set `OBSERVABILITY_PROVIDER=sentry` with `SENTRY_DSN` and optional `NEXT_PUBLIC_SENTRY_DSN` when the Sentry project is available. |
 
+## Vercel project configuration
+
+The Vercel project should use Git integration for pull request previews and production deploys from `main`.
+
+| Setting | Value |
+| --- | --- |
+| Framework preset | Next.js |
+| Root directory | Repository root |
+| Install command | `npm install` |
+| Build command | `npm run build` |
+| Development command | `npm run dev` |
+| Production branch | `main` |
+
+Keep the linked `.vercel/project.json` file local and untracked. Contributors can link locally with `vercel link`, then pull environment values into `.env.local` with `vercel env pull .env.local --environment=preview --yes`.
+
 ## Environment reference
 
 | Variable | Scope | Required | Purpose |
@@ -43,6 +58,7 @@ DND-18 establishes the MVP vendor and environment contract. It does not provisio
 4. Add the same secret names to GitHub environments named `preview` and `production` for the manual Integration Smoke workflow.
 5. Run `npm run env:check -- --env=production --strict` locally or in the deployment shell before first release.
 6. Run `npm run db:migrate:supabase` against preview, validate with `npm run db:check:supabase`, then repeat for production during release.
+7. After Vercel reports the deployment ready, run `npm run deploy:check -- --url=<deployment-url> --expect-env=preview` or `npm run deploy:check -- --url=<deployment-url> --expect-env=production`.
 
 ## CI and smoke checks
 
@@ -57,9 +73,19 @@ npm run db:check:supabase
 
 Run this workflow against `preview` after preview secrets are created and against `production` before or immediately after a production promotion.
 
+The `Deployment Smoke` workflow validates an already-built Vercel URL through the deployed app's `/api/health` route:
+
+```bash
+npm run deploy:check -- --url=<deployment-url> --expect-env=preview
+```
+
+Use the preview deployment URL from the pull request for `preview`, and the production deployment URL after promotion for `production`. The health endpoint returns only environment/check status and does not expose secrets. A passing result requires runtime environment validation and database connectivity to succeed.
+
 ## Runtime validation
 
 The web app calls `assertValidRuntimeEnv(process.env)` during server startup. Local development defaults are permissive. Preview and production fail fast when critical configuration is missing or malformed, including unsigned auth sessions, invalid Postgres URLs, retrieval mode without OpenAI credentials, Sentry mode without a DSN, or blob storage without a token.
+
+The deployed `/api/health` route performs the same runtime environment validation and then runs a minimal `select 1` against the configured database. Failures are surfaced as HTTP 503 and logged in Vercel runtime logs for debugging without returning raw credentials or connection strings to the caller.
 
 ## Follow-up hardening
 

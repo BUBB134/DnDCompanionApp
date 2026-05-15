@@ -1,7 +1,7 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
-  transpilePackages: ["@dnd/env", "@dnd/types", "@dnd/ui"],
+  transpilePackages: ["@dnd/db", "@dnd/env", "@dnd/types", "@dnd/ui"],
   typedRoutes: true,
 };
 

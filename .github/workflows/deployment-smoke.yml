@@ -1,0 +1,33 @@
+name: Deployment Smoke
+
+on:
+  workflow_dispatch:
+    inputs:
+      target:
+        description: Deployed environment to validate
+        required: true
+        type: choice
+        options:
+          - preview
+          - production
+      deployment_url:
+        description: Vercel deployment URL to validate
+        required: true
+        type: string
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.target }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Check deployment health
+        run: npm run deploy:check -- --url="${{ inputs.deployment_url }}" --expect-env="${{ inputs.target }}"
