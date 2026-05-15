@@ -148,8 +148,10 @@ for (const snippet of [
   "--expect-env",
   "/api/health",
   "/sign-in?next=%2F",
+  'redirect: "manual"',
   "Database connectivity check did not pass.",
   "Sign-in route returned HTTP",
+  "Sign-in route redirected instead of rendering directly.",
 ]) {
   expect(
     deploymentCheck.includes(snippet),

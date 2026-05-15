@@ -100,15 +100,26 @@ async function checkHealthEndpoint(healthUrl, checkOptions) {
 }
 
 async function checkSignInRoute(signInUrl, checkOptions) {
-  const response = await requestUrl(signInUrl, checkOptions, {
-    accept: "text/html",
-  });
+  const response = await requestUrl(
+    signInUrl,
+    checkOptions,
+    {
+      accept: "text/html",
+    },
+    {
+      redirect: "manual",
+    },
+  );
 
   if (!response) {
     return;
   }
 
   const body = await response.text();
+
+  if (response.redirected || isRedirectStatus(response.status)) {
+    fail("Sign-in route redirected instead of rendering directly.");
+  }
 
   if (!response.ok) {
     fail(`Sign-in route returned HTTP ${response.status}.`);
@@ -119,7 +130,7 @@ async function checkSignInRoute(signInUrl, checkOptions) {
   }
 }
 
-async function requestUrl(url, checkOptions, headers) {
+async function requestUrl(url, checkOptions, headers, requestOptions = {}) {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), checkOptions.timeoutMs);
 
@@ -128,6 +139,7 @@ async function requestUrl(url, checkOptions, headers) {
   try {
     response = await fetch(url, {
       headers,
+      redirect: requestOptions.redirect ?? "follow",
       signal: controller.signal,
     });
   } catch (error) {
@@ -142,6 +154,10 @@ async function requestUrl(url, checkOptions, headers) {
   }
 
   return response;
+}
+
+function isRedirectStatus(status) {
+  return status >= 300 && status < 400;
 }
 
 function resolveDeploymentUrl(url, path) {

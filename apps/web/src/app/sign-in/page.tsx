@@ -14,8 +14,9 @@ type SignInPageProps = {
 export default async function SignInPage({ searchParams }: SignInPageProps) {
   const params = await searchParams;
   const nextPath = getSafeReturnPath(params?.next);
-  const hasConfigurationError =
-    params?.error === "configuration" || !canCreateAuthSessionToken();
+  const canCreateSessionToken = canCreateAuthSessionToken();
+  const showConfigurationMessage =
+    params?.error === "configuration" || !canCreateSessionToken;
   const session = await getAuthSession();
 
   if (session) {
@@ -57,13 +58,14 @@ export default async function SignInPage({ searchParams }: SignInPageProps) {
         >
           <input name="next" type="hidden" value={nextPath} />
           <div className="flex flex-col gap-5">
-            {hasConfigurationError ? (
+            {showConfigurationMessage ? (
               <div
                 className="rounded-md border border-[#8b2f39]/25 bg-[#fff4f2] p-3 text-sm leading-6 text-[#6f1f29]"
                 role="alert"
               >
-                Sign-in is temporarily unavailable while deployment configuration is
-                completed.
+                {canCreateSessionToken
+                  ? "The previous sign-in attempt hit a deployment configuration issue. Try again."
+                  : "Sign-in is temporarily unavailable while deployment configuration is completed."}
               </div>
             ) : null}
 
@@ -78,7 +80,7 @@ export default async function SignInPage({ searchParams }: SignInPageProps) {
                 autoComplete="name"
                 className="mt-2 min-h-11 w-full rounded-md border border-[#17161f]/15 bg-[#fffaf0] px-3 text-base outline-none transition focus:border-[#1f6f78] focus:ring-2 focus:ring-[#1f6f78]/25"
                 defaultValue="Local DM"
-                disabled={hasConfigurationError}
+                disabled={!canCreateSessionToken}
                 id="displayName"
                 name="displayName"
                 required
@@ -94,7 +96,7 @@ export default async function SignInPage({ searchParams }: SignInPageProps) {
                 autoComplete="email"
                 className="mt-2 min-h-11 w-full rounded-md border border-[#17161f]/15 bg-[#fffaf0] px-3 text-base outline-none transition focus:border-[#1f6f78] focus:ring-2 focus:ring-[#1f6f78]/25"
                 defaultValue="dm@local.test"
-                disabled={hasConfigurationError}
+                disabled={!canCreateSessionToken}
                 id="email"
                 name="email"
                 required
@@ -104,7 +106,7 @@ export default async function SignInPage({ searchParams }: SignInPageProps) {
 
             <button
               className="min-h-11 rounded-md bg-[#17161f] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#2d2937] focus:outline-none focus:ring-2 focus:ring-[#8b2f39] focus:ring-offset-2 disabled:cursor-not-allowed disabled:bg-[#6d6878]"
-              disabled={hasConfigurationError}
+              disabled={!canCreateSessionToken}
               type="submit"
             >
               Sign in

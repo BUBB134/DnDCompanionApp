@@ -66,6 +66,10 @@ expect(
   "Sign-in page must expose configuration failures as an accessible alert.",
 );
 expect(
+  signInPage.includes("disabled={!canCreateSessionToken}"),
+  "Sign-in page must only disable inputs based on runtime session capability.",
+);
+expect(
   signInPage.includes('name="next"'),
   "Sign-in page must submit the safe return path.",
 );
@@ -78,6 +82,16 @@ expect(
 expect(actions.includes("getSafeReturnPath"), "Sign-in must honor the safe return path.");
 expect(actions.includes("setAuthSessionCookie"), "Sign-in must set a session cookie.");
 expect(actions.includes("clearAuthSessionCookie"), "Sign-out must clear the session cookie.");
+
+const authSession = readText("apps/web/src/auth/session.ts");
+expect(
+  authSession.includes("AUTH_SESSION_SECRET_MIN_LENGTH = 32"),
+  "Auth sessions must use the production minimum secret length.",
+);
+expect(
+  authSession.includes("trim().length >= AUTH_SESSION_SECRET_MIN_LENGTH"),
+  "Auth session token creation must reject short secrets.",
+);
 
 const provider = readText("apps/web/src/auth/provider.tsx");
 expect(provider.includes('"loading"'), "Auth provider must expose a loading state.");
