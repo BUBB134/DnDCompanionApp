@@ -74,6 +74,13 @@ export async function encodeAuthSession(
   )}`;
 }
 
+export function canCreateAuthSessionToken(source: EnvSource = process.env) {
+  return (
+    !requiresSignedAuthSession(source) ||
+    Boolean(readServerEnv(source).AUTH_SESSION_SECRET)
+  );
+}
+
 export async function decodeAuthSession(
   cookieValue: string | null | undefined,
   now = new Date(),

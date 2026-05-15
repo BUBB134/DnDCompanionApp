@@ -2,7 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { connection } from "next/server";
 import { AuthProvider } from "@/auth/provider";
 import { getAuthSession } from "@/auth/server";
-import { validateRuntimeEnvironment } from "@/env/runtime";
+import { reportRuntimeEnvironmentIssues } from "@/env/runtime";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -32,7 +32,7 @@ export default async function RootLayout({
   children: React.ReactNode;
 }>) {
   await connection();
-  validateRuntimeEnvironment();
+  reportRuntimeEnvironmentIssues();
 
   const session = await getAuthSession();
 

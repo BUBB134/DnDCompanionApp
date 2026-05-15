@@ -58,11 +58,23 @@ expect(
 const signInPage = readText("apps/web/src/app/sign-in/page.tsx");
 expect(signInPage.includes("signInAction"), "Sign-in page must wire the sign-in action.");
 expect(
+  signInPage.includes("canCreateAuthSessionToken"),
+  "Sign-in page must guard production session configuration.",
+);
+expect(
+  signInPage.includes('role="alert"'),
+  "Sign-in page must expose configuration failures as an accessible alert.",
+);
+expect(
   signInPage.includes('name="next"'),
   "Sign-in page must submit the safe return path.",
 );
 
 const actions = readText("apps/web/src/auth/actions.ts");
+expect(
+  actions.includes("canCreateAuthSessionToken"),
+  "Sign-in action must guard production session configuration.",
+);
 expect(actions.includes("getSafeReturnPath"), "Sign-in must honor the safe return path.");
 expect(actions.includes("setAuthSessionCookie"), "Sign-in must set a session cookie.");
 expect(actions.includes("clearAuthSessionCookie"), "Sign-out must clear the session cookie.");

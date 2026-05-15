@@ -89,7 +89,7 @@ for (const snippet of [
 const runtimeEnv = readText("apps/web/src/env/runtime.ts");
 expect(
   runtimeEnv.includes("assertValidRuntimeEnv(process.env)"),
-  "Web runtime must validate process.env at startup.",
+  "Web runtime must keep a protected-route process.env validation guard.",
 );
 
 const authSession = readText("apps/web/src/auth/session.ts");
@@ -147,7 +147,9 @@ for (const snippet of [
   "DEPLOYMENT_URL",
   "--expect-env",
   "/api/health",
+  "/sign-in?next=%2F",
   "Database connectivity check did not pass.",
+  "Sign-in route returned HTTP",
 ]) {
   expect(
     deploymentCheck.includes(snippet),
@@ -174,6 +176,7 @@ for (const snippet of [
 const productionDocs = readText("docs/engineering/production-integrations.md");
 for (const snippet of [
   "/api/health",
+  "/sign-in?next=%2F",
   "`npm run deploy:check -- --url=<deployment-url> --expect-env=preview`",
   "Vercel",
   "Supabase Postgres",
