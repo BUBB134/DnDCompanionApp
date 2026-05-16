@@ -265,6 +265,21 @@ if (hasTypeScriptRuntime) {
     results[0]?.matchedTerms.length > 0 && results[0]?.excerpt.length > 0,
     "Campaign memory retrieval must expose matched terms and excerpts.",
   );
+  expect(
+    retrievalModule.retrieveCampaignMemory("a", documents).length === 0 &&
+      retrievalModule.retrieveCampaignMemory("???", documents).length === 0,
+    "Campaign memory retrieval must return no results for tokenless queries.",
+  );
+  const bodyOnlyExcerpt = retrievalModule.retrieveCampaignMemory(
+    "ogre",
+    documents,
+  )[0]?.excerpt ?? "";
+  expect(
+    bodyOnlyExcerpt.includes("ogre") &&
+      bodyOnlyExcerpt.includes("fell prone") &&
+      !bodyOnlyExcerpt.includes("vault clue stayed unresolved"),
+    "Campaign memory excerpts must come from matched source text, not an unrelated summary.",
+  );
 
   const entityOnlyResults = retrievalModule.retrieveCampaignMemory(
     "Captain",

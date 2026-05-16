@@ -70,6 +70,10 @@ export function retrieveCampaignMemory(
   const normalizedPhrase = normalizeSearchText(query);
   const limit = normalizeLimit(options.limit);
 
+  if (terms.length === 0) {
+    return [];
+  }
+
   return documents
     .filter(
       (document) => !sourceTypeSet || sourceTypeSet.has(document.sourceType),
@@ -303,7 +307,7 @@ function scoreDocument(
   if (terms.length === 0) {
     return {
       matchedTerms: [],
-      score,
+      score: 0,
     };
   }
 
@@ -370,20 +374,67 @@ function createExcerpt(
   document: CampaignMemoryDocument,
   matchedTerms: readonly string[],
 ) {
-  const text = [document.summary, document.body]
-    .map((value) => value.trim())
-    .find(Boolean) ?? document.title;
-  const normalizedText = normalizeSearchText(text);
-  const firstMatchIndex = matchedTerms
-    .map((term) => normalizedText.indexOf(term))
-    .filter((index) => index >= 0)
-    .sort((left, right) => left - right)[0] ?? 0;
+  const fallbackText =
+    [document.summary, document.body, document.title]
+      .map((value) => value.trim())
+      .find(Boolean) ?? document.title;
+  const excerptCandidate = chooseExcerptCandidate(
+    [
+      document.body,
+      document.summary,
+      document.title,
+    ],
+    matchedTerms,
+  );
+  const text = excerptCandidate?.text ?? fallbackText;
+  const firstMatchIndex = excerptCandidate?.matchIndex ?? 0;
   const start = Math.max(0, firstMatchIndex - 70);
   const end = Math.min(text.length, firstMatchIndex + 190);
   const prefix = start > 0 ? "..." : "";
   const suffix = end < text.length ? "..." : "";
 
   return `${prefix}${text.slice(start, end).trim()}${suffix}`;
+}
+
+function chooseExcerptCandidate(
+  values: readonly string[],
+  matchedTerms: readonly string[],
+) {
+  return values
+    .map((value, order) => {
+      const text = value.trim();
+      const matches = findOriginalTermMatches(text, matchedTerms);
+
+      return {
+        matchCount: matches.length,
+        matchIndex: matches[0] ?? 0,
+        order,
+        text,
+      };
+    })
+    .filter((candidate) => candidate.text && candidate.matchCount > 0)
+    .sort((left, right) => {
+      if (right.matchCount !== left.matchCount) {
+        return right.matchCount - left.matchCount;
+      }
+
+      return left.order - right.order;
+    })[0];
+}
+
+function findOriginalTermMatches(
+  text: string,
+  matchedTerms: readonly string[],
+) {
+  const lowerText = text.toLowerCase();
+
+  return matchedTerms
+    .flatMap((term) => {
+      const index = lowerText.indexOf(term.toLowerCase());
+
+      return index >= 0 ? [index] : [];
+    })
+    .sort((left, right) => left - right);
 }
 
 function tokenizeQuery(query: string) {
