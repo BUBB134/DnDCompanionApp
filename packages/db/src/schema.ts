@@ -142,16 +142,33 @@ export const baselineSchemaStatements = [
   );`,
   `create table rule_snippets (
     id uuid primary key default gen_random_uuid(),
-    slug text not null unique,
+    campaign_id uuid references campaigns (id) on delete cascade,
+    slug text not null,
     category rule_snippet_category not null,
+    content_key text not null,
+    source text not null default 'system',
+    source_version text not null default 'mvp',
     title text not null,
     summary text not null,
     body text not null default '',
     aliases text[] not null default '{}'::text[],
+    tags text[] not null default '{}'::text[],
     visibility visibility not null default 'player-safe',
     created_at timestamptz not null default now(),
     updated_at timestamptz not null default now()
   );`,
+  `create unique index rule_snippets_global_slug_unique_idx
+    on rule_snippets (slug)
+    where campaign_id is null;`,
+  `create unique index rule_snippets_campaign_slug_unique_idx
+    on rule_snippets (campaign_id, slug)
+    where campaign_id is not null;`,
+  `create index rule_snippets_lookup_idx
+    on rule_snippets (campaign_id, category, visibility, title);`,
+  `create index rule_snippets_aliases_idx
+    on rule_snippets using gin (aliases);`,
+  `create index rule_snippets_tags_idx
+    on rule_snippets using gin (tags);`,
   `create table ability_summaries (
     id uuid primary key default gen_random_uuid(),
     character_id uuid not null references characters (id) on delete cascade,

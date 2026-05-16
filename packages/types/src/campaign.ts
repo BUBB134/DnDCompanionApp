@@ -120,10 +120,15 @@ export type CampaignCharacterSummary = {
 export type RuleSnippet = {
   aliases: string[];
   body: string;
+  campaignId?: string | null;
   category: RuleSnippetCategory;
+  contentKey?: string;
   id: string;
   slug: string;
+  source?: string;
+  sourceVersion?: string;
   summary: string;
+  tags?: string[];
   title: string;
   visibility: Visibility;
 };
