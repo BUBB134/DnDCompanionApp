@@ -39,6 +39,13 @@ seed content lives in the DB package and is loaded through permission-aware
 repositories, with nullable campaign ownership reserved for future
 campaign-specific overrides. See `docs/engineering/domain-content.md`.
 
+## Campaign memory retrieval
+Grounded AI and recap flows should retrieve campaign memory through the
+deterministic corpus in `apps/web/src/memory`. It combines session notes,
+recaps, unresolved hooks, entities, rules, and characters after membership and
+visibility filtering, and each result carries a source path for citations. See
+`docs/engineering/campaign-memory-retrieval.md`.
+
 ## Entity strategy
 Use a generic `Entity` model for MVP with a `type` field:
 - npc
