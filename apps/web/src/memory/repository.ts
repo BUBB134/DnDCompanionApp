@@ -5,7 +5,7 @@ import type {
 } from "@dnd/types";
 import { getDatabaseCampaignAccessForUser } from "@/campaigns/repository";
 import { listCharacterSummariesForUser } from "@/characters/repository";
-import { listEntitiesForUser } from "@/entities/repository";
+import { listEntitiesWithBacklinksForUser } from "@/entities/repository";
 import {
   createCampaignMemoryDocuments,
   retrieveCampaignMemory,
@@ -35,7 +35,7 @@ export async function retrieveCampaignMemoryForUser(
 
   const [sessions, entities, rules, characters] = await Promise.all([
     listSessionsForUser(userId, campaign.id),
-    listEntitiesForUser(userId, campaign.id),
+    listEntitiesWithBacklinksForUser(userId, campaign.id),
     listRuleSnippetsForUser(userId, campaign.id),
     listCharacterSummariesForUser(userId, campaign.id),
   ]);

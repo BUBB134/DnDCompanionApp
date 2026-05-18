@@ -38,7 +38,7 @@ expect(
 
 const entitiesPage = readText("apps/web/src/app/(protected)/entities/page.tsx");
 for (const expectedText of [
-  "listEntitiesForUser",
+  "listEntitiesWithBacklinksForUser",
   "EntityCreateForm",
   "EntityEditForm",
   "EntityDeleteForm",
@@ -229,10 +229,16 @@ if (hasTypeScriptRuntime) {
     }
   `);
   const dbStubModule = await import(dbStubModuleUrl);
+  const wikiLinksStubModuleUrl = moduleDataUrl(`
+    export function replaceWikiLinksWithLabels(text) {
+      return text;
+    }
+  `);
   const repositoryModule = await import(
     await transpileModuleToDataUrl("apps/web/src/entities/repository.ts", [
       ["@dnd/db", dbStubModuleUrl],
       ["@dnd/types", campaignTypesUrl],
+      ["@/sessions/wiki-links", wikiLinksStubModuleUrl],
     ]),
   );
 
