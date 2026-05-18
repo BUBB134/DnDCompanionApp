@@ -4,7 +4,8 @@
   "private": true,
   "type": "module",
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./src/index.ts",
+    "./domain-content": "./src/domain-content.ts"
   },
   "types": "./src/index.ts",
   "scripts": {
