@@ -26,17 +26,6 @@ export const sessionNoteReferenceTypes = ["character", "entity", "rule"] as cons
 export type SessionNoteReferenceType =
   (typeof sessionNoteReferenceTypes)[number];
 
-export const campaignMemorySourceTypes = [
-  "character",
-  "entity",
-  "rule",
-  "session-hook",
-  "session-notes",
-  "session-recap",
-] as const;
-export type CampaignMemorySourceType =
-  (typeof campaignMemorySourceTypes)[number];
-
 export type CampaignSummary = {
   activeSessionId?: string;
   id: string;
@@ -131,15 +120,10 @@ export type CampaignCharacterSummary = {
 export type RuleSnippet = {
   aliases: string[];
   body: string;
-  campaignId?: string | null;
   category: RuleSnippetCategory;
-  contentKey?: string;
   id: string;
   slug: string;
-  source?: string;
-  sourceVersion?: string;
   summary: string;
-  tags?: string[];
   title: string;
   visibility: Visibility;
 };
@@ -150,39 +134,6 @@ export type AbilitySummary = {
   name: string;
   summary: string;
   trigger?: string;
-};
-
-export type CampaignMemoryMetadata = Record<
-  string,
-  boolean | null | number | string
->;
-
-export type CampaignMemoryGrounding = {
-  label: string;
-  sourceId: string;
-  sourcePath: string;
-  sourceType: CampaignMemorySourceType;
-};
-
-export type CampaignMemoryDocument = {
-  body: string;
-  campaignId: string;
-  grounding: CampaignMemoryGrounding;
-  id: string;
-  keywords: string[];
-  metadata: CampaignMemoryMetadata;
-  sourceId: string;
-  sourceType: CampaignMemorySourceType;
-  summary: string;
-  title: string;
-  updatedAt?: string;
-  visibility: Visibility;
-};
-
-export type CampaignMemoryResult = CampaignMemoryDocument & {
-  excerpt: string;
-  matchedTerms: string[];
-  score: number;
 };
 
 type ResolveCampaignAccessInput = {

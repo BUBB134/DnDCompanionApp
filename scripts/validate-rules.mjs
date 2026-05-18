@@ -14,9 +14,6 @@ const requiredFiles = [
   "apps/web/src/rules/matching.ts",
   "apps/web/src/rules/repository.ts",
   "apps/web/src/rules/routing.ts",
-  "docs/engineering/domain-content.md",
-  "packages/db/migrations/0007_domain_content_metadata.sql",
-  "packages/db/src/domain-content.ts",
   "packages/db/migrations/0003_core_rule_snippets.sql",
   "packages/types/src/campaign.ts",
 ];
@@ -42,57 +39,10 @@ for (const expectedText of [
 }
 
 const campaignTypesText = readText("packages/types/src/campaign.ts");
-for (const expectedText of [
-  "slug: string",
-  "body: string",
-  "aliases: string[]",
-  "campaignId?: string | null",
-  "contentKey?: string",
-  "source?: string",
-  "sourceVersion?: string",
-  "tags?: string[]",
-]) {
+for (const expectedText of ["slug: string", "body: string", "aliases: string[]"]) {
   expect(
     campaignTypesText.includes(expectedText),
     `RuleSnippet shared type must include ${expectedText}.`,
-  );
-}
-
-const domainContentText = readText("packages/db/src/domain-content.ts");
-for (const expectedText of [
-  "coreRuleSnippetSeeds",
-  "dnd-5e-srd-mvp",
-  "condition.prone",
-  "core-mechanic.concentration",
-]) {
-  expect(
-    domainContentText.includes(expectedText),
-    `Domain content seed must include ${expectedText}.`,
-  );
-}
-
-const coreRulesText = readText("apps/web/src/rules/core-rules.ts");
-expect(
-  coreRulesText.includes("@dnd/db/domain-content") &&
-    !coreRulesText.includes("body:"),
-  "Frontend rules fallback must re-export DB-owned domain content instead of hardcoding rule bodies.",
-);
-
-const domainContentMigrationText = readText(
-  "packages/db/migrations/0007_domain_content_metadata.sql",
-);
-for (const expectedSql of [
-  "campaign_id uuid references campaigns",
-  "content_key text",
-  "source_version text",
-  "rule_snippets_global_slug_unique_idx",
-  "rule_snippets_campaign_slug_unique_idx",
-  "rule_snippets_aliases_idx",
-  "rule_snippets_tags_idx",
-]) {
-  expect(
-    domainContentMigrationText.includes(expectedSql),
-    `Domain content migration is missing ${expectedSql}.`,
   );
 }
 
@@ -131,10 +81,6 @@ const repositoryText = readText("apps/web/src/rules/repository.ts");
 for (const expectedSql of [
   "from rule_snippets",
   "campaign_memberships",
-  "rule_snippets.campaign_id = $2",
-  "rule_snippets.campaign_id is null",
-  "not exists",
-  "campaign_rule_snippets.visibility = 'player-safe'",
   "rule_snippets.visibility = 'player-safe'",
   "unnest(rule_snippets.aliases)",
   "rule_snippets.body ilike",
@@ -158,13 +104,9 @@ if (hasTypeScriptRuntime) {
   const campaignTypesUrl = await transpileModuleToDataUrl(
     "packages/types/src/campaign.ts",
   );
-  const domainContentUrl = await transpileModuleToDataUrl(
-    "packages/db/src/domain-content.ts",
-    [["@dnd/types", campaignTypesUrl]],
-  );
   const coreRulesUrl = await transpileModuleToDataUrl(
     "apps/web/src/rules/core-rules.ts",
-    [["@dnd/db/domain-content", domainContentUrl]],
+    [["@dnd/types", campaignTypesUrl]],
   );
   const matchingModule = await import(
     await transpileModuleToDataUrl("apps/web/src/rules/matching.ts", [
@@ -247,12 +189,6 @@ if (hasTypeScriptRuntime) {
     dbStubModule.queries[0]?.values[2] === "condition" &&
       dbStubModule.queries[0]?.values[3] === "prone",
     "Rules repository must pass category and search query parameters.",
-  );
-  expect(
-    dbStubModule.queries[0]?.text.includes(
-      "campaign_rule_snippets.visibility = 'player-safe'",
-    ) && dbStubModule.queries[0]?.text.includes("campaign_memberships.role = 'dm'"),
-    "Rules repository must only suppress global rows when a visible campaign override exists.",
   );
 }
 

@@ -1,6 +1,5 @@
 export {
   canAccessVisibility,
-  campaignMemorySourceTypes,
   campaignRoles,
   entityTypes,
   filterByVisibility,
@@ -20,11 +19,6 @@ export type {
 export type {
   AbilitySummary,
   CampaignAccess,
-  CampaignMemoryDocument,
-  CampaignMemoryGrounding,
-  CampaignMemoryMetadata,
-  CampaignMemoryResult,
-  CampaignMemorySourceType,
   CampaignCharacterSummary,
   CampaignEntity,
   CampaignEntitySummary,
