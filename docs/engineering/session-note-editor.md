@@ -75,4 +75,6 @@ paragraph blocks. Rows with empty notes receive an empty versioned document.
 New saves write both `notes_document` and the derived `notes` projection in the
 same transaction. The plain-text projection strips wiki brackets to keep search,
 preview, and rule matching readable, while `notes_document` keeps link metadata
-for graph retrieval and AI grounding.
+for graph retrieval and AI grounding. Entity wiki references are also persisted
+through `session_entity_tags`, so entity pages can render backlinks into the
+sessions where they were mentioned without reparsing note text at read time.

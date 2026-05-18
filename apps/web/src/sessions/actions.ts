@@ -373,6 +373,7 @@ function hasFieldErrors(
 
 function revalidateSessionPaths(campaignId: string) {
   revalidatePath("/");
+  revalidatePath("/entities");
   revalidatePath("/sessions");
   revalidatePath(`/campaigns/${campaignId}`);
 }

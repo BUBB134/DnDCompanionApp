@@ -54,6 +54,10 @@ Use a generic `Entity` model for MVP with a `type` field:
 - quest
 - item
 
+Entity backlinks are derived from session tags and note reference metadata so
+users can move from wiki entities back into the sessions where they were
+mentioned. See `docs/engineering/entity-backlinks.md`.
+
 ## AI workflows
 1. Indexing / ingestion
 2. Recap generation

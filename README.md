@@ -111,6 +111,7 @@ packages/
 - `docs/engineering/campaign-invites.md`
 - `docs/engineering/campaign-onboarding.md`
 - `docs/engineering/domain-content.md`
+- `docs/engineering/entity-backlinks.md`
 - `docs/engineering/production-integrations.md`
 - `docs/engineering/supabase-postgres.md`
 - `docs/engineering/working-agreement.md`
