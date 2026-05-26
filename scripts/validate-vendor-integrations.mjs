@@ -6,6 +6,7 @@ const rootDir = dirname(dirname(fileURLToPath(import.meta.url)));
 const failures = [];
 
 const requiredFiles = [
+  ".github/workflows/ci.yml",
   ".github/workflows/deployment-smoke.yml",
   ".github/workflows/integration-smoke.yml",
   "apps/web/src/app/api/health/route.ts",
@@ -115,6 +116,30 @@ for (const snippet of [
     `Integration smoke workflow is missing expected configuration: ${snippet}`,
   );
 }
+
+const ciWorkflow = readText(".github/workflows/ci.yml");
+for (const snippet of [
+  "deploy_supabase:",
+  "needs: ci",
+  "if: github.event_name == 'push' && github.ref == 'refs/heads/main'",
+  "environment: production",
+  "group: supabase-production",
+  "DATABASE_URL: ${{ secrets.DATABASE_URL }}",
+  "SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}",
+  "SUPABASE_PROJECT_ID: ${{ secrets.SUPABASE_PROJECT_ID }}",
+  "run: npm run db:migrate:supabase",
+  "supabase functions deploy --project-ref \"$SUPABASE_PROJECT_ID\"",
+]) {
+  expect(ciWorkflow.includes(snippet), `CI workflow is missing Supabase deploy guard: ${snippet}`);
+}
+expect(
+  !ciWorkflow.includes("supabase db push"),
+  "CI workflow must use repository migrations instead of supabase db push.",
+);
+expect(
+  !ciWorkflow.includes("supabase link"),
+  "CI workflow must not require interactive supabase link setup.",
+);
 
 const deploymentSmokeWorkflow = readText(".github/workflows/deployment-smoke.yml");
 for (const snippet of [
