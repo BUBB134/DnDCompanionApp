@@ -346,6 +346,7 @@ if (hasTypeScriptRuntime) {
           ]
         },
         recap: "",
+        recap_grounding: [],
         tagged_entities: [
           {
             id: "22222222-2222-5222-8222-222222222222",
@@ -415,9 +416,10 @@ if (hasTypeScriptRuntime) {
     listedSessions[0]?.notes === "The party found the tide key." &&
       listedSessions[0]?.notesDocument.blocks[0]?.text ===
         "The party found the tide key." &&
-      listedSessions[0]?.recap === "The party found the tide key." &&
+      listedSessions[0]?.recap === "" &&
+      listedSessions[0]?.recapGrounding.length === 0 &&
       listedSessions[0]?.taggedEntities[0]?.name === "Captain Thorn",
-    "Session repository must map persisted note documents and visible entity tags.",
+    "Session repository must map persisted notes, recap state, and visible entity tags.",
   );
 
   await repositoryModule.getLatestSessionForUser("user-1", savedCampaign.id);

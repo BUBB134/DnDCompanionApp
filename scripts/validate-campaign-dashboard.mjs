@@ -164,6 +164,7 @@ if (hasTypeScriptRuntime) {
       id: "session-long-notes",
       notes: `${"quiet notes ".repeat(30)} stunned`,
       recap: "Short visible summary without tracked rules.",
+      recapGrounding: [],
       taggedEntities: [],
       title: "Long notes",
       unresolvedHooks: [],

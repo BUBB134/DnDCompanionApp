@@ -154,6 +154,7 @@ if (hasTypeScriptRuntime) {
         version: 1,
       },
       recap: "Mira kept concentration and the vault clue stayed unresolved.",
+      recapGrounding: [],
       taggedEntities: [
         {
           id: "entity-1",

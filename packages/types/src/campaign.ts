@@ -75,6 +75,7 @@ export type CampaignSetup = {
 export type SessionSummary = {
   id: string;
   recap: string;
+  recapGrounding: SessionRecapGrounding[];
   taggedEntities: readonly CampaignEntitySummary[];
   title: string;
   unresolvedHooks: string[];
@@ -189,6 +190,10 @@ export type CampaignMemoryGrounding = {
   sourceId: string;
   sourcePath: string;
   sourceType: CampaignMemorySourceType;
+};
+
+export type SessionRecapGrounding = CampaignMemoryGrounding & {
+  excerpt: string;
 };
 
 export type CampaignMemoryDocument = {
