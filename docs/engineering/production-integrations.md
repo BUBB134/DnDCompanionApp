@@ -66,9 +66,11 @@ Keep the linked `.vercel/project.json` file local and untracked. Contributors ca
 7. Run `npm run db:migrate:supabase` against preview, validate with `npm run db:check:supabase`, then repeat for production during release.
 8. After Vercel reports the deployment ready, run `npm run deploy:check -- --url=<deployment-url> --expect-env=preview` or `npm run deploy:check -- --url=<deployment-url> --expect-env=production`.
 
-## CI and smoke checks
+## CI, deploy, and smoke checks
 
-The normal `ci` workflow remains secret-free and runs install, lint, typecheck, tests, and build on every PR. It validates the static vendor integration contract through `npm test`.
+The normal `ci` job remains secret-free and runs install, lint, typecheck, tests, and build on every PR, merge queue event, and push to `main`. It validates the static vendor integration contract through `npm test`.
+
+Pushes to `main` also run the `deploy_supabase` job after `ci` succeeds. That job is bound to the GitHub `production` environment, serializes runs with the `supabase-production` concurrency group, applies checked-in repository migrations with `npm run db:migrate:supabase`, and deploys Supabase Edge Functions only when a `supabase/functions` directory exists.
 
 The `Integration Smoke` workflow is manual because it uses protected GitHub environment secrets. It validates required runtime configuration with:
 
