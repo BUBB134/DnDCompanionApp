@@ -64,6 +64,11 @@ mentioned. See `docs/engineering/entity-backlinks.md`.
 3. Rules / ability retrieval
 4. Grounded answer composition
 
+Session recap generation uses the authorized campaign memory corpus, persists
+source citations with the recap, and keeps DM-only context out of the
+player-safe recap field. See
+`docs/engineering/session-recap-generation.md`.
+
 ## Critical constraints
 - All retrieval must apply visibility filtering before answer composition
 - Player-safe and DM-only views must be preserved in both UI and AI pipelines

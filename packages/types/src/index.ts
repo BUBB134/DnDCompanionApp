@@ -47,6 +47,7 @@ export type {
   SessionNoteDocument,
   SessionNoteReference,
   SessionNoteReferenceType,
+  SessionRecapGrounding,
   SessionSummary,
   Visibility,
 } from "./campaign";

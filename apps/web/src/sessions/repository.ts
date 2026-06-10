@@ -2,9 +2,11 @@ import type {
   CampaignEntitySummary,
   CampaignSession,
   EntityType,
+  SessionRecapGrounding,
   SessionSummary,
   Visibility,
 } from "@dnd/types";
+import { campaignMemorySourceTypes } from "@dnd/types";
 import {
   queryDatabase,
   withDatabaseTransaction,
@@ -19,6 +21,7 @@ type SessionRow = {
   notes: string;
   notes_document: unknown;
   recap: string;
+  recap_grounding: unknown;
   tagged_entities: unknown;
   title: string;
   unresolved_hooks: unknown;
@@ -49,6 +52,73 @@ export async function getLatestSessionForUser(
   );
 
   return result.rows[0] ? mapSessionRow(result.rows[0]) : null;
+}
+
+export async function getSessionForUserById(
+  userId: string,
+  campaignId: string,
+  sessionId: string,
+): Promise<CampaignSession | null> {
+  const result = await queryDatabase<SessionRow>(
+    `${createSessionsQuery("and sessions.id = $3")}
+      limit 1
+    `,
+    [userId, campaignId, sessionId],
+  );
+
+  return result.rows[0] ? mapSessionRow(result.rows[0]) : null;
+}
+
+export async function updateSessionRecapForUser(
+  userId: string,
+  campaignId: string,
+  sessionId: string,
+  recap: string,
+  recapGrounding: readonly SessionRecapGrounding[],
+  expectedUpdatedAt: string,
+) {
+  const result = await queryDatabase<Pick<SessionRow, "id">>(
+    `
+      update sessions
+      set
+        recap = $4,
+        recap_grounding = $5::jsonb,
+        updated_at = now()
+      from campaign_memberships
+      where sessions.id = $3
+        and sessions.campaign_id = $2
+        and campaign_memberships.campaign_id = sessions.campaign_id
+        and campaign_memberships.user_id = $1
+        and sessions.updated_at = $6::timestamptz
+      returning sessions.id
+    `,
+    [
+      userId,
+      campaignId,
+      sessionId,
+      recap,
+      JSON.stringify(recapGrounding),
+      expectedUpdatedAt,
+    ],
+  );
+
+  if (!result.rows[0]) {
+    const currentSession = await getSessionForUserById(
+      userId,
+      campaignId,
+      sessionId,
+    );
+
+    if (currentSession) {
+      throw new Error(
+        "The session changed while the recap was being generated. Generate it again.",
+      );
+    }
+
+    throw new Error("You do not have access to generate a recap for this session.");
+  }
+
+  return getSessionForUserById(userId, campaignId, sessionId);
 }
 
 export async function createSessionForUser(
@@ -277,7 +347,8 @@ function mapSessionRow(row: SessionRow): CampaignSession {
 function mapSessionSummaryRow(row: SessionRow): SessionSummary {
   return {
     id: row.id,
-    recap: row.recap || createNotesPreview(row.notes),
+    recap: row.recap,
+    recapGrounding: mapRecapGrounding(row.recap_grounding),
     taggedEntities: mapTaggedEntities(row.tagged_entities),
     title: row.title,
     unresolvedHooks: mapUnresolvedHooks(row.unresolved_hooks),
@@ -290,6 +361,7 @@ function createSessionsQuery(extraWhereClause = "") {
         sessions.id,
         sessions.title,
         sessions.recap,
+        sessions.recap_grounding,
         sessions.notes,
         sessions.notes_document,
         sessions.unresolved_hooks,
@@ -327,6 +399,7 @@ function createSessionsQuery(extraWhereClause = "") {
         sessions.id,
         sessions.title,
         sessions.recap,
+        sessions.recap_grounding,
         sessions.notes,
         sessions.notes_document,
         sessions.unresolved_hooks,
@@ -390,6 +463,30 @@ function mapTaggedEntities(value: unknown): CampaignEntitySummary[] {
   });
 }
 
+function mapRecapGrounding(value: unknown): SessionRecapGrounding[] {
+  const rawGrounding = typeof value === "string" ? parseJson(value) : value;
+
+  if (!Array.isArray(rawGrounding)) {
+    return [];
+  }
+
+  return rawGrounding.flatMap((grounding): SessionRecapGrounding[] => {
+    if (!isRecapGroundingRecord(grounding)) {
+      return [];
+    }
+
+    return [
+      {
+        excerpt: grounding.excerpt,
+        label: grounding.label,
+        sourceId: grounding.sourceId,
+        sourcePath: grounding.sourcePath,
+        sourceType: grounding.sourceType,
+      },
+    ];
+  });
+}
+
 function parseJson(value: string): unknown {
   try {
     return JSON.parse(value) as unknown;
@@ -434,16 +531,28 @@ function isVisibility(value: unknown): value is Visibility {
   return value === "dm-only" || value === "player-safe";
 }
 
-function createNotesPreview(notes: string) {
-  const compactNotes = notes.replace(/\s+/g, " ").trim();
-
-  if (!compactNotes) {
-    return "No recap has been generated yet.";
+function isRecapGroundingRecord(value: unknown): value is {
+  excerpt: string;
+  label: string;
+  sourceId: string;
+  sourcePath: string;
+  sourceType: SessionRecapGrounding["sourceType"];
+} {
+  if (!value || typeof value !== "object") {
+    return false;
   }
 
-  return compactNotes.length > 220
-    ? `${compactNotes.slice(0, 217).trim()}...`
-    : compactNotes;
+  const grounding = value as Record<string, unknown>;
+
+  return (
+    typeof grounding.excerpt === "string" &&
+    typeof grounding.label === "string" &&
+    typeof grounding.sourceId === "string" &&
+    typeof grounding.sourcePath === "string" &&
+    campaignMemorySourceTypes.includes(
+      grounding.sourceType as SessionRecapGrounding["sourceType"],
+    )
+  );
 }
 
 function toIsoString(value: Date | string) {

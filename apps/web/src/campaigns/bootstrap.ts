@@ -106,6 +106,16 @@ const bootstrapSessions: readonly CampaignSessionSummary[] = [
     id: "session-12",
     recap:
       "The party recovered the drowned keeper's journal, knocked a smuggler prone in the flooded stair, and left one sealed vault unopened while Mira held concentration.",
+    recapGrounding: [
+      {
+        excerpt:
+          "The party recovered the drowned keeper's journal and left one sealed vault unopened.",
+        label: "The lighthouse beneath the tide",
+        sourceId: "session-12",
+        sourcePath: "sessions.notes",
+        sourceType: "session-notes",
+      },
+    ],
     taggedEntities: bootstrapEntities.slice(0, 2),
     title: "The lighthouse beneath the tide",
     unresolvedHooks: [

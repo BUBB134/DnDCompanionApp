@@ -85,6 +85,7 @@ export const baselineSchemaStatements = [
     campaign_id uuid not null references campaigns (id) on delete cascade,
     title text not null,
     recap text not null default '',
+    recap_grounding jsonb not null default '[]'::jsonb,
     notes text not null default '',
     notes_document jsonb not null default '{"version":1,"blocks":[]}'::jsonb,
     started_at timestamptz,

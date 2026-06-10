@@ -113,6 +113,7 @@ packages/
 - `docs/engineering/domain-content.md`
 - `docs/engineering/entity-backlinks.md`
 - `docs/engineering/production-integrations.md`
+- `docs/engineering/session-recap-generation.md`
 - `docs/engineering/supabase-postgres.md`
 - `docs/engineering/working-agreement.md`
 - `docs/engineering/code_review.md`

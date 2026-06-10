@@ -111,9 +111,27 @@ export function CampaignShell({
                   <h2 className="max-w-3xl text-3xl font-semibold leading-tight sm:text-4xl">
                     {latestSession.title}
                   </h2>
-                  <p className="max-w-3xl text-base leading-7 text-[#4b4657]">
-                    {latestSession.recap}
-                  </p>
+                  {latestSession.recap ? (
+                    <p className="max-w-3xl text-base leading-7 text-[#4b4657]">
+                      {latestSession.recap}
+                    </p>
+                  ) : (
+                    <div className="max-w-3xl">
+                      <EmptyState
+                        body="Open the session log to generate a player-safe recap from the saved notes."
+                        title="No recap generated"
+                      />
+                    </div>
+                  )}
+                  {latestSession.recapGrounding.length > 0 ? (
+                    <p className="text-sm font-medium text-[#1f6f78]">
+                      Grounded in {latestSession.recapGrounding.length} saved{" "}
+                      {latestSession.recapGrounding.length === 1
+                        ? "source"
+                        : "sources"}
+                      .
+                    </p>
+                  ) : null}
                 </div>
 
                 {latestSession.unresolvedHooks.length > 0 ? (

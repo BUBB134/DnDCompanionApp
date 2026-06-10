@@ -14,6 +14,7 @@ import {
 import { isDatabaseCampaignId } from "@/campaigns/database-id";
 import { listCharacterSummariesForUser } from "@/characters/repository";
 import { CampaignAccessState } from "@/components/campaign-access-state";
+import { SessionRecapGenerator } from "@/components/session-recap-generator";
 import { SessionNoteDocumentView } from "@/components/session-note-document-view";
 import {
   SessionCreateForm,
@@ -160,6 +161,55 @@ export default async function SessionsPage() {
                       <StatusPill tone="gold">
                         Hooks: {campaignSession.unresolvedHooks.length}
                       </StatusPill>
+                    </div>
+
+                    <div className="mt-4 rounded-lg border border-[#1f6f78]/20 bg-white p-4">
+                      <p className="text-xs font-semibold uppercase tracking-wide text-[#1f6f78]">
+                        Previously on
+                      </p>
+                      {campaignSession.recap ? (
+                        <p className="mt-2 text-sm leading-6 text-[#4b4657]">
+                          {campaignSession.recap}
+                        </p>
+                      ) : (
+                        <p className="mt-2 text-sm leading-6 text-[#4b4657]">
+                          No recap has been generated yet.
+                        </p>
+                      )}
+
+                      {campaignSession.recapGrounding.length > 0 ? (
+                        <details className="mt-3">
+                          <summary className="cursor-pointer text-sm font-semibold text-[#17161f]">
+                            Sources ({campaignSession.recapGrounding.length})
+                          </summary>
+                          <ul className="mt-3 grid gap-2">
+                            {campaignSession.recapGrounding.map(
+                              (grounding) => (
+                                <li
+                                  className="rounded-md border border-[#17161f]/10 bg-[#fffaf0] px-3 py-2 text-sm leading-6 text-[#4b4657]"
+                                  key={`${campaignSession.id}-recap-source-${grounding.sourceType}-${grounding.sourceId}`}
+                                >
+                                  <span className="font-semibold text-[#17161f]">
+                                    {grounding.label}
+                                  </span>
+                                  <span className="mt-1 block">
+                                    {grounding.excerpt}
+                                  </span>
+                                </li>
+                              ),
+                            )}
+                          </ul>
+                        </details>
+                      ) : null}
+
+                      {canManageSessions ? (
+                        <SessionRecapGenerator
+                          campaignId={campaign.id}
+                          hasNotes={Boolean(campaignSession.notes.trim())}
+                          hasRecap={Boolean(campaignSession.recap.trim())}
+                          sessionId={campaignSession.id}
+                        />
+                      ) : null}
                     </div>
 
                     {campaignSession.notes ? (
