@@ -44,6 +44,7 @@ for (const expectedText of [
   "updateSessionRecapForUser",
   "campaign_memberships.user_id = $1",
   "recap_grounding = $5::jsonb",
+  "sessions.updated_at = $6::timestamptz",
   "mapRecapGrounding",
 ]) {
   expect(
@@ -72,8 +73,11 @@ for (const expectedText of [
   'document.visibility === "player-safe"',
   '"https://api.openai.com/v1/responses"',
   "store: false",
+  "max_output_tokens",
   'effort: "low"',
   'verbosity: "low"',
+  "supportsGpt5RequestControls",
+  "SESSION_RECAP_MAX_NOTES_LENGTH",
   "sessions.notes",
 ]) {
   expect(
@@ -212,7 +216,8 @@ if (typescriptPath) {
       visibility: "player-safe",
     },
     {
-      body: "A privateer with a tide chart.",
+      body:
+        "A privateer with a tide chart.\n\nLinked sessions: A later voyage.\nA later voyage: Captain Thorn betrayed the party.",
       campaignId: "campaign-1",
       grounding: {
         label: "Captain Thorn",
@@ -268,8 +273,12 @@ if (typescriptPath) {
   );
 
   let requestBody = null;
+  const longSession = {
+    ...session,
+    notes: `${session.notes}\n${"The party crossed the flooded causeway. ".repeat(120)}The lighthouse beacon was restored.`,
+  };
   const remoteRecap = await generation.requestOpenAIRecap(
-    session,
+    longSession,
     selectedSources,
     {
       apiKey: "test-key",
@@ -296,17 +305,56 @@ if (typescriptPath) {
           status: 200,
         };
       },
-      model: "gpt-test",
+      model: "gpt-5.5",
     },
+  );
+  const requestSources = JSON.parse(requestBody.input).sources;
+  const requestNoteSource = requestSources.find(
+    (source) => source.sourceType === "session-notes",
+  );
+  const requestEntitySource = requestSources.find(
+    (source) => source.sourceType === "entity",
   );
 
   expect(
-    requestBody?.model === "gpt-test" &&
+    requestBody?.model === "gpt-5.5" &&
       requestBody?.store === false &&
+      requestBody?.max_output_tokens === 512 &&
       requestBody?.reasoning?.effort === "low" &&
+      requestNoteSource?.body.includes("lighthouse beacon was restored") &&
+      requestEntitySource?.body === "A privateer with a tide chart." &&
+      !remoteRecap.grounding.some((source) =>
+        source.excerpt.includes("later voyage"),
+      ) &&
       remoteRecap.grounding.length === 2 &&
       remoteRecap.recap.includes("tide key"),
-    "OpenAI recap generation must use the Responses API contract and preserve source grounding.",
+    "OpenAI recap generation must cap output, preserve complete notes, and exclude backlink context.",
+  );
+
+  let overrideRequestBody = null;
+  await generation.requestOpenAIRecap(session, selectedSources, {
+    apiKey: "test-key",
+    fetchImpl: async (_url, init) => {
+      overrideRequestBody = JSON.parse(init.body);
+
+      return {
+        ok: true,
+        async json() {
+          return {
+            output_text: "The party returned safely to the lighthouse.",
+          };
+        },
+        status: 200,
+      };
+    },
+    model: "gpt-4.1-mini",
+  });
+
+  expect(
+    overrideRequestBody?.model === "gpt-4.1-mini" &&
+      overrideRequestBody?.reasoning === undefined &&
+      overrideRequestBody?.text === undefined,
+    "Non-GPT-5 model overrides must omit GPT-5-specific request controls.",
   );
 }
 

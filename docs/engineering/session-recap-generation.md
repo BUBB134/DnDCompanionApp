@@ -15,7 +15,9 @@ notes have been saved.
   `OPENAI_MODEL` or `gpt-5.5`.
 
 The OpenAI request is server-only, does not store the response at OpenAI, and
-uses low reasoning effort and low text verbosity for this short workflow.
+uses a hard output-token cap. GPT-5-family models also receive low reasoning
+effort and low text verbosity controls; other model overrides omit those
+model-specific controls.
 
 ## Grounding
 
@@ -27,10 +29,17 @@ the existing campaign memory corpus. The source set is deliberately narrow:
 - player-safe characters referenced in those notes
 
 DM-only entities are excluded even when a DM triggers generation because the
-persisted session recap is visible to all campaign members. Each saved recap
+persisted session recap is visible to all campaign members. Entity context uses
+the entity summary without campaign-wide backlink excerpts, and the complete
+saved session notes remain available within the editor's 10,000-character
+limit. Each saved recap
 stores its source type, source id, source path, label, and excerpt in
 `sessions.recap_grounding`. The session log renders those source citations
 beside the recap.
+
+The recap save carries the session's loaded `updated_at` value. If the session
+changes while generation is in flight, the conditional update is rejected and
+the member is prompted to generate again rather than saving a stale recap.
 
 ## Scope Boundary
 

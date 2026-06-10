@@ -73,6 +73,7 @@ export async function generateSessionRecapForUser(
     sessionId,
     generated.recap,
     generated.grounding,
+    session.updatedAt,
   );
 
   if (!savedSession) {

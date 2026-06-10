@@ -75,6 +75,7 @@ export async function updateSessionRecapForUser(
   sessionId: string,
   recap: string,
   recapGrounding: readonly SessionRecapGrounding[],
+  expectedUpdatedAt: string,
 ) {
   const result = await queryDatabase<Pick<SessionRow, "id">>(
     `
@@ -88,6 +89,7 @@ export async function updateSessionRecapForUser(
         and sessions.campaign_id = $2
         and campaign_memberships.campaign_id = sessions.campaign_id
         and campaign_memberships.user_id = $1
+        and sessions.updated_at = $6::timestamptz
       returning sessions.id
     `,
     [
@@ -96,10 +98,23 @@ export async function updateSessionRecapForUser(
       sessionId,
       recap,
       JSON.stringify(recapGrounding),
+      expectedUpdatedAt,
     ],
   );
 
   if (!result.rows[0]) {
+    const currentSession = await getSessionForUserById(
+      userId,
+      campaignId,
+      sessionId,
+    );
+
+    if (currentSession) {
+      throw new Error(
+        "The session changed while the recap was being generated. Generate it again.",
+      );
+    }
+
     throw new Error("You do not have access to generate a recap for this session.");
   }
 
