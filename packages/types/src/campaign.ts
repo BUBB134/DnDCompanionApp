@@ -119,6 +119,33 @@ export type CampaignEntity = CampaignEntitySummary & {
   description: string;
 };
 
+export type CampaignEntityBacklinkSession = {
+  id: string;
+  occurredAt: string;
+  recap: string;
+  title: string;
+  updatedAt: string;
+};
+
+export type CampaignEntityMentionReference = {
+  blockId: string;
+  excerpt: string;
+  label: string;
+  occurredAt: string;
+  sessionId: string;
+  sessionTitle: string;
+};
+
+export type CampaignEntityBacklinks = {
+  entityId: string;
+  linkedSessions: CampaignEntityBacklinkSession[];
+  mentionReferences: CampaignEntityMentionReference[];
+};
+
+export type CampaignEntityWithBacklinks = CampaignEntity & {
+  backlinks: CampaignEntityBacklinks;
+};
+
 export type CampaignCharacterSummary = {
   className?: string | null;
   id: string;

@@ -12,7 +12,7 @@ campaign data into cited retrieval results.
 - session notes
 - session recaps
 - unresolved session hooks
-- campaign entities
+- campaign entities, including linked session and mention backlink context
 - rule snippets
 - character summaries
 
@@ -29,13 +29,15 @@ Retrieval must always happen after campaign membership is resolved.
 membership-aware repositories:
 
 - `listSessionsForUser()`
-- `listEntitiesForUser()`
+- `listEntitiesWithBacklinksForUser()`
 - `listRuleSnippetsForUser()`
 - `listCharacterSummariesForUser()`
 
 The pure corpus builder also applies `canAccessVisibility()` before creating
 entity, rule, or character memory documents. This keeps DM-only material out of
 player retrieval even if a future caller accidentally passes a mixed corpus.
+Entity backlink queries apply the same membership and visibility checks before
+the backlink context reaches the corpus builder.
 
 ## Grounding Contract
 

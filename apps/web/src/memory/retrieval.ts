@@ -2,6 +2,7 @@ import type {
   Campaign,
   CampaignCharacterSummary,
   CampaignEntity,
+  CampaignEntityBacklinks,
   CampaignMemoryDocument,
   CampaignMemoryMetadata,
   CampaignMemoryResult,
@@ -17,9 +18,13 @@ export const CAMPAIGN_MEMORY_MAX_LIMIT = 20;
 export type CampaignMemoryCorpusInput = {
   campaign: Campaign;
   characters?: readonly CampaignCharacterSummary[];
-  entities?: readonly CampaignEntity[];
+  entities?: readonly CampaignEntityMemoryInput[];
   rules?: readonly RuleSnippet[];
   sessions?: readonly CampaignSession[];
+};
+
+type CampaignEntityMemoryInput = CampaignEntity & {
+  backlinks?: CampaignEntityBacklinks;
 };
 
 export type CampaignMemoryRetrievalOptions = {
@@ -201,23 +206,65 @@ function createSessionMemoryDocuments(
 
 function createEntityMemoryDocument(
   campaign: Campaign,
-  entity: CampaignEntity,
+  entity: CampaignEntityMemoryInput,
 ): CampaignMemoryDocument {
+  const backlinkSummary = createEntityBacklinkSummary(entity.backlinks);
+  const latestMention = entity.backlinks?.mentionReferences[0];
+
   return {
-    body: [entity.summary, entity.description].filter(Boolean).join("\n\n"),
+    body: [entity.summary, entity.description, backlinkSummary]
+      .filter(Boolean)
+      .join("\n\n"),
     campaignId: campaign.id,
     grounding: createGrounding("entity", entity.id, entity.name, "entities"),
     id: `entity:${entity.id}`,
-    keywords: [entity.name, entity.type, entity.summary],
-    metadata: {
+    keywords: [
+      entity.name,
+      entity.type,
+      entity.summary,
+      ...(entity.backlinks?.linkedSessions.map((session) => session.title) ?? []),
+      ...(entity.backlinks?.mentionReferences.map((reference) => reference.label) ?? []),
+    ],
+    metadata: compactMetadata({
       entityType: entity.type,
-    },
+      latestMentionSessionId: latestMention?.sessionId ?? null,
+      linkedSessionCount: entity.backlinks?.linkedSessions.length ?? 0,
+      mentionReferenceCount: entity.backlinks?.mentionReferences.length ?? 0,
+    }),
     sourceId: entity.id,
     sourceType: "entity",
     summary: entity.summary,
     title: entity.name,
     visibility: entity.visibility,
   };
+}
+
+function createEntityBacklinkSummary(
+  backlinks: CampaignEntityBacklinks | undefined,
+) {
+  if (!backlinks) {
+    return "";
+  }
+
+  const linkedSessionTitles = backlinks.linkedSessions.map(
+    (session) => session.title,
+  );
+  const mentionExcerpts = backlinks.mentionReferences.map(
+    (reference) => `${reference.sessionTitle}: ${reference.excerpt}`,
+  );
+
+  if (linkedSessionTitles.length === 0 && mentionExcerpts.length === 0) {
+    return "";
+  }
+
+  return [
+    linkedSessionTitles.length > 0
+      ? `Linked sessions: ${linkedSessionTitles.join(", ")}.`
+      : "",
+    ...mentionExcerpts,
+  ]
+    .filter(Boolean)
+    .join("\n");
 }
 
 function createRuleMemoryDocument(

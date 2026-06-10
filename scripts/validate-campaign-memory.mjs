@@ -50,7 +50,7 @@ const repositoryText = readText("apps/web/src/memory/repository.ts");
 for (const expectedText of [
   "getDatabaseCampaignAccessForUser",
   "listSessionsForUser",
-  "listEntitiesForUser",
+  "listEntitiesWithBacklinksForUser",
   "listRuleSnippetsForUser",
   "listCharacterSummariesForUser",
   "createCampaignMemoryDocuments",
@@ -319,7 +319,7 @@ if (hasTypeScriptRuntime) {
     }
   `);
   const entitiesRepositoryStubUrl = moduleDataUrl(`
-    export async function listEntitiesForUser() {
+    export async function listEntitiesWithBacklinksForUser() {
       return ${JSON.stringify(entities)};
     }
   `);
