@@ -82,7 +82,7 @@ npm run db:check:supabase
 
 Run this workflow against `preview` after preview secrets are created and against `production` before or immediately after a production promotion.
 
-Vercel runs `npm run env:check` before `npm run build`, so preview and production deployments with missing or invalid database, Supabase public, or auth-session configuration fail before promotion.
+Vercel runs the root workspace's `npm run env:check` before the web build, so preview and production deployments with missing or invalid database, Supabase public, or auth-session configuration fail before promotion.
 
 The `Deployment Smoke` workflow validates an already-built Vercel URL through the deployed app's `/api/health` route and the public `/sign-in?next=%2F` route:
 

@@ -206,7 +206,7 @@ for (const snippet of [
 
 const vercelConfig = readJson("vercel.json");
 expect(
-  vercelConfig.buildCommand === "npm run env:check && npm run build",
+  vercelConfig.buildCommand === "npm --prefix ../.. run env:check && npm run build",
   "Vercel builds must validate runtime environment configuration before building.",
 );
 
