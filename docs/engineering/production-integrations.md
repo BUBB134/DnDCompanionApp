@@ -90,7 +90,7 @@ The `Deployment Smoke` workflow validates an already-built Vercel URL through th
 npm run deploy:check -- --url=<deployment-url> --expect-env=preview
 ```
 
-The workflow runs automatically for successful GitHub deployment statuses and can also be dispatched manually. Use the preview deployment URL from the pull request for `preview`, and the production deployment URL after promotion for `production`. The health endpoint returns only environment/check status and does not expose secrets. A passing result requires runtime environment validation, database connectivity, and an enabled sign-in form without the deployment-configuration alert.
+The workflow runs automatically for successful Production deployment statuses and can also be dispatched manually. Protected Vercel previews remain covered by the build-time environment check; use a deployment-protection bypass only when manually smoke-testing one. The health endpoint returns only environment/check status and does not expose secrets. A passing result requires runtime environment validation, database connectivity, and an enabled sign-in form without the deployment-configuration alert.
 
 ## Runtime validation
 

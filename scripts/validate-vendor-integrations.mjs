@@ -147,6 +147,7 @@ for (const snippet of [
   "workflow_dispatch:",
   "deployment_url:",
   "github.event.deployment_status.state == 'success'",
+  "github.event.deployment.environment == 'Production'",
   "github.event.deployment_status.environment_url",
   "npm run deploy:check -- --url=\"$DEPLOYMENT_URL\" --expect-env=\"$expected_environment\"",
 ]) {
