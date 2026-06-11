@@ -126,7 +126,7 @@ for (const snippet of [
   "group: supabase-production",
   "DATABASE_URL: ${{ secrets.DATABASE_URL }}",
   "SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}",
-  "SUPABASE_PROJECT_ID: ${{ secrets.SUPABASE_PROJECT_ID }}",
+  "SUPABASE_PROJECT_ID: ${{ secrets.PRODUCTION_PROJECT_ID }}",
   "run: npm run db:migrate:supabase",
   "supabase functions deploy --project-ref \"$SUPABASE_PROJECT_ID\"",
 ]) {
@@ -143,10 +143,12 @@ expect(
 
 const deploymentSmokeWorkflow = readText(".github/workflows/deployment-smoke.yml");
 for (const snippet of [
+  "deployment_status:",
   "workflow_dispatch:",
   "deployment_url:",
-  "environment: ${{ inputs.target }}",
-  "run: npm run deploy:check -- --url=\"${{ inputs.deployment_url }}\" --expect-env=\"${{ inputs.target }}\"",
+  "github.event.deployment_status.state == 'success'",
+  "github.event.deployment_status.environment_url",
+  "npm run deploy:check -- --url=\"$DEPLOYMENT_URL\" --expect-env=\"$expected_environment\"",
 ]) {
   expect(
     deploymentSmokeWorkflow.includes(snippet),
@@ -177,6 +179,8 @@ for (const snippet of [
   "Database connectivity check did not pass.",
   "Sign-in route returned HTTP",
   "Sign-in route redirected instead of rendering directly.",
+  "Sign-in is unavailable because the submit button is disabled.",
+  "Sign-in route reported incomplete deployment configuration.",
 ]) {
   expect(
     deploymentCheck.includes(snippet),
@@ -199,6 +203,12 @@ for (const snippet of [
     `Production env check is missing Supabase validation: ${snippet}`,
   );
 }
+
+const vercelConfig = readJson("vercel.json");
+expect(
+  vercelConfig.buildCommand === "npm run env:check && npm run build",
+  "Vercel builds must validate runtime environment configuration before building.",
+);
 
 const productionDocs = readText("docs/engineering/production-integrations.md");
 for (const snippet of [

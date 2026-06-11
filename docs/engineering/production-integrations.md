@@ -35,13 +35,13 @@ Keep the linked `.vercel/project.json` file local and untracked. Contributors ca
 | Variable | Scope | Required | Purpose |
 | --- | --- | --- | --- |
 | `NEXT_PUBLIC_APP_ENV` | Browser/server | All environments | `local`, `preview`, or `production`. Controls strict runtime validation. |
-| `APP_BASE_URL` | Server | Preview/production, strict smoke | Canonical app origin such as `https://dnd-companion.example.com`. Use this origin when configuring Supabase auth redirect allow-lists. |
+| `APP_BASE_URL` | Server | Optional, strict smoke | Canonical app origin such as `https://dnd-companion.example.com`. Configure it when managed auth callback allow-lists are introduced. |
 | `NEXT_PUBLIC_SUPABASE_URL` | Browser/server | Preview/production, strict smoke | Supabase project API URL. Must be `https://egrmvhfroiumcodkotjv.supabase.co`. |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Browser/server | Preview/production, strict smoke | Supabase publishable key (`sb_publishable_...`) or legacy anon JWT for browser-safe future client access. RLS remains the data boundary. |
 | `NEXT_PUBLIC_SENTRY_DSN` | Browser | Optional | Browser-safe Sentry DSN when client reporting is enabled. |
 | `AUTH_PROVIDER` | Server | All environments | Currently `local`. |
 | `AUTH_SESSION_SECRET` | Server secret | Preview/production | Secret used to sign auth session cookies. Minimum 32 characters. |
-| `SUPABASE_SERVICE_ROLE_KEY` | Server secret | Preview/production, strict smoke | Supabase secret key (`sb_secret_...`) or legacy service role JWT for server-only maintenance and future privileged data paths. Never expose to client components. |
+| `SUPABASE_SERVICE_ROLE_KEY` | Server secret | Optional, strict smoke | Supabase secret key (`sb_secret_...`) or legacy service role JWT for future privileged server-only data paths. Never expose to client components. |
 | `DATABASE_URL` | Server secret | Preview/production/local Supabase dev | Supabase Postgres connection string for app data and migrations. Must keep `sslmode=require`. |
 | `DATABASE_POOL_MAX` | Server | Optional | Max app connection pool size. Start at `3` for preview and `5` for production. |
 | `DATABASE_CONNECTION_TIMEOUT_MS` | Server | Optional | Postgres connection timeout in milliseconds. Defaults to `10000`. |
@@ -59,7 +59,7 @@ Keep the linked `.vercel/project.json` file local and untracked. Contributors ca
 
 1. Create Vercel preview and production environments for the repository.
 2. Configure preview with `NEXT_PUBLIC_APP_ENV=preview` and production with `NEXT_PUBLIC_APP_ENV=production`.
-3. Add environment-specific `APP_BASE_URL`, `DATABASE_URL`, `DATABASE_POOL_MAX`, `AUTH_SESSION_SECRET`, `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, and OpenAI secrets in Vercel.
+3. Add environment-specific `DATABASE_URL`, `DATABASE_POOL_MAX`, `AUTH_SESSION_SECRET`, `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, and OpenAI secrets in Vercel. Add `APP_BASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` when a deployed feature consumes them.
 4. Add the same variable and secret names to GitHub environments named `preview` and `production` for the manual Integration Smoke workflow.
 5. In Supabase Auth settings, allow the local, preview, and production app origins from `APP_BASE_URL`; future callback routes should stay on those origins.
 6. Run `npm run env:check:supabase -- --env=preview` and `npm run env:check -- --env=production --strict` locally or in the deployment shell before first release.
@@ -70,7 +70,7 @@ Keep the linked `.vercel/project.json` file local and untracked. Contributors ca
 
 The normal `ci` job remains secret-free and runs install, lint, typecheck, tests, and build on every PR, merge queue event, and push to `main`. It validates the static vendor integration contract through `npm test`.
 
-Pushes to `main` also run the `deploy_supabase` job after `ci` succeeds. That job is bound to the GitHub `production` environment, serializes runs with the `supabase-production` concurrency group, applies checked-in repository migrations with `npm run db:migrate:supabase`, and deploys Supabase Edge Functions only when a `supabase/functions` directory exists.
+Pushes to `main` also run the `deploy_supabase` job after `ci` succeeds. That job is bound to the GitHub `production` environment, reads the project reference from `PRODUCTION_PROJECT_ID`, serializes runs with the `supabase-production` concurrency group, applies checked-in repository migrations with `npm run db:migrate:supabase`, and deploys Supabase Edge Functions only when a `supabase/functions` directory exists.
 
 The `Integration Smoke` workflow is manual because it uses protected GitHub environment secrets. It validates required runtime configuration with:
 
@@ -82,17 +82,19 @@ npm run db:check:supabase
 
 Run this workflow against `preview` after preview secrets are created and against `production` before or immediately after a production promotion.
 
+Vercel runs `npm run env:check` before `npm run build`, so preview and production deployments with missing or invalid database, Supabase public, or auth-session configuration fail before promotion.
+
 The `Deployment Smoke` workflow validates an already-built Vercel URL through the deployed app's `/api/health` route and the public `/sign-in?next=%2F` route:
 
 ```bash
 npm run deploy:check -- --url=<deployment-url> --expect-env=preview
 ```
 
-Use the preview deployment URL from the pull request for `preview`, and the production deployment URL after promotion for `production`. The health endpoint returns only environment/check status and does not expose secrets. A passing result requires runtime environment validation, database connectivity, and a non-500 sign-in render with the expected form.
+The workflow runs automatically for successful GitHub deployment statuses and can also be dispatched manually. Use the preview deployment URL from the pull request for `preview`, and the production deployment URL after promotion for `production`. The health endpoint returns only environment/check status and does not expose secrets. A passing result requires runtime environment validation, database connectivity, and an enabled sign-in form without the deployment-configuration alert.
 
 ## Runtime validation
 
-The root app layout reports runtime environment issues to server logs without blocking the public sign-in route. Local development defaults are permissive. Preview and production protected app routes still call `assertValidRuntimeEnv(process.env)` after authentication, so critical configuration problems fail before users enter the app shell. The sign-in form is disabled when `AUTH_SESSION_SECRET` is missing in a non-local environment, because production auth cookies must be signed.
+The root app layout reports runtime environment issues to server logs without blocking the public sign-in route. Local development defaults are permissive. Preview and production protected app routes still call `assertValidRuntimeEnv(process.env)` after authentication, so configuration used by the running application fails before users enter the app shell. `APP_BASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` remain validated when present but do not block runtime until a deployed feature consumes them. The sign-in form is disabled when `AUTH_SESSION_SECRET` is missing in a non-local environment, because production auth cookies must be signed.
 
 The deployed `/api/health` route performs the same runtime environment validation and then runs a minimal `select 1` against the configured database. Failures are surfaced as HTTP 503 and logged in Vercel runtime logs for debugging without returning raw credentials or connection strings to the caller.
 

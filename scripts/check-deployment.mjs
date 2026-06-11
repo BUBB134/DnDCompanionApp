@@ -127,6 +127,28 @@ async function checkSignInRoute(signInUrl, checkOptions) {
 
   if (!body.includes("<form") || !body.includes('name="email"')) {
     fail("Sign-in route did not render the expected sign-in form.");
+    return;
+  }
+
+  const submitButton = [...body.matchAll(/<button\b[^>]*>/gu)]
+    .map(([tag]) => tag)
+    .find((tag) => /\btype="submit"/u.test(tag));
+
+  if (!submitButton) {
+    fail("Sign-in route did not render a submit button.");
+    return;
+  }
+
+  if (/\bdisabled(?:=""|(?=[\s>]))/u.test(submitButton)) {
+    fail("Sign-in is unavailable because the submit button is disabled.");
+  }
+
+  if (
+    body.includes(
+      "Sign-in is temporarily unavailable while deployment configuration is completed.",
+    )
+  ) {
+    fail("Sign-in route reported incomplete deployment configuration.");
   }
 }
 

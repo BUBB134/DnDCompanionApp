@@ -87,7 +87,7 @@ The MVP production contract is documented in `docs/engineering/production-integr
 - Deploy the monorepo through Vercel using `vercel.json`.
 - Configure preview with `NEXT_PUBLIC_APP_ENV=preview` and production with `NEXT_PUBLIC_APP_ENV=production`.
 - Set `DATABASE_URL`, `DATABASE_POOL_MAX`, `AUTH_SESSION_SECRET`, and AI/observability secrets in Vercel and matching GitHub environments.
-- Set `APP_BASE_URL`, `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, and `SUPABASE_SERVICE_ROLE_KEY` in preview and production.
+- Set `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY` in preview and production. Add `APP_BASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` only when a deployed feature consumes them.
 - Use `npm run env:check -- --env=production --strict` and `npm run db:check:supabase` to validate environment wiring before promotion.
 
 ## Workspace Layout

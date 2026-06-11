@@ -70,7 +70,6 @@ function validateEnvironment(source, { requireSupabase, strict, supabaseProject 
   validateVercelEnvironment(source, issues);
 
   if (appEnvironment !== "local" || requireSupabase) {
-    requireValue("APP_BASE_URL", source.APP_BASE_URL, issues);
     requireValue("DATABASE_URL", source.DATABASE_URL, issues);
     requireValue("NEXT_PUBLIC_SUPABASE_URL", source.NEXT_PUBLIC_SUPABASE_URL, issues);
     requireValue(
@@ -78,7 +77,6 @@ function validateEnvironment(source, { requireSupabase, strict, supabaseProject 
       source.NEXT_PUBLIC_SUPABASE_ANON_KEY,
       issues,
     );
-    requireValue("SUPABASE_SERVICE_ROLE_KEY", source.SUPABASE_SERVICE_ROLE_KEY, issues);
   }
 
   if (appEnvironment !== "local") {
