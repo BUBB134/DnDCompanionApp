@@ -1,6 +1,7 @@
 name: Deployment Smoke
 
 on:
+  deployment_status:
   workflow_dispatch:
     inputs:
       target:
@@ -17,8 +18,11 @@ on:
 
 jobs:
   smoke:
+    if: github.event_name == 'workflow_dispatch' || (github.event.deployment_status.state == 'success' && github.event.deployment.environment == 'Production')
     runs-on: ubuntu-latest
-    environment: ${{ inputs.target }}
+    env:
+      DEPLOYMENT_URL: ${{ github.event_name == 'workflow_dispatch' && inputs.deployment_url || github.event.deployment_status.environment_url }}
+      EXPECTED_ENVIRONMENT: ${{ github.event_name == 'workflow_dispatch' && inputs.target || github.event.deployment.environment }}
 
     steps:
       - name: Checkout
@@ -30,4 +34,7 @@ jobs:
           node-version: 22
 
       - name: Check deployment health
-        run: npm run deploy:check -- --url="${{ inputs.deployment_url }}" --expect-env="${{ inputs.target }}"
+        shell: bash
+        run: |
+          expected_environment="$(printf '%s' "$EXPECTED_ENVIRONMENT" | tr '[:upper:]' '[:lower:]')"
+          npm run deploy:check -- --url="$DEPLOYMENT_URL" --expect-env="$expected_environment"

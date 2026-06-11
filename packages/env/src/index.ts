@@ -120,7 +120,6 @@ export function validateRuntimeEnv(source: EnvSource): RuntimeEnvValidationIssue
   const serverEnv = readServerEnv(source);
 
   if (isNonLocalAppEnvironment(publicEnv.NEXT_PUBLIC_APP_ENV)) {
-    requireValue("APP_BASE_URL", serverEnv.APP_BASE_URL, issues);
     requireValue("DATABASE_URL", serverEnv.DATABASE_URL, issues);
     requireValue("AUTH_SESSION_SECRET", serverEnv.AUTH_SESSION_SECRET, issues);
     requireValue(
@@ -131,11 +130,6 @@ export function validateRuntimeEnv(source: EnvSource): RuntimeEnvValidationIssue
     requireValue(
       "NEXT_PUBLIC_SUPABASE_ANON_KEY",
       publicEnv.NEXT_PUBLIC_SUPABASE_ANON_KEY,
-      issues,
-    );
-    requireValue(
-      "SUPABASE_SERVICE_ROLE_KEY",
-      serverEnv.SUPABASE_SERVICE_ROLE_KEY,
       issues,
     );
   }
