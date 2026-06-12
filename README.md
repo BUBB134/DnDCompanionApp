@@ -30,13 +30,17 @@ The web app runs from `apps/web` and is exposed through the root `dev` script.
 
 ## Local Membership Bootstrap
 
-The protected app currently resolves campaign access from a small local bootstrap dataset while the broader campaign data layer is still being built.
+With `AUTH_PROVIDER=local`, the protected app can resolve campaign access from a small local bootstrap dataset while the broader campaign data layer is still being built.
 
 - Sign in as `dm@local.test` to exercise DM access.
 - Sign in as `player@local.test` to exercise player-safe access.
 - Sign in as any other email to verify the non-member access state.
 
 If you want to try a different user during local development, update the bootstrap membership records in `apps/web/src/campaigns/bootstrap.ts`.
+
+Preview and production use `AUTH_PROVIDER=supabase` for real email/password
+accounts, confirmation callbacks, sign-out, and password recovery. See
+`docs/engineering/managed-auth.md`.
 
 ## Root Scripts
 - `npm run install` explains the install workflow for this npm workspace.
@@ -86,8 +90,8 @@ The MVP production contract is documented in `docs/engineering/production-integr
 
 - Deploy the monorepo through Vercel using `vercel.json`.
 - Configure preview with `NEXT_PUBLIC_APP_ENV=preview` and production with `NEXT_PUBLIC_APP_ENV=production`.
-- Set `DATABASE_URL`, `DATABASE_POOL_MAX`, `AUTH_SESSION_SECRET`, and AI/observability secrets in Vercel and matching GitHub environments.
-- Set `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY` in preview and production. Add `APP_BASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` only when a deployed feature consumes them.
+- Set `AUTH_PROVIDER=supabase`, `APP_BASE_URL`, `DATABASE_URL`, `DATABASE_POOL_MAX`, and AI/observability secrets in Vercel and matching GitHub environments.
+- Set `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY` in preview and production. Add `SUPABASE_SERVICE_ROLE_KEY` only when a privileged server feature consumes it.
 - Use `npm run env:check -- --env=production --strict` and `npm run db:check:supabase` to validate environment wiring before promotion.
 
 ## Workspace Layout
@@ -112,6 +116,7 @@ packages/
 - `docs/engineering/campaign-onboarding.md`
 - `docs/engineering/domain-content.md`
 - `docs/engineering/entity-backlinks.md`
+- `docs/engineering/managed-auth.md`
 - `docs/engineering/production-integrations.md`
 - `docs/engineering/session-recap-generation.md`
 - `docs/engineering/supabase-postgres.md`

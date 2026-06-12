@@ -2,7 +2,7 @@ import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 
 const appEnvironments = ["local", "preview", "production"];
-const authProviders = ["local"];
+const authProviders = ["local", "supabase"];
 const groundingModes = ["disabled", "local", "retrieval"];
 const logLevels = ["debug", "error", "info", "warn"];
 const observabilityProviders = ["console", "sentry"];
@@ -48,6 +48,7 @@ function validateEnvironment(source, { requireSupabase, strict, supabaseProject 
     appEnvironments,
     inferAppEnvironment(source),
   );
+  const authProvider = pickValue(source.AUTH_PROVIDER, authProviders, "local");
   const groundingMode = pickValue(source.AI_GROUNDING_MODE, groundingModes, "disabled");
   const observabilityProvider = pickValue(
     source.OBSERVABILITY_PROVIDER,
@@ -80,7 +81,23 @@ function validateEnvironment(source, { requireSupabase, strict, supabaseProject 
   }
 
   if (appEnvironment !== "local") {
-    requireValue("AUTH_SESSION_SECRET", source.AUTH_SESSION_SECRET, issues);
+    requireValue("APP_BASE_URL", source.APP_BASE_URL, issues);
+
+    if (authProvider !== "supabase") {
+      issues.push({
+        key: "AUTH_PROVIDER",
+        message: "AUTH_PROVIDER must be supabase in preview and production.",
+      });
+    }
+  }
+
+  if (authProvider === "supabase") {
+    requireValue("NEXT_PUBLIC_SUPABASE_URL", source.NEXT_PUBLIC_SUPABASE_URL, issues);
+    requireValue(
+      "NEXT_PUBLIC_SUPABASE_ANON_KEY",
+      source.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+      issues,
+    );
   }
 
   if (strict) {

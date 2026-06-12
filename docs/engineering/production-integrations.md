@@ -10,7 +10,7 @@ DND-18 establishes the MVP vendor and environment contract. It does not provisio
 | Supabase project | Supabase | Use project `egrmvhfroiumcodkotjv` for the public project URL, anon key, service role key, and Postgres URL. Store anon key as an environment variable and the service role key as a server-only secret. |
 | Database | Supabase Postgres | Use project `egrmvhfroiumcodkotjv` with a direct or pooler Postgres URL stored only in environment secrets. `DATABASE_URL` must use `postgres://` or `postgresql://`, target the project, and include `sslmode=require`. See `docs/engineering/supabase-postgres.md`. |
 | Migrations | Repository SQL migrations | Run `npm run db:migrate:supabase` against preview before promotion and production during release. The migration runner records applied files in `schema_migrations` and wraps each migration in a transaction. |
-| Auth | Local signed session provider | `AUTH_PROVIDER=local` is the only supported MVP provider. Preview and production require `AUTH_SESSION_SECRET` so local auth cookies are HMAC-signed. |
+| Auth | Supabase Auth | Preview and production require `AUTH_PROVIDER=supabase`. Email/password account creation, confirmation callbacks, sign-out, and recovery use server-managed Supabase SSR cookies. Local development may keep `AUTH_PROVIDER=local`. |
 | AI | OpenAI API | Set `AI_GROUNDING_MODE=retrieval` only when `OPENAI_API_KEY` is present. Keep model choice in `OPENAI_MODEL` so rate limits and cost can be adjusted per environment. |
 | Storage | None for current MVP | `STORAGE_PROVIDER=none` is expected until uploads are introduced. `vercel-blob` is reserved behind `BLOB_READ_WRITE_TOKEN`. |
 | Observability | Console baseline, Sentry-ready | `OBSERVABILITY_PROVIDER=console` is the default. Set `OBSERVABILITY_PROVIDER=sentry` with `SENTRY_DSN` and optional `NEXT_PUBLIC_SENTRY_DSN` when the Sentry project is available. |
@@ -35,12 +35,12 @@ Keep the linked `.vercel/project.json` file local and untracked. Contributors ca
 | Variable | Scope | Required | Purpose |
 | --- | --- | --- | --- |
 | `NEXT_PUBLIC_APP_ENV` | Browser/server | All environments | `local`, `preview`, or `production`. Controls strict runtime validation. |
-| `APP_BASE_URL` | Server | Optional, strict smoke | Canonical app origin such as `https://dnd-companion.example.com`. Configure it when managed auth callback allow-lists are introduced. |
+| `APP_BASE_URL` | Server | Preview/production, strict smoke | Canonical app origin such as `https://dnd-companion.example.com`. Used to build account confirmation and password recovery callback URLs. |
 | `NEXT_PUBLIC_SUPABASE_URL` | Browser/server | Preview/production, strict smoke | Supabase project API URL. Must be `https://egrmvhfroiumcodkotjv.supabase.co`. |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Browser/server | Preview/production, strict smoke | Supabase publishable key (`sb_publishable_...`) or legacy anon JWT for browser-safe future client access. RLS remains the data boundary. |
 | `NEXT_PUBLIC_SENTRY_DSN` | Browser | Optional | Browser-safe Sentry DSN when client reporting is enabled. |
-| `AUTH_PROVIDER` | Server | All environments | Currently `local`. |
-| `AUTH_SESSION_SECRET` | Server secret | Preview/production | Secret used to sign auth session cookies. Minimum 32 characters. |
+| `AUTH_PROVIDER` | Server | All environments | `supabase` is required in preview/production. `local` remains available for deterministic contributor accounts. |
+| `AUTH_SESSION_SECRET` | Server secret | Local provider only | Optional secret used to sign local-provider cookies. Supabase Auth does not use it. |
 | `SUPABASE_SERVICE_ROLE_KEY` | Server secret | Optional, strict smoke | Supabase secret key (`sb_secret_...`) or legacy service role JWT for future privileged server-only data paths. Never expose to client components. |
 | `DATABASE_URL` | Server secret | Preview/production/local Supabase dev | Supabase Postgres connection string for app data and migrations. Must keep `sslmode=require`. |
 | `DATABASE_POOL_MAX` | Server | Optional | Max app connection pool size. Start at `3` for preview and `5` for production. |
@@ -59,9 +59,9 @@ Keep the linked `.vercel/project.json` file local and untracked. Contributors ca
 
 1. Create Vercel preview and production environments for the repository.
 2. Configure preview with `NEXT_PUBLIC_APP_ENV=preview` and production with `NEXT_PUBLIC_APP_ENV=production`.
-3. Add environment-specific `DATABASE_URL`, `DATABASE_POOL_MAX`, `AUTH_SESSION_SECRET`, `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, and OpenAI secrets in Vercel. Add `APP_BASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` when a deployed feature consumes them.
+3. Set `AUTH_PROVIDER=supabase` and add environment-specific `APP_BASE_URL`, `DATABASE_URL`, `DATABASE_POOL_MAX`, `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, and OpenAI secrets in Vercel. Add `SUPABASE_SERVICE_ROLE_KEY` only when a privileged server feature consumes it.
 4. Add the same variable and secret names to GitHub environments named `preview` and `production` for the manual Integration Smoke workflow.
-5. In Supabase Auth settings, allow the local, preview, and production app origins from `APP_BASE_URL`; future callback routes should stay on those origins.
+5. In Supabase Auth settings, set the production Site URL and allow the exact local, preview, and production `/auth/callback` URLs. See `docs/engineering/managed-auth.md`.
 6. Run `npm run env:check:supabase -- --env=preview` and `npm run env:check -- --env=production --strict` locally or in the deployment shell before first release.
 7. Run `npm run db:migrate:supabase` against preview, validate with `npm run db:check:supabase`, then repeat for production during release.
 8. After Vercel reports the deployment ready, run `npm run deploy:check -- --url=<deployment-url> --expect-env=preview` or `npm run deploy:check -- --url=<deployment-url> --expect-env=production`.
@@ -94,13 +94,13 @@ The workflow runs automatically for successful Production deployment statuses an
 
 ## Runtime validation
 
-The root app layout reports runtime environment issues to server logs without blocking the public sign-in route. Local development defaults are permissive. Preview and production protected app routes still call `assertValidRuntimeEnv(process.env)` after authentication, so configuration used by the running application fails before users enter the app shell. `APP_BASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` remain validated when present but do not block runtime until a deployed feature consumes them. The sign-in form is disabled when `AUTH_SESSION_SECRET` is missing in a non-local environment, because production auth cookies must be signed.
+The root app layout reports runtime environment issues to server logs without blocking the public sign-in route. Local development defaults to the local provider. Preview and production require `AUTH_PROVIDER=supabase`, `APP_BASE_URL`, and the Supabase public URL/key before the managed sign-in form is enabled. Protected app routes still call `assertValidRuntimeEnv(process.env)` after authentication, so invalid deployed configuration fails before users enter the app shell. `SUPABASE_SERVICE_ROLE_KEY` remains validated when present but is not required by the auth flow.
 
 The deployed `/api/health` route performs the same runtime environment validation and then runs a minimal `select 1` against the configured database. Failures are surfaced as HTTP 503 and logged in Vercel runtime logs for debugging without returning raw credentials or connection strings to the caller.
 
 ## Follow-up hardening
 
-- Replace local auth with a managed auth provider once invitation/join flows are scheduled.
+- Add social providers only if first-campaign feedback shows email/password onboarding is insufficient.
 - Add the Sentry SDK and source-map upload once the Sentry project and token are provisioned.
 - Introduce object storage only when uploads become part of a product ticket.
 - Add provider-specific OpenAI request smoke tests after the first grounded AI endpoint exists.

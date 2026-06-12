@@ -60,7 +60,8 @@ Configure the same secret names in Vercel and in the protected GitHub environmen
 | `DATABASE_POOL_MAX` | `3` for preview, `5` for production until traffic requires tuning |
 | `DATABASE_CONNECTION_TIMEOUT_MS` | `10000` |
 | `DATABASE_IDLE_TIMEOUT_MS` | `30000` |
-| `AUTH_SESSION_SECRET` | Environment-specific secret, minimum 32 characters |
+| `AUTH_PROVIDER` | `supabase` in preview/production; `local` remains available for contributor bootstrap accounts |
+| `AUTH_SESSION_SECRET` | Optional local-provider cookie secret; not used by Supabase Auth |
 
 Use separate preview and production databases, branches, or Supabase projects when destructive preview testing becomes necessary. Never point throwaway preview testing at production data.
 
