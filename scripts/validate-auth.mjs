@@ -102,6 +102,10 @@ expect(
 expect(actions.includes("getSafeReturnPath"), "Sign-in must honor the safe return path.");
 expect(actions.includes("setAuthSessionCookie"), "Sign-in must set a session cookie.");
 expect(actions.includes("clearAuthSessionCookie"), "Sign-out must clear the session cookie.");
+expect(
+  actions.includes('supabase.auth.signOut({ scope: "local" })'),
+  "Normal sign-out must only revoke the current browser session.",
+);
 for (const snippet of [
   "signInWithPassword",
   "supabase.auth.signUp",
@@ -146,6 +150,10 @@ expect(
 expect(
   callbackRoute.includes("getSafeReturnPath"),
   "Auth callback must validate its return path.",
+);
+expect(
+  callbackRoute.includes('nextPath === "/update-password" ? "/" : nextPath'),
+  "Failed recovery callbacks must not forward an existing session to the password form.",
 );
 
 const envPackage = readText("packages/env/src/index.ts");

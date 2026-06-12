@@ -50,9 +50,10 @@ function createCallbackErrorResponse(
   request: NextRequest,
   nextPath: ReturnType<typeof getSafeReturnPath>,
 ) {
+  const errorReturnPath = nextPath === "/update-password" ? "/" : nextPath;
   const signInUrl = new URL("/sign-in", request.url);
   signInUrl.searchParams.set("error", "callback");
-  signInUrl.searchParams.set("next", nextPath);
+  signInUrl.searchParams.set("next", errorReturnPath);
 
   return NextResponse.redirect(signInUrl);
 }

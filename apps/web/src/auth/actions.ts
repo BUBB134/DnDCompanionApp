@@ -157,7 +157,7 @@ export async function updatePasswordAction(formData: FormData) {
 export async function signOutAction() {
   if (getAuthProvider() === "supabase" && isSupabaseAuthConfigured()) {
     const supabase = await createSupabaseServerClient();
-    const { error } = await supabase.auth.signOut();
+    const { error } = await supabase.auth.signOut({ scope: "local" });
 
     if (error) {
       console.warn("Supabase sign-out failed.", { code: error.code });
