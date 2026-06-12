@@ -1,5 +1,5 @@
 export type AppEnvironment = "local" | "preview" | "production";
-export type AuthProvider = "local";
+export type AuthProvider = "local" | "supabase";
 export type GroundingMode = "disabled" | "local" | "retrieval";
 export type LogLevel = "debug" | "error" | "info" | "warn";
 export type ObservabilityProvider = "console" | "sentry";
@@ -40,7 +40,7 @@ export type RuntimeEnvValidationIssue = {
 };
 
 const appEnvironments = ["local", "preview", "production"] as const;
-const authProviders = ["local"] as const;
+const authProviders = ["local", "supabase"] as const;
 const groundingModes = ["disabled", "local", "retrieval"] as const;
 const logLevels = ["debug", "error", "info", "warn"] as const;
 const observabilityProviders = ["console", "sentry"] as const;
@@ -121,7 +121,27 @@ export function validateRuntimeEnv(source: EnvSource): RuntimeEnvValidationIssue
 
   if (isNonLocalAppEnvironment(publicEnv.NEXT_PUBLIC_APP_ENV)) {
     requireValue("DATABASE_URL", serverEnv.DATABASE_URL, issues);
-    requireValue("AUTH_SESSION_SECRET", serverEnv.AUTH_SESSION_SECRET, issues);
+    requireValue(
+      "NEXT_PUBLIC_SUPABASE_URL",
+      publicEnv.NEXT_PUBLIC_SUPABASE_URL,
+      issues,
+    );
+    requireValue(
+      "NEXT_PUBLIC_SUPABASE_ANON_KEY",
+      publicEnv.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+      issues,
+    );
+    requireValue("APP_BASE_URL", serverEnv.APP_BASE_URL, issues);
+
+    if (serverEnv.AUTH_PROVIDER !== "supabase") {
+      issues.push({
+        key: "AUTH_PROVIDER",
+        message: "AUTH_PROVIDER must be supabase in preview and production.",
+      });
+    }
+  }
+
+  if (serverEnv.AUTH_PROVIDER === "supabase") {
     requireValue(
       "NEXT_PUBLIC_SUPABASE_URL",
       publicEnv.NEXT_PUBLIC_SUPABASE_URL,

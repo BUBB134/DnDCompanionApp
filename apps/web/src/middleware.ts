@@ -1,34 +1,58 @@
 import { NextResponse, type NextRequest } from "next/server";
+import { getAuthProvider } from "@/auth/config";
 import {
   AUTH_COOKIE_NAME,
   getSafeReturnPath,
   hasAuthSessionCookie,
 } from "@/auth/session";
+import {
+  copySupabaseAuthCookies,
+  resolveSupabaseMiddlewareAuth,
+} from "@/auth/supabase/middleware";
 
-const PROTECTED_ROUTE_PREFIXES = ["/", "/campaigns", "/entities", "/rules", "/sessions"];
+const PROTECTED_ROUTE_PREFIXES = [
+  "/",
+  "/campaigns",
+  "/entities",
+  "/rules",
+  "/sessions",
+  "/update-password",
+];
 
 export async function middleware(request: NextRequest) {
   const { pathname, search } = request.nextUrl;
-  const isAuthenticated = await hasAuthSessionCookie(
-    request.cookies.get(AUTH_COOKIE_NAME)?.value,
-  );
+  const authResult =
+    getAuthProvider() === "supabase"
+      ? await resolveSupabaseMiddlewareAuth(request)
+      : {
+          isAuthenticated: await hasAuthSessionCookie(
+            request.cookies.get(AUTH_COOKIE_NAME)?.value,
+          ),
+          response: NextResponse.next({ request }),
+        };
 
   if (pathname === "/sign-in") {
-    if (!isAuthenticated) {
-      return NextResponse.next();
+    if (!authResult.isAuthenticated) {
+      return authResult.response;
     }
 
-    return NextResponse.redirect(
-      new URL(getSafeReturnPath(request.nextUrl.searchParams.get("next")), request.url),
+    return copySupabaseAuthCookies(
+      authResult.response,
+      NextResponse.redirect(
+        new URL(
+          getSafeReturnPath(request.nextUrl.searchParams.get("next")),
+          request.url,
+        ),
+      ),
     );
   }
 
   if (!isProtectedRoute(pathname)) {
-    return NextResponse.next();
+    return authResult.response;
   }
 
-  if (isAuthenticated) {
-    return NextResponse.next();
+  if (authResult.isAuthenticated) {
+    return authResult.response;
   }
 
   const signInUrl = request.nextUrl.clone();
@@ -36,7 +60,10 @@ export async function middleware(request: NextRequest) {
   signInUrl.search = "";
   signInUrl.searchParams.set("next", `${pathname}${search}`);
 
-  return NextResponse.redirect(signInUrl);
+  return copySupabaseAuthCookies(
+    authResult.response,
+    NextResponse.redirect(signInUrl),
+  );
 }
 
 export const config = {
