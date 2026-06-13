@@ -117,6 +117,7 @@ export default async function SessionsPage() {
                 availableEntities={taggableEntities}
                 availableRules={rules}
                 campaign={campaign}
+                userId={session.user.id}
               />
             </Surface>
           ) : (
@@ -290,6 +291,7 @@ export default async function SessionsPage() {
                         availableRules={rules}
                         campaign={campaign}
                         session={campaignSession}
+                        userId={session.user.id}
                       />
                     ) : null}
 

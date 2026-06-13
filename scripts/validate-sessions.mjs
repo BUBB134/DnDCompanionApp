@@ -48,6 +48,8 @@ for (const expectedText of [
   "Save failed. Your changes are still in the editor.",
   "Retry save",
   "Recovered unsaved notes from this tab.",
+  "An older unsaved draft is available.",
+  "pagehide",
   "window.sessionStorage",
   "Type{\" \"}",
 ]) {
@@ -177,19 +179,33 @@ if (hasTypeScriptRuntime) {
   };
 
   const draftSavedAt = "2026-06-13T12:00:00.000Z";
+  const draftRevision = "2026-06-13T11:00:00.000Z";
   const serializedDraft = noteDraftModule.serializeSessionNoteDraft(
     noteDocumentModule.createSessionNoteDocumentFromPlainText(
       "Unsaved table notes.",
     ),
+    draftRevision,
     draftSavedAt,
   );
   const restoredDraft =
     noteDraftModule.deserializeSessionNoteDraft(serializedDraft);
+  const emptyDraft = noteDraftModule.deserializeSessionNoteDraft(
+    noteDraftModule.serializeSessionNoteDraft(
+      noteDocumentModule.createEmptySessionNoteDocument(),
+      draftRevision,
+      draftSavedAt,
+    ),
+  );
   expect(
-    noteDraftModule.createSessionNoteDraftKey(savedCampaign.id, "") ===
-      `dnd-session-note-draft:${savedCampaign.id}:new` &&
+    noteDraftModule.createSessionNoteDraftKey(
+      "user-1",
+      savedCampaign.id,
+      "",
+    ) === `dnd-session-note-draft:user-1:${savedCampaign.id}:new` &&
+      restoredDraft?.baseRevision === draftRevision &&
       restoredDraft?.savedAt === draftSavedAt &&
       restoredDraft.document.blocks[0]?.text === "Unsaved table notes." &&
+      emptyDraft?.document.blocks[0]?.text === "" &&
       noteDraftModule.deserializeSessionNoteDraft("not-json") === null,
     "Session note drafts must round-trip safely and reject malformed browser state.",
   );
@@ -323,7 +339,8 @@ if (hasTypeScriptRuntime) {
     createResult.ok &&
       capturedCreateInput?.campaignId === savedCampaign.id &&
       capturedCreateInput?.taggedEntityIds[0] === visibleEntities[0].id &&
-      createResult.state.savedSessionId === "session-1",
+      createResult.state.savedSessionId === "session-1" &&
+      createResult.state.savedSessionRevision === "2026-05-06T00:00:00.000Z",
     "Session creation submission must persist normalized tag values and reset after save.",
   );
 
@@ -376,6 +393,8 @@ if (hasTypeScriptRuntime) {
   expect(
     updateResult.ok &&
       capturedUpdateId === "session-1" &&
+      updateResult.state.savedSessionRevision ===
+        "2026-05-06T00:00:00.000Z" &&
       updateResult.state.successMessage === "Session saved.",
     "Session update submission must persist the selected session.",
   );

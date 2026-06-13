@@ -52,6 +52,7 @@ export type SessionActionState = {
   fieldErrors: SessionFieldErrors;
   formError: string | null;
   savedSessionId: string | null;
+  savedSessionRevision: string | null;
   successMessage: string | null;
   values: SessionFormValues;
 };
@@ -102,6 +103,7 @@ export function createSessionActionState(
     fieldErrors: {},
     formError: null,
     savedSessionId: null,
+    savedSessionRevision: null,
     successMessage: null,
     values: {
       ...emptySessionFormValues,
@@ -135,6 +137,7 @@ export async function createSessionSubmission(
         fieldErrors: validation.fieldErrors,
         formError: null,
         savedSessionId: null,
+        savedSessionRevision: null,
         successMessage: null,
         values: validation.values,
       },
@@ -155,6 +158,7 @@ export async function createSessionSubmission(
           campaignId: campaign.id,
         }),
         savedSessionId: session.id,
+        savedSessionRevision: session.updatedAt,
         successMessage: "Session saved.",
       },
     };
@@ -165,6 +169,7 @@ export async function createSessionSubmission(
         fieldErrors: {},
         formError: formatError(error),
         savedSessionId: null,
+        savedSessionRevision: null,
         successMessage: null,
         values: validation.values,
       },
@@ -202,6 +207,7 @@ export async function updateSessionSubmission(
         fieldErrors: validation.fieldErrors,
         formError: null,
         savedSessionId: null,
+        savedSessionRevision: null,
         successMessage: null,
         values: validation.values,
       },
@@ -222,6 +228,7 @@ export async function updateSessionSubmission(
         fieldErrors: {},
         formError: null,
         savedSessionId: session.id,
+        savedSessionRevision: session.updatedAt,
         successMessage: "Session saved.",
         values: sessionToFormValues(campaign.id, session),
       },
@@ -233,6 +240,7 @@ export async function updateSessionSubmission(
         fieldErrors: {},
         formError: formatError(error),
         savedSessionId: null,
+        savedSessionRevision: null,
         successMessage: null,
         values: validation.values,
       },

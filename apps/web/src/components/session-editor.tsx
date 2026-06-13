@@ -40,6 +40,7 @@ import {
   createSessionNoteDraftKey,
   deserializeSessionNoteDraft,
   serializeSessionNoteDraft,
+  type SessionNoteDraft,
 } from "@/sessions/note-draft";
 import {
   createSessionNoteSuggestions,
@@ -54,6 +55,7 @@ type SessionCreateFormProps = {
   availableEntities: CampaignEntitySummary[];
   availableRules: RuleSnippet[];
   campaign: Campaign;
+  userId: string;
 };
 
 type SessionEditFormProps = {
@@ -62,6 +64,7 @@ type SessionEditFormProps = {
   availableRules: RuleSnippet[];
   campaign: Campaign;
   session: CampaignSession;
+  userId: string;
 };
 
 type ActiveSuggestionState = {
@@ -75,6 +78,7 @@ export function SessionCreateForm({
   availableEntities,
   availableRules,
   campaign,
+  userId,
 }: SessionCreateFormProps) {
   const [state, formAction] = useActionState(
     createSessionAction,
@@ -93,11 +97,13 @@ export function SessionCreateForm({
         availableCharacters={availableCharacters}
         availableEntities={availableEntities}
         availableRules={availableRules}
+        baseRevision="new"
         heading="Log session"
         key={createSessionFormStateKey(state)}
         label="Save session"
         pendingLabel="Saving session..."
         state={state}
+        userId={userId}
       />
     </form>
   );
@@ -109,6 +115,7 @@ export function SessionEditForm({
   availableRules,
   campaign,
   session,
+  userId,
 }: SessionEditFormProps) {
   const [state, formAction] = useActionState(
     updateSessionAction,
@@ -128,11 +135,13 @@ export function SessionEditForm({
           availableCharacters={availableCharacters}
           availableEntities={availableEntities}
           availableRules={availableRules}
+          baseRevision={state.savedSessionRevision ?? session.updatedAt}
           compact
           key={createSessionFormStateKey(state)}
           label="Save changes"
           pendingLabel="Saving changes..."
           state={state}
+          userId={userId}
         />
       </form>
     </details>
@@ -143,24 +152,31 @@ function SessionFormContent({
   availableCharacters,
   availableEntities,
   availableRules,
+  baseRevision,
   compact = false,
   heading,
   label,
   pendingLabel,
   state,
+  userId,
 }: {
   availableCharacters: CampaignCharacterSummary[];
   availableEntities: CampaignEntitySummary[];
   availableRules: RuleSnippet[];
+  baseRevision: string;
   compact?: boolean;
   heading?: string;
   label: string;
   pendingLabel: string;
   state: SessionActionState;
+  userId: string;
 }) {
-  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
-  const updateDirtyState = useCallback(
-    (hasChanges: boolean) => setHasUnsavedChanges(hasChanges),
+  const { pending } = useFormStatus();
+  const [hasDraftConflict, setHasDraftConflict] = useState(false);
+  const [hasFieldChanges, setHasFieldChanges] = useState(false);
+  const [hasNoteChanges, setHasNoteChanges] = useState(false);
+  const updateNoteDirtyState = useCallback(
+    (hasChanges: boolean) => setHasNoteChanges(hasChanges),
     [],
   );
   const hasErrors =
@@ -169,7 +185,18 @@ function SessionFormContent({
   return (
     <div
       className={compact ? "grid gap-4" : "grid gap-5"}
-      onChangeCapture={() => updateDirtyState(true)}
+      onChangeCapture={(event) => {
+        const target = event.target;
+
+        if (
+          target instanceof Element &&
+          target.closest("[data-session-note-editor]")
+        ) {
+          return;
+        }
+
+        setHasFieldChanges(true);
+      }}
     >
       {heading ? (
         <div>
@@ -184,19 +211,26 @@ function SessionFormContent({
 
       <SessionFormNotice error={state.formError} />
 
-      <SessionCoreFields
-        availableCharacters={availableCharacters}
-        availableEntities={availableEntities}
-        availableRules={availableRules}
-        compact={compact}
-        onDirtyChange={updateDirtyState}
-        preserveDraft={hasErrors}
-        state={state}
-      />
+      <fieldset className="contents" disabled={pending}>
+        <legend className="sr-only">Session details</legend>
+        <SessionCoreFields
+          availableCharacters={availableCharacters}
+          availableEntities={availableEntities}
+          availableRules={availableRules}
+          baseRevision={baseRevision}
+          compact={compact}
+          onDraftConflictChange={setHasDraftConflict}
+          onNoteDirtyChange={updateNoteDirtyState}
+          preserveDraft={hasErrors}
+          state={state}
+          userId={userId}
+        />
+      </fieldset>
 
       <SessionSaveControls
+        blocked={hasDraftConflict}
         hasErrors={hasErrors}
-        hasUnsavedChanges={hasUnsavedChanges}
+        hasUnsavedChanges={hasFieldChanges || hasNoteChanges}
         label={label}
         pendingLabel={pendingLabel}
         saved={Boolean(state.successMessage)}
@@ -209,18 +243,24 @@ function SessionCoreFields({
   availableCharacters,
   availableEntities,
   availableRules,
+  baseRevision,
   compact = false,
-  onDirtyChange,
+  onDraftConflictChange,
+  onNoteDirtyChange,
   preserveDraft,
   state,
+  userId,
 }: {
   availableCharacters: CampaignCharacterSummary[];
   availableEntities: CampaignEntitySummary[];
   availableRules: RuleSnippet[];
+  baseRevision: string;
   compact?: boolean;
-  onDirtyChange: (hasChanges: boolean) => void;
+  onDraftConflictChange: (hasConflict: boolean) => void;
+  onNoteDirtyChange: (hasChanges: boolean) => void;
   preserveDraft: boolean;
   state: SessionActionState;
+  userId: string;
 }) {
   const fieldIdPrefix = state.values.sessionId || "new";
   const selectedEntityIds = new Set(state.values.taggedEntityIds);
@@ -307,12 +347,15 @@ function SessionCoreFields({
         availableCharacters={availableCharacters}
         availableEntities={availableEntities}
         availableRules={availableRules}
+        baseRevision={baseRevision}
         compact={compact}
         fieldIdPrefix={fieldIdPrefix}
         key={`${fieldIdPrefix}-${state.values.notesDocument}`}
-        onDirtyChange={onDirtyChange}
+        onDraftConflictChange={onDraftConflictChange}
+        onDirtyChange={onNoteDirtyChange}
         preserveDraft={preserveDraft}
         state={state}
+        userId={userId}
       />
 
       <div>
@@ -352,20 +395,26 @@ function SessionNoteBlockEditor({
   availableCharacters,
   availableEntities,
   availableRules,
+  baseRevision,
   compact,
   fieldIdPrefix,
+  onDraftConflictChange,
   onDirtyChange,
   preserveDraft,
   state,
+  userId,
 }: {
   availableCharacters: CampaignCharacterSummary[];
   availableEntities: CampaignEntitySummary[];
   availableRules: RuleSnippet[];
+  baseRevision: string;
   compact: boolean;
   fieldIdPrefix: string;
+  onDraftConflictChange: (hasConflict: boolean) => void;
   onDirtyChange: (hasChanges: boolean) => void;
   preserveDraft: boolean;
   state: SessionActionState;
+  userId: string;
 }) {
   const initialDocument = useMemo(
     () =>
@@ -382,10 +431,11 @@ function SessionNoteBlockEditor({
   const draftKey = useMemo(
     () =>
       createSessionNoteDraftKey(
+        userId,
         state.values.campaignId,
         state.values.sessionId,
       ),
-    [state.values.campaignId, state.values.sessionId],
+    [state.values.campaignId, state.values.sessionId, userId],
   );
   const [document, setDocument] = useState(() =>
     deserializeSessionNoteDocument(
@@ -394,7 +444,9 @@ function SessionNoteBlockEditor({
     ),
   );
   const [draftReady, setDraftReady] = useState(false);
+  const [draftBaseRevision, setDraftBaseRevision] = useState(baseRevision);
   const [recoveredDraftAt, setRecoveredDraftAt] = useState<string | null>(null);
+  const [staleDraft, setStaleDraft] = useState<SessionNoteDraft | null>(null);
   const [activeSuggestion, setActiveSuggestion] =
     useState<ActiveSuggestionState | null>(null);
   const pendingCursorRef = useRef<{
@@ -451,10 +503,22 @@ function SessionNoteBlockEditor({
     activeSuggestions.length > 0 && activeSuggestion
       ? Math.min(activeSuggestion.selectedIndex, activeSuggestions.length - 1)
       : -1;
-  const hasLocalDraft =
-    draftReady &&
-    document.blocks.some((block) => block.text.trim()) &&
-    (preserveDraft || serializedDocument !== initialSerializedDocument);
+  const shouldPersistDraft =
+    preserveDraft || serializedDocument !== initialSerializedDocument;
+  const hasLocalDraft = draftReady && !staleDraft && shouldPersistDraft;
+  const draftSnapshotRef = useRef({
+    baseRevision: draftBaseRevision,
+    document,
+    shouldPersist: shouldPersistDraft,
+  });
+
+  useEffect(() => {
+    draftSnapshotRef.current = {
+      baseRevision: draftBaseRevision,
+      document,
+      shouldPersist: shouldPersistDraft,
+    };
+  }, [document, draftBaseRevision, shouldPersistDraft]);
 
   useEffect(() => {
     const timeout = window.setTimeout(() => {
@@ -468,14 +532,19 @@ function SessionNoteBlockEditor({
           window.sessionStorage.getItem(draftKey),
         );
 
-        if (
-          draft &&
-          serializeSessionNoteDocument(draft.document) !==
+        if (draft) {
+          if (draft.baseRevision !== baseRevision) {
+            setStaleDraft(draft);
+            onDraftConflictChange(true);
+          } else if (
+            serializeSessionNoteDocument(draft.document) !==
             initialSerializedDocument
-        ) {
-          setDocument(draft.document);
-          setRecoveredDraftAt(draft.savedAt);
-          onDirtyChange(true);
+          ) {
+            setDocument(draft.document);
+            setDraftBaseRevision(draft.baseRevision);
+            setRecoveredDraftAt(draft.savedAt);
+            onDirtyChange(true);
+          }
         }
       } catch {
         // Session storage can be unavailable in hardened or private browsers.
@@ -486,52 +555,80 @@ function SessionNoteBlockEditor({
 
     return () => window.clearTimeout(timeout);
   }, [
+    baseRevision,
     draftKey,
     initialSerializedDocument,
+    onDraftConflictChange,
     onDirtyChange,
     state.successMessage,
   ]);
 
   useEffect(() => {
-    if (!draftReady) {
+    if (!draftReady || staleDraft) {
       return;
     }
 
-    const hasDraftContent = document.blocks.some((block) => block.text.trim());
+    const persistDraft = () => {
+      const snapshot = draftSnapshotRef.current;
 
-    if (
-      !hasDraftContent ||
-      (serializedDocument === initialSerializedDocument && !preserveDraft)
-    ) {
       try {
-        window.sessionStorage.removeItem(draftKey);
-      } catch {
-        // Keep editing available when browser storage is unavailable.
-      }
-
-      return;
-    }
-
-    const timeout = window.setTimeout(() => {
-      try {
-        window.sessionStorage.setItem(
-          draftKey,
-          serializeSessionNoteDraft(document),
-        );
+        if (snapshot.shouldPersist) {
+          window.sessionStorage.setItem(
+            draftKey,
+            serializeSessionNoteDraft(
+              snapshot.document,
+              snapshot.baseRevision,
+            ),
+          );
+        } else {
+          window.sessionStorage.removeItem(draftKey);
+        }
       } catch {
         // The server save remains available when local draft storage fails.
       }
+    };
+
+    const timeout = window.setTimeout(() => {
+      persistDraft();
     }, 300);
 
     return () => window.clearTimeout(timeout);
   }, [
-    document,
     draftKey,
     draftReady,
-    initialSerializedDocument,
-    preserveDraft,
-    serializedDocument,
+    shouldPersistDraft,
+    staleDraft,
   ]);
+
+  useEffect(() => {
+    if (!draftReady || staleDraft) {
+      return;
+    }
+
+    const persistDraft = () => {
+      const snapshot = draftSnapshotRef.current;
+
+      try {
+        if (snapshot.shouldPersist) {
+          window.sessionStorage.setItem(
+            draftKey,
+            serializeSessionNoteDraft(
+              snapshot.document,
+              snapshot.baseRevision,
+            ),
+          );
+        } else {
+          window.sessionStorage.removeItem(draftKey);
+        }
+      } catch {
+        // Page navigation must continue even if browser storage is unavailable.
+      }
+    };
+
+    window.addEventListener("pagehide", persistDraft);
+
+    return () => window.removeEventListener("pagehide", persistDraft);
+  }, [draftKey, draftReady, staleDraft]);
 
   useEffect(() => {
     const pendingCursor = pendingCursorRef.current;
@@ -732,13 +829,38 @@ function SessionNoteBlockEditor({
     }
 
     setDocument(initialDocument);
+    setDraftBaseRevision(baseRevision);
     setRecoveredDraftAt(null);
     setActiveSuggestion(null);
     onDirtyChange(false);
   }
 
+  function restoreStaleDraft() {
+    if (!staleDraft) {
+      return;
+    }
+
+    setDocument(staleDraft.document);
+    setDraftBaseRevision(staleDraft.baseRevision);
+    setRecoveredDraftAt(staleDraft.savedAt);
+    setStaleDraft(null);
+    onDraftConflictChange(false);
+    onDirtyChange(true);
+  }
+
+  function discardStaleDraft() {
+    try {
+      window.sessionStorage.removeItem(draftKey);
+    } catch {
+      // Keep the server-backed editor available when browser storage fails.
+    }
+
+    setStaleDraft(null);
+    onDraftConflictChange(false);
+  }
+
   return (
-    <div>
+    <div data-session-note-editor>
       <label
         className="text-sm font-semibold text-[#17161f]"
         htmlFor={`${fieldIdPrefix}-session-notes-block-0`}
@@ -755,6 +877,39 @@ function SessionNoteBlockEditor({
       </p>
       <input name="notes" type="hidden" value={plainTextNotes} />
       <input name="notesDocument" type="hidden" value={serializedDocument} />
+      {!draftReady ? (
+        <div
+          className="mt-3 rounded-lg border border-[#17161f]/10 bg-white px-3 py-3 text-sm text-[#4b4657]"
+          role="status"
+        >
+          Checking this tab for unsaved notes...
+        </div>
+      ) : null}
+      {draftReady && staleDraft ? (
+        <div className="mt-3 rounded-lg border border-[#8b2f39]/25 bg-[#f9e8ea] px-3 py-3 text-sm text-[#6f2430]">
+          <p className="font-semibold">An older unsaved draft is available.</p>
+          <p className="mt-1 leading-6">
+            The saved session changed after this draft was created. Review the
+            older notes explicitly or keep the latest saved version.
+          </p>
+          <div className="mt-3 flex flex-wrap gap-2">
+            <button
+              className="min-h-11 rounded-md bg-[#17161f] px-3 font-semibold text-white focus:outline-none focus:ring-2 focus:ring-[#8b2f39] focus:ring-offset-2"
+              onClick={restoreStaleDraft}
+              type="button"
+            >
+              Restore older draft
+            </button>
+            <button
+              className="min-h-11 rounded-md border border-[#8b2f39]/25 bg-white px-3 font-semibold focus:outline-none focus:ring-2 focus:ring-[#8b2f39] focus:ring-offset-2"
+              onClick={discardStaleDraft}
+              type="button"
+            >
+              Keep latest saved notes
+            </button>
+          </div>
+        </div>
+      ) : null}
       {hasLocalDraft ? (
         <div
           className="mt-3 flex flex-col gap-2 rounded-lg border border-[#c3943e]/40 bg-[#fffaf0] px-3 py-3 text-sm text-[#5c4212] sm:flex-row sm:items-center sm:justify-between"
@@ -775,7 +930,8 @@ function SessionNoteBlockEditor({
           ) : null}
         </div>
       ) : null}
-      <div className="mt-2 grid gap-3">
+      {draftReady && !staleDraft ? (
+        <div className="mt-2 grid gap-3">
         {document.blocks.map((block, index) => {
           const isSuggestingForBlock =
             activeSuggestion?.blockId === block.id &&
@@ -940,8 +1096,9 @@ function SessionNoteBlockEditor({
             </div>
           );
         })}
-      </div>
-      {wikiLinkItems.length > 0 ? (
+        </div>
+      ) : null}
+      {draftReady && !staleDraft && wikiLinkItems.length > 0 ? (
         <div className="mt-3 rounded-lg border border-[#1f6f78]/20 bg-white px-3 py-3">
           <p className="text-xs font-semibold uppercase tracking-wide text-[#1f6f78]">
             Wiki links
@@ -1120,12 +1277,14 @@ function SessionFormNotice({
 }
 
 function SessionSaveControls({
+  blocked,
   hasErrors,
   hasUnsavedChanges,
   label,
   pendingLabel,
   saved,
 }: {
+  blocked: boolean;
   hasErrors: boolean;
   hasUnsavedChanges: boolean;
   label: string;
@@ -1135,6 +1294,8 @@ function SessionSaveControls({
   const { pending } = useFormStatus();
   const status = pending
     ? pendingLabel
+    : blocked
+      ? "Choose whether to restore or discard the older note draft."
     : hasErrors
       ? "Save failed. Your changes are still in the editor."
       : hasUnsavedChanges
@@ -1157,7 +1318,7 @@ function SessionSaveControls({
       </p>
       <button
         className="min-h-11 rounded-md bg-[#17161f] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#2d2937] focus:outline-none focus:ring-2 focus:ring-[#8b2f39] focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-70"
-        disabled={pending}
+        disabled={pending || blocked}
         type="submit"
       >
         {buttonLabel}
@@ -1171,6 +1332,7 @@ function createSessionFormStateKey(state: SessionActionState) {
     fieldErrors: state.fieldErrors,
     formError: state.formError,
     savedSessionId: state.savedSessionId,
+    savedSessionRevision: state.savedSessionRevision,
     successMessage: state.successMessage,
     values: state.values,
   });

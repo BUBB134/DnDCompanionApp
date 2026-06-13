@@ -72,7 +72,15 @@ The editor reports explicit unsaved, saving, saved, and failed states. Failed
 submissions retain the submitted values and expose a retry action. While notes
 are dirty, the browser keeps a temporary per-session draft in `sessionStorage`.
 That draft can recover note blocks after a same-tab reload and is removed after
-a successful server save.
+a successful server save. Draft keys include the authenticated user, campaign,
+and session, and each draft records the server revision it started from. A draft
+from an older revision is never applied silently; the editor asks the user to
+restore the older notes or keep the latest saved version.
+
+Empty-but-dirty note documents remain recoverable, and the editor flushes the
+latest draft during `pagehide` so immediate reloads do not skip the debounce.
+Note controls remain unavailable until draft recovery finishes, and all form
+fields are disabled while a server save is pending.
 
 The editor also includes an inline `[[` linking hint, touch-sized block controls,
 and a mobile sticky save control. The session log exposes anchor navigation for

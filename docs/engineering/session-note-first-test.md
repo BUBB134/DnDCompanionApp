@@ -24,9 +24,14 @@ session editor. Test with a saved campaign and disposable session data.
    blocks or entities.
 4. Make an unsaved note edit, reload the same browser tab, and confirm the
    temporary draft is recovered.
-5. Confirm `Discard recovered draft` restores the last server-backed note.
-6. Save a recovered draft and reload again. Confirm the temporary recovery
+5. Clear all note text, reload immediately, and confirm the empty draft remains
+   recovered rather than restoring the prior saved notes.
+6. Confirm `Discard recovered draft` restores the last server-backed note
+   without hiding unsaved changes made to the title, tags, or hooks.
+7. Save a recovered draft and reload again. Confirm the temporary recovery
    notice is gone because the successful save cleared it.
+8. Leave a draft, update the same session from another account or device, then
+   reload. Confirm the older draft requires an explicit restore/discard choice.
 
 ## Mobile Touch Flow
 

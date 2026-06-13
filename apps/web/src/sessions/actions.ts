@@ -72,7 +72,6 @@ export async function updateSessionAction(
   _previousState: SessionActionState,
   formData: FormData,
 ): Promise<SessionActionState> {
-  void _previousState;
   const session = await requireAuthSession();
   const values = readSessionFormValues(formData);
 
@@ -80,6 +79,7 @@ export async function updateSessionAction(
     return {
       ...createSessionActionState(values),
       formError: "Create or open a saved campaign before managing sessions.",
+      savedSessionRevision: _previousState.savedSessionRevision,
     };
   }
 
@@ -89,6 +89,7 @@ export async function updateSessionAction(
     return {
       ...createSessionActionState(values),
       formError: "Campaign access is required before editing sessions.",
+      savedSessionRevision: _previousState.savedSessionRevision,
     };
   }
 
@@ -103,7 +104,12 @@ export async function updateSessionAction(
     revalidateSessionPaths(campaign.id);
   }
 
-  return result.state;
+  return result.ok || result.state.savedSessionRevision
+    ? result.state
+    : {
+        ...result.state,
+        savedSessionRevision: _previousState.savedSessionRevision,
+      };
 }
 
 function readSessionFormValues(formData: FormData): SessionFormValues {
@@ -208,6 +214,7 @@ async function saveSessionWithInlineWikiEntities(
               campaignId: campaign.id,
             }),
             savedSessionId: session.id,
+            savedSessionRevision: session.updatedAt,
             successMessage: "Session saved.",
           },
         };
@@ -226,6 +233,7 @@ async function saveSessionWithInlineWikiEntities(
           fieldErrors: {},
           formError: null,
           savedSessionId: session.id,
+          savedSessionRevision: session.updatedAt,
           successMessage: "Session saved.",
           values: sessionToFormValues(campaign.id, session),
         },
@@ -302,6 +310,7 @@ async function prepareInlineWikiEntities(
       },
       formError: null,
       savedSessionId: null,
+      savedSessionRevision: null,
       successMessage: null,
       values: preflightValidation.values,
     };
@@ -360,6 +369,7 @@ function createSessionValidationErrorState(
     fieldErrors: validation.fieldErrors,
     formError: null,
     savedSessionId: null,
+    savedSessionRevision: null,
     successMessage: null,
     values: validation.values,
   };
