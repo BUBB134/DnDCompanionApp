@@ -21,6 +21,7 @@
     },
     "notes": "Local automation and the public sign-in smoke pass. This is not evidence for managed production accounts, the production deployment, or mobile viewport behavior."
   },
+  "manualRehearsal": null,
   "blockingCheckIds": [
     "dm-managed-auth",
     "player-managed-auth",

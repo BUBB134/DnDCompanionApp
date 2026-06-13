@@ -3,6 +3,8 @@ const validAppEnvironments = new Set(["local", "preview", "production"]);
 
 const options = parseOptions(process.argv.slice(2));
 const deploymentUrl = options.url ?? process.env.DEPLOYMENT_URL;
+const expectedOrigin =
+  options.expectedOrigin ?? process.env.EXPECTED_DEPLOYMENT_ORIGIN;
 const failures = [];
 
 if (!deploymentUrl) {
@@ -16,8 +18,15 @@ if (
   fail("--expect-env must be one of: local, preview, production.");
 }
 
+if (expectedOrigin && !resolveOrigin(expectedOrigin)) {
+  fail(`Invalid expected deployment origin: ${expectedOrigin}`);
+}
+
 if (failures.length === 0) {
-  await checkDeployment(deploymentUrl, options);
+  await checkDeployment(deploymentUrl, {
+    ...options,
+    expectedOrigin,
+  });
 }
 
 if (failures.length > 0) {
@@ -34,6 +43,7 @@ function parseOptions(args) {
   return {
     allowSkippedDatabase: args.includes("--allow-skipped-database"),
     expectedEnvironment: readOption(args, "--expect-env"),
+    expectedOrigin: readOption(args, "--expect-origin"),
     timeoutMs: Number.isFinite(timeoutMs) && timeoutMs > 0 ? timeoutMs : defaultTimeoutMs,
     url: readOption(args, "--url"),
   };
@@ -58,9 +68,22 @@ function readOption(args, name) {
 async function checkDeployment(url, checkOptions) {
   const healthUrl = resolveDeploymentUrl(url, "/api/health");
   const signInUrl = resolveDeploymentUrl(url, "/sign-in?next=%2F");
+  const deploymentOrigin = resolveOrigin(url);
 
-  if (!healthUrl || !signInUrl) {
+  if (!healthUrl || !signInUrl || !deploymentOrigin) {
     fail(`Invalid deployment URL: ${url}`);
+    return;
+  }
+
+  if (
+    checkOptions.expectedOrigin &&
+    deploymentOrigin !== resolveOrigin(checkOptions.expectedOrigin)
+  ) {
+    fail(
+      `Deployment origin ${deploymentOrigin} does not match configured origin ${resolveOrigin(
+        checkOptions.expectedOrigin,
+      )}.`,
+    );
     return;
   }
 
@@ -187,6 +210,16 @@ function resolveDeploymentUrl(url, path) {
 
   try {
     return new URL(path, normalizedUrl).toString();
+  } catch {
+    return null;
+  }
+}
+
+function resolveOrigin(url) {
+  const normalizedUrl = /^https?:\/\//u.test(url) ? url : `https://${url}`;
+
+  try {
+    return new URL(normalizedUrl).origin;
   } catch {
     return null;
   }

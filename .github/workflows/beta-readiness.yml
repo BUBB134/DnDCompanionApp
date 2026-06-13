@@ -3,25 +3,21 @@ name: Campaign Beta Readiness
 on:
   workflow_dispatch:
     inputs:
-      target:
-        description: Environment to validate
-        required: true
-        type: choice
-        options:
-          - preview
-          - production
       deployment_url:
-        description: Exact Vercel deployment URL intended for the campaign
+        description: Exact production URL intended for the campaign
         required: true
         type: string
 
 jobs:
   readiness:
     runs-on: ubuntu-latest
-    environment: ${{ inputs.target }}
+    environment: production
     env:
-      NEXT_PUBLIC_APP_ENV: ${{ inputs.target }}
+      NEXT_PUBLIC_APP_ENV: production
       APP_BASE_URL: ${{ vars.APP_BASE_URL }}
+      DEPLOYMENT_URL: ${{ inputs.deployment_url }}
+      EXPECTED_ENVIRONMENT: production
+      READINESS_RELEASE_SHA: ${{ github.sha }}
       NEXT_PUBLIC_SUPABASE_URL: ${{ vars.NEXT_PUBLIC_SUPABASE_URL }}
       NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ vars.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
       AUTH_PROVIDER: supabase
@@ -61,7 +57,7 @@ jobs:
         run: npm run db:check:supabase
 
       - name: Check deployment health
-        run: npm run deploy:check -- --url="${{ inputs.deployment_url }}" --expect-env="${{ inputs.target }}"
+        run: npm run deploy:check -- --url="$DEPLOYMENT_URL" --expect-env="$EXPECTED_ENVIRONMENT" --expect-origin="$APP_BASE_URL"
 
       - name: Enforce go decision
-        run: npm run beta:check -- --require-go
+        run: npm run beta:check -- --require-go --release-sha="$READINESS_RELEASE_SHA"

@@ -40,13 +40,19 @@ npm run build
 
 Before the live rehearsal, dispatch `.github/workflows/beta-readiness.yml` with:
 
-- `target`: `production`
 - `deployment_url`: the exact Vercel production URL intended for the session
 
 The protected workflow validates the checked-in assessment, production-shaped
 environment variables, Supabase connectivity, and the deployed health/sign-in
 surface. It ends with `npm run beta:check -- --require-go`, so it cannot report a
 ready state while the assessment still contains blockers.
+
+The workflow compares `deployment_url` with the production `APP_BASE_URL`. It
+also binds the GO assessment to the workflow revision. `assessedCommit` must name
+the fully tested application commit, and only the JSON report and this runbook
+may differ between that commit and the revision running the final gate. This
+allows evidence to be recorded without letting later application or gate changes
+inherit stale approval.
 
 ## Test Accounts And Data
 
@@ -129,6 +135,23 @@ Check that:
 - the mobile navigation exposes every required route
 - note editing does not lose content when the keyboard opens or the page reloads
 
+## Manual Evidence Record
+
+Before changing any manual check to `pass`, populate `manualRehearsal` in the
+JSON report with:
+
+- `tester`: the person who completed the rehearsal
+- `completedAt`: an ISO-8601 timestamp
+- `environment`: `production`
+- `deploymentUrl`: the exact tested production URL
+- `workflowUrl`: the successful protected rehearsal workflow run
+- `assessedCommit`: the tested application commit from the report
+- `result`: `pass`
+- `passedCheckIds`: every manual check proven by that rehearsal
+- `notes`: concise evidence or anomalies
+
+The validator rejects passed manual checks without this structured evidence.
+
 ## Production Checks
 
 Immediately before the campaign test:
@@ -157,7 +180,7 @@ persistence, mobile usability, or character companion requirements.
 
 Assessment date: 2026-06-13
 
-Assessed `main` commit: `5c43479`
+Assessed application commit: `5c43479`
 
 Decision: **NO-GO**
 
