@@ -138,6 +138,30 @@ export default async function SessionsPage() {
               </div>
             </div>
 
+            {sessions.length > 0 ? (
+              <nav
+                aria-label="Session navigation"
+                className="mt-4 rounded-lg border border-[#17161f]/10 bg-white p-3"
+                id="session-log-navigation"
+              >
+                <p className="text-xs font-semibold uppercase tracking-wide text-[#8b2f39]">
+                  Jump to a session
+                </p>
+                <div className="mt-2 flex gap-2 overflow-x-auto pb-1">
+                  {sessions.map((campaignSession, index) => (
+                    <a
+                      className="inline-flex min-h-11 shrink-0 items-center rounded-full border border-[#1f6f78]/20 bg-[#e7f5f6] px-3 text-sm font-semibold text-[#164f56] transition hover:border-[#1f6f78]/45 hover:bg-[#d4ecef] focus:outline-none focus:ring-2 focus:ring-[#1f6f78] focus:ring-offset-2"
+                      href={`#session-${campaignSession.id}`}
+                      key={`session-navigation-${campaignSession.id}`}
+                    >
+                      {campaignSession.title}
+                      {index === 0 ? " (latest)" : ""}
+                    </a>
+                  ))}
+                </div>
+              </nav>
+            ) : null}
+
             <div className="mt-5 grid gap-4">
               {sessions.length === 0 ? (
                 <EmptyState
@@ -147,7 +171,7 @@ export default async function SessionsPage() {
               ) : (
                 sessions.map((campaignSession, index) => (
                   <article
-                    className="rounded-lg border border-[#17161f]/10 bg-[#fffaf0] p-4"
+                    className="scroll-mt-24 rounded-lg border border-[#17161f]/10 bg-[#fffaf0] p-4"
                     id={`session-${campaignSession.id}`}
                     key={campaignSession.id}
                   >
@@ -267,6 +291,15 @@ export default async function SessionsPage() {
                         campaign={campaign}
                         session={campaignSession}
                       />
+                    ) : null}
+
+                    {sessions.length > 1 ? (
+                      <a
+                        className="mt-4 inline-flex min-h-11 items-center text-sm font-semibold text-[#164f56] underline decoration-[#1f6f78]/45 underline-offset-4 focus:outline-none focus:ring-2 focus:ring-[#1f6f78] focus:ring-offset-2"
+                        href="#session-log-navigation"
+                      >
+                        Back to session list
+                      </a>
                     ) : null}
                   </article>
                 ))

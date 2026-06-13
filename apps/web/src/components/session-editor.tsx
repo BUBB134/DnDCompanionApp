@@ -11,7 +11,14 @@ import type {
 } from "@dnd/types";
 import { sessionNoteBlockTypes } from "@dnd/types";
 import type { KeyboardEvent } from "react";
-import { useActionState, useEffect, useMemo, useRef, useState } from "react";
+import {
+  useActionState,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { useFormStatus } from "react-dom";
 import {
   createSessionAction,
@@ -29,6 +36,11 @@ import {
   serializeSessionNoteDocument,
   sessionNoteBlockTypeLabels,
 } from "@/sessions/note-document";
+import {
+  createSessionNoteDraftKey,
+  deserializeSessionNoteDraft,
+  serializeSessionNoteDraft,
+} from "@/sessions/note-draft";
 import {
   createSessionNoteSuggestions,
   getActiveWikiLinkTrigger,
@@ -77,28 +89,16 @@ export function SessionCreateForm({
       <input name="campaignId" type="hidden" value={campaign.id} />
       <input name="sessionId" type="hidden" value="" />
 
-      <div>
-        <p className="text-sm font-semibold uppercase tracking-wide text-[#8b2f39]">
-          Session notes
-        </p>
-        <h2 className="mt-1 text-2xl font-semibold leading-tight">
-          Log session
-        </h2>
-      </div>
-
-      <SessionFormNotice
-        error={state.formError}
-        success={state.successMessage}
-      />
-
-      <SessionCoreFields
+      <SessionFormContent
         availableCharacters={availableCharacters}
         availableEntities={availableEntities}
         availableRules={availableRules}
+        heading="Log session"
+        key={createSessionFormStateKey(state)}
+        label="Save session"
+        pendingLabel="Saving session..."
         state={state}
       />
-
-      <SessionSubmitButton label="Save session" pendingLabel="Saving session..." />
     </form>
   );
 }
@@ -124,25 +124,84 @@ export function SessionEditForm({
         <input name="campaignId" type="hidden" value={campaign.id} />
         <input name="sessionId" type="hidden" value={session.id} />
 
-        <SessionFormNotice
-          error={state.formError}
-          success={state.successMessage}
-        />
-
-        <SessionCoreFields
+        <SessionFormContent
           availableCharacters={availableCharacters}
           availableEntities={availableEntities}
           availableRules={availableRules}
           compact
-          state={state}
-        />
-
-        <SessionSubmitButton
+          key={createSessionFormStateKey(state)}
           label="Save changes"
           pendingLabel="Saving changes..."
+          state={state}
         />
       </form>
     </details>
+  );
+}
+
+function SessionFormContent({
+  availableCharacters,
+  availableEntities,
+  availableRules,
+  compact = false,
+  heading,
+  label,
+  pendingLabel,
+  state,
+}: {
+  availableCharacters: CampaignCharacterSummary[];
+  availableEntities: CampaignEntitySummary[];
+  availableRules: RuleSnippet[];
+  compact?: boolean;
+  heading?: string;
+  label: string;
+  pendingLabel: string;
+  state: SessionActionState;
+}) {
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  const updateDirtyState = useCallback(
+    (hasChanges: boolean) => setHasUnsavedChanges(hasChanges),
+    [],
+  );
+  const hasErrors =
+    Boolean(state.formError) || Object.keys(state.fieldErrors).length > 0;
+
+  return (
+    <div
+      className={compact ? "grid gap-4" : "grid gap-5"}
+      onChangeCapture={() => updateDirtyState(true)}
+    >
+      {heading ? (
+        <div>
+          <p className="text-sm font-semibold uppercase tracking-wide text-[#8b2f39]">
+            Session notes
+          </p>
+          <h2 className="mt-1 text-2xl font-semibold leading-tight">
+            {heading}
+          </h2>
+        </div>
+      ) : null}
+
+      <SessionFormNotice error={state.formError} />
+
+      <SessionCoreFields
+        availableCharacters={availableCharacters}
+        availableEntities={availableEntities}
+        availableRules={availableRules}
+        compact={compact}
+        onDirtyChange={updateDirtyState}
+        preserveDraft={hasErrors}
+        state={state}
+      />
+
+      <SessionSaveControls
+        hasErrors={hasErrors}
+        hasUnsavedChanges={hasUnsavedChanges}
+        label={label}
+        pendingLabel={pendingLabel}
+        saved={Boolean(state.successMessage)}
+      />
+    </div>
   );
 }
 
@@ -151,12 +210,16 @@ function SessionCoreFields({
   availableEntities,
   availableRules,
   compact = false,
+  onDirtyChange,
+  preserveDraft,
   state,
 }: {
   availableCharacters: CampaignCharacterSummary[];
   availableEntities: CampaignEntitySummary[];
   availableRules: RuleSnippet[];
   compact?: boolean;
+  onDirtyChange: (hasChanges: boolean) => void;
+  preserveDraft: boolean;
   state: SessionActionState;
 }) {
   const fieldIdPrefix = state.values.sessionId || "new";
@@ -247,6 +310,8 @@ function SessionCoreFields({
         compact={compact}
         fieldIdPrefix={fieldIdPrefix}
         key={`${fieldIdPrefix}-${state.values.notesDocument}`}
+        onDirtyChange={onDirtyChange}
+        preserveDraft={preserveDraft}
         state={state}
       />
 
@@ -289,6 +354,8 @@ function SessionNoteBlockEditor({
   availableRules,
   compact,
   fieldIdPrefix,
+  onDirtyChange,
+  preserveDraft,
   state,
 }: {
   availableCharacters: CampaignCharacterSummary[];
@@ -296,14 +363,38 @@ function SessionNoteBlockEditor({
   availableRules: RuleSnippet[];
   compact: boolean;
   fieldIdPrefix: string;
+  onDirtyChange: (hasChanges: boolean) => void;
+  preserveDraft: boolean;
   state: SessionActionState;
 }) {
+  const initialDocument = useMemo(
+    () =>
+      deserializeSessionNoteDocument(
+        state.values.notesDocument,
+        state.values.notes,
+      ),
+    [state.values.notes, state.values.notesDocument],
+  );
+  const initialSerializedDocument = useMemo(
+    () => serializeSessionNoteDocument(initialDocument),
+    [initialDocument],
+  );
+  const draftKey = useMemo(
+    () =>
+      createSessionNoteDraftKey(
+        state.values.campaignId,
+        state.values.sessionId,
+      ),
+    [state.values.campaignId, state.values.sessionId],
+  );
   const [document, setDocument] = useState(() =>
     deserializeSessionNoteDocument(
       state.values.notesDocument,
       state.values.notes,
     ),
   );
+  const [draftReady, setDraftReady] = useState(false);
+  const [recoveredDraftAt, setRecoveredDraftAt] = useState<string | null>(null);
   const [activeSuggestion, setActiveSuggestion] =
     useState<ActiveSuggestionState | null>(null);
   const pendingCursorRef = useRef<{
@@ -360,6 +451,87 @@ function SessionNoteBlockEditor({
     activeSuggestions.length > 0 && activeSuggestion
       ? Math.min(activeSuggestion.selectedIndex, activeSuggestions.length - 1)
       : -1;
+  const hasLocalDraft =
+    draftReady &&
+    document.blocks.some((block) => block.text.trim()) &&
+    (preserveDraft || serializedDocument !== initialSerializedDocument);
+
+  useEffect(() => {
+    const timeout = window.setTimeout(() => {
+      try {
+        if (state.successMessage) {
+          window.sessionStorage.removeItem(draftKey);
+          return;
+        }
+
+        const draft = deserializeSessionNoteDraft(
+          window.sessionStorage.getItem(draftKey),
+        );
+
+        if (
+          draft &&
+          serializeSessionNoteDocument(draft.document) !==
+            initialSerializedDocument
+        ) {
+          setDocument(draft.document);
+          setRecoveredDraftAt(draft.savedAt);
+          onDirtyChange(true);
+        }
+      } catch {
+        // Session storage can be unavailable in hardened or private browsers.
+      } finally {
+        setDraftReady(true);
+      }
+    }, 0);
+
+    return () => window.clearTimeout(timeout);
+  }, [
+    draftKey,
+    initialSerializedDocument,
+    onDirtyChange,
+    state.successMessage,
+  ]);
+
+  useEffect(() => {
+    if (!draftReady) {
+      return;
+    }
+
+    const hasDraftContent = document.blocks.some((block) => block.text.trim());
+
+    if (
+      !hasDraftContent ||
+      (serializedDocument === initialSerializedDocument && !preserveDraft)
+    ) {
+      try {
+        window.sessionStorage.removeItem(draftKey);
+      } catch {
+        // Keep editing available when browser storage is unavailable.
+      }
+
+      return;
+    }
+
+    const timeout = window.setTimeout(() => {
+      try {
+        window.sessionStorage.setItem(
+          draftKey,
+          serializeSessionNoteDraft(document),
+        );
+      } catch {
+        // The server save remains available when local draft storage fails.
+      }
+    }, 300);
+
+    return () => window.clearTimeout(timeout);
+  }, [
+    document,
+    draftKey,
+    draftReady,
+    initialSerializedDocument,
+    preserveDraft,
+    serializedDocument,
+  ]);
 
   useEffect(() => {
     const pendingCursor = pendingCursorRef.current;
@@ -387,6 +559,7 @@ function SessionNoteBlockEditor({
     blockId: string,
     update: Partial<Pick<SessionNoteBlock, "text" | "type">>,
   ) {
+    onDirtyChange(true);
     setDocument((currentDocument) => ({
       ...currentDocument,
       blocks: currentDocument.blocks.map((block) =>
@@ -499,6 +672,7 @@ function SessionNoteBlockEditor({
   }
 
   function addBlock(afterIndex: number) {
+    onDirtyChange(true);
     setDocument((currentDocument) => {
       const nextBlocks = [...currentDocument.blocks];
 
@@ -512,6 +686,7 @@ function SessionNoteBlockEditor({
   }
 
   function moveBlock(fromIndex: number, direction: -1 | 1) {
+    onDirtyChange(true);
     setDocument((currentDocument) => {
       const toIndex = fromIndex + direction;
 
@@ -536,6 +711,7 @@ function SessionNoteBlockEditor({
   }
 
   function removeBlock(blockId: string) {
+    onDirtyChange(true);
     setDocument((currentDocument) => {
       const nextBlocks = currentDocument.blocks.filter(
         (block) => block.id !== blockId,
@@ -548,6 +724,19 @@ function SessionNoteBlockEditor({
     });
   }
 
+  function discardRecoveredDraft() {
+    try {
+      window.sessionStorage.removeItem(draftKey);
+    } catch {
+      // Reset the editor even when browser storage is unavailable.
+    }
+
+    setDocument(initialDocument);
+    setRecoveredDraftAt(null);
+    setActiveSuggestion(null);
+    onDirtyChange(false);
+  }
+
   return (
     <div>
       <label
@@ -556,8 +745,36 @@ function SessionNoteBlockEditor({
       >
         Notes
       </label>
+      <p
+        className="mt-1 text-sm leading-6 text-[#4b4657]"
+        id={`${fieldIdPrefix}-session-notes-hint`}
+      >
+        Capture short beats as play moves. Type{" "}
+        <span className="font-semibold text-[#17161f]">[[</span> to link a
+        campaign entity, rule, or character without leaving the editor.
+      </p>
       <input name="notes" type="hidden" value={plainTextNotes} />
       <input name="notesDocument" type="hidden" value={serializedDocument} />
+      {hasLocalDraft ? (
+        <div
+          className="mt-3 flex flex-col gap-2 rounded-lg border border-[#c3943e]/40 bg-[#fffaf0] px-3 py-3 text-sm text-[#5c4212] sm:flex-row sm:items-center sm:justify-between"
+        >
+          <span role="status">
+            {recoveredDraftAt
+              ? "Recovered unsaved notes from this tab. Save when ready."
+              : "Unsaved notes are backed up temporarily in this tab."}
+          </span>
+          {recoveredDraftAt ? (
+            <button
+              className="min-h-11 rounded-md border border-[#c3943e]/45 bg-white px-3 font-semibold transition hover:bg-[#fff4d9] focus:outline-none focus:ring-2 focus:ring-[#8b2f39] focus:ring-offset-2 sm:min-h-9"
+              onClick={discardRecoveredDraft}
+              type="button"
+            >
+              Discard recovered draft
+            </button>
+          ) : null}
+        </div>
+      ) : null}
       <div className="mt-2 grid gap-3">
         {document.blocks.map((block, index) => {
           const isSuggestingForBlock =
@@ -643,9 +860,14 @@ function SessionNoteBlockEditor({
                 }
                 aria-autocomplete="list"
                 aria-controls={isSuggestingForBlock ? suggestionListId : undefined}
-                aria-describedby={
-                  notesError ? `${fieldIdPrefix}-session-notes-error` : undefined
-                }
+                aria-describedby={[
+                  `${fieldIdPrefix}-session-notes-hint`,
+                  notesError
+                    ? `${fieldIdPrefix}-session-notes-error`
+                    : null,
+                ]
+                  .filter(Boolean)
+                  .join(" ")}
                 aria-invalid={notesError ? true : undefined}
                 className="mt-3 min-h-36 w-full resize-y rounded-md border border-[#17161f]/15 bg-[#fffaf0] px-3 py-3 text-base leading-7 outline-none transition focus:border-[#1f6f78] focus:ring-2 focus:ring-[#1f6f78]/25"
                 id={`${fieldIdPrefix}-session-notes-block-${index}`}
@@ -699,6 +921,11 @@ function SessionNoteBlockEditor({
                 ref={(element) => {
                   textareaRefs.current[block.id] = element;
                 }}
+                placeholder={
+                  index === 0
+                    ? "What changed at the table? Decisions, discoveries, NPCs, and open questions all belong here."
+                    : "Continue the session notes..."
+                }
                 rows={compact ? 4 : 5}
                 value={block.text}
               />
@@ -809,7 +1036,7 @@ function SessionNoteSuggestionList({
 
 function getSuggestionButtonClassName(isSelected: boolean) {
   const baseClassName =
-    "flex w-full items-center gap-3 px-3 py-2 text-left text-sm outline-none transition";
+    "flex min-h-11 w-full items-center gap-3 px-3 py-2 text-left text-sm outline-none transition";
 
   return isSelected
     ? `${baseClassName} bg-[#e7f5f6]`
@@ -846,7 +1073,7 @@ function BlockEditorButton({
 }) {
   return (
     <button
-      className="min-h-9 rounded-md border border-[#17161f]/10 bg-[#fffaf0] px-3 text-xs font-semibold text-[#17161f] transition hover:border-[#1f6f78]/45 hover:bg-[#e7f5f6] focus:outline-none focus:ring-2 focus:ring-[#1f6f78] focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-45"
+      className="min-h-11 rounded-md border border-[#17161f]/10 bg-[#fffaf0] px-3 text-xs font-semibold text-[#17161f] transition hover:border-[#1f6f78]/45 hover:bg-[#e7f5f6] focus:outline-none focus:ring-2 focus:ring-[#1f6f78] focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-45 sm:min-h-9"
       disabled={disabled}
       onClick={onClick}
       type="button"
@@ -874,10 +1101,8 @@ function formatVisibility(visibility: CampaignEntitySummary["visibility"]) {
 
 function SessionFormNotice({
   error,
-  success,
 }: {
   error: string | null;
-  success: string | null;
 }) {
   if (error) {
     return (
@@ -885,18 +1110,8 @@ function SessionFormNotice({
         className="rounded-lg border border-[#8b2f39]/25 bg-[#f9e8ea] px-4 py-3 text-sm text-[#6f2430]"
         role="alert"
       >
-        {error}
-      </div>
-    );
-  }
-
-  if (success) {
-    return (
-      <div
-        className="rounded-lg border border-[#1f6f78]/25 bg-[#e7f5f6] px-4 py-3 text-sm text-[#164f56]"
-        role="status"
-      >
-        {success}
+        <span className="font-semibold">Save failed.</span> {error} Your
+        changes are still in the editor, so you can correct the issue and retry.
       </div>
     );
   }
@@ -904,22 +1119,59 @@ function SessionFormNotice({
   return null;
 }
 
-function SessionSubmitButton({
+function SessionSaveControls({
+  hasErrors,
+  hasUnsavedChanges,
   label,
   pendingLabel,
+  saved,
 }: {
+  hasErrors: boolean;
+  hasUnsavedChanges: boolean;
   label: string;
   pendingLabel: string;
+  saved: boolean;
 }) {
   const { pending } = useFormStatus();
+  const status = pending
+    ? pendingLabel
+    : hasErrors
+      ? "Save failed. Your changes are still in the editor."
+      : hasUnsavedChanges
+        ? "Unsaved changes"
+        : saved
+          ? "Saved"
+          : "Ready to save";
+  const buttonLabel = pending
+    ? pendingLabel
+    : hasErrors
+      ? "Retry save"
+      : label;
 
   return (
-    <button
-      className="min-h-11 rounded-md bg-[#17161f] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#2d2937] focus:outline-none focus:ring-2 focus:ring-[#8b2f39] focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-70"
-      disabled={pending}
-      type="submit"
+    <div
+      className="sticky bottom-3 z-10 flex flex-col gap-3 rounded-lg border border-[#17161f]/10 bg-white/95 p-3 shadow-lg backdrop-blur sm:static sm:flex-row sm:items-center sm:justify-between sm:shadow-none"
     >
-      {pending ? pendingLabel : label}
-    </button>
+      <p aria-live="polite" className="text-sm font-semibold text-[#4b4657]">
+        {status}
+      </p>
+      <button
+        className="min-h-11 rounded-md bg-[#17161f] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#2d2937] focus:outline-none focus:ring-2 focus:ring-[#8b2f39] focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-70"
+        disabled={pending}
+        type="submit"
+      >
+        {buttonLabel}
+      </button>
+    </div>
   );
+}
+
+function createSessionFormStateKey(state: SessionActionState) {
+  return JSON.stringify({
+    fieldErrors: state.fieldErrors,
+    formError: state.formError,
+    savedSessionId: state.savedSessionId,
+    successMessage: state.successMessage,
+    values: state.values,
+  });
 }
