@@ -43,6 +43,7 @@ accounts, confirmation callbacks, sign-out, and password recovery. See
 `docs/engineering/managed-auth.md`.
 
 ## Root Scripts
+- `npm run beta:check` validates the first-campaign readiness assessment and evidence contract.
 - `npm run install` explains the install workflow for this npm workspace.
 - `npm run db:generate -- <name>` scaffolds a new SQL migration file.
 - `npm run db:migrate` applies local Postgres migrations.
@@ -110,6 +111,7 @@ packages/
 - `Agents.md`
 - `docs/product/PRD.md`
 - `docs/engineering/architecture.md`
+- `docs/engineering/first-campaign-beta-readiness.md`
 - `docs/engineering/branch_protection.md`
 - `docs/engineering/campaign-memory-retrieval.md`
 - `docs/engineering/campaign-invites.md`
