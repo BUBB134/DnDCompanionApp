@@ -162,6 +162,8 @@ for (const snippet of [
   "export const runtime = \"nodejs\"",
   "validateRuntimeEnv(process.env)",
   "await queryDatabase(\"select 1\")",
+  "VERCEL_GIT_COMMIT_SHA",
+  "revision:",
   "\"cache-control\": \"no-store\"",
 ]) {
   expect(
@@ -174,6 +176,7 @@ const deploymentCheck = readText("scripts/check-deployment.mjs");
 for (const snippet of [
   "DEPLOYMENT_URL",
   "--expect-env",
+  "--expect-revision",
   "/api/health",
   "/sign-in?next=%2F",
   'redirect: "manual"',
@@ -182,6 +185,8 @@ for (const snippet of [
   "Sign-in route redirected instead of rendering directly.",
   "Sign-in is unavailable because the submit button is disabled.",
   "Sign-in route reported incomplete deployment configuration.",
+  "Deployment URL must be the configured application origin.",
+  "Expected deployed revision",
 ]) {
   expect(
     deploymentCheck.includes(snippet),

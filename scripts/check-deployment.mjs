@@ -5,6 +5,8 @@ const options = parseOptions(process.argv.slice(2));
 const deploymentUrl = options.url ?? process.env.DEPLOYMENT_URL;
 const expectedOrigin =
   options.expectedOrigin ?? process.env.EXPECTED_DEPLOYMENT_ORIGIN;
+const expectedRevision =
+  options.expectedRevision ?? process.env.EXPECTED_DEPLOYMENT_REVISION;
 const failures = [];
 
 if (!deploymentUrl) {
@@ -22,10 +24,15 @@ if (expectedOrigin && !resolveOrigin(expectedOrigin)) {
   fail(`Invalid expected deployment origin: ${expectedOrigin}`);
 }
 
+if (expectedRevision && !/^[0-9a-f]{40}$/iu.test(expectedRevision)) {
+  fail("--expect-revision must be a full 40-character Git commit hash.");
+}
+
 if (failures.length === 0) {
   await checkDeployment(deploymentUrl, {
     ...options,
     expectedOrigin,
+    expectedRevision,
   });
 }
 
@@ -44,6 +51,7 @@ function parseOptions(args) {
     allowSkippedDatabase: args.includes("--allow-skipped-database"),
     expectedEnvironment: readOption(args, "--expect-env"),
     expectedOrigin: readOption(args, "--expect-origin"),
+    expectedRevision: readOption(args, "--expect-revision"),
     timeoutMs: Number.isFinite(timeoutMs) && timeoutMs > 0 ? timeoutMs : defaultTimeoutMs,
     url: readOption(args, "--url"),
   };
@@ -84,6 +92,14 @@ async function checkDeployment(url, checkOptions) {
         checkOptions.expectedOrigin,
       )}.`,
     );
+    return;
+  }
+
+  if (
+    checkOptions.expectedOrigin &&
+    normalizeDeploymentUrl(url) !== resolveOrigin(checkOptions.expectedOrigin)
+  ) {
+    fail("Deployment URL must be the configured application origin.");
     return;
   }
 
@@ -225,6 +241,28 @@ function resolveOrigin(url) {
   }
 }
 
+function normalizeDeploymentUrl(url) {
+  const normalizedUrl = /^https?:\/\//u.test(url) ? url : `https://${url}`;
+
+  try {
+    const parsedUrl = new URL(normalizedUrl);
+
+    if (
+      parsedUrl.username ||
+      parsedUrl.password ||
+      parsedUrl.search ||
+      parsedUrl.hash
+    ) {
+      return null;
+    }
+
+    const pathname = parsedUrl.pathname.replace(/\/+$/u, "");
+    return `${parsedUrl.origin}${pathname}`;
+  } catch {
+    return null;
+  }
+}
+
 async function readJson(response) {
   try {
     return await response.json();
@@ -245,6 +283,18 @@ function validatePayload(payload, checkOptions) {
     fail(
       `Expected environment ${checkOptions.expectedEnvironment}, got ${readString(
         payload.environment,
+        "missing",
+      )}.`,
+    );
+  }
+
+  if (
+    checkOptions.expectedRevision &&
+    payload.revision !== checkOptions.expectedRevision
+  ) {
+    fail(
+      `Expected deployed revision ${checkOptions.expectedRevision}, got ${readString(
+        payload.revision,
         "missing",
       )}.`,
     );

@@ -90,13 +90,13 @@ The `Deployment Smoke` workflow validates an already-built Vercel URL through th
 npm run deploy:check -- --url=<deployment-url> --expect-env=preview
 ```
 
-The workflow runs automatically for successful Production deployment statuses and can also be dispatched manually. Protected Vercel previews remain covered by the build-time environment check; use a deployment-protection bypass only when manually smoke-testing one. The health endpoint returns only environment/check status and does not expose secrets. A passing result requires runtime environment validation, database connectivity, and an enabled sign-in form without the deployment-configuration alert.
+The workflow runs automatically for successful Production deployment statuses and can also be dispatched manually. Protected Vercel previews remain covered by the build-time environment check; use a deployment-protection bypass only when manually smoke-testing one. The health endpoint returns only environment/check status and the Vercel Git commit SHA; it does not expose secrets. A passing result requires runtime environment validation, database connectivity, and an enabled sign-in form without the deployment-configuration alert. Release gates can pass `--expect-revision=<full-commit-sha>` to reject a healthy deployment built from the wrong revision.
 
 ## Runtime validation
 
 The root app layout reports runtime environment issues to server logs without blocking the public sign-in route. Local development defaults to the local provider. Preview and production require `AUTH_PROVIDER=supabase`, `APP_BASE_URL`, and the Supabase public URL/key before the managed sign-in form is enabled. Protected app routes still call `assertValidRuntimeEnv(process.env)` after authentication, so invalid deployed configuration fails before users enter the app shell. `SUPABASE_SERVICE_ROLE_KEY` remains validated when present but is not required by the auth flow.
 
-The deployed `/api/health` route performs the same runtime environment validation and then runs a minimal `select 1` against the configured database. Failures are surfaced as HTTP 503 and logged in Vercel runtime logs for debugging without returning raw credentials or connection strings to the caller.
+The deployed `/api/health` route performs the same runtime environment validation and then runs a minimal `select 1` against the configured database. It reports `VERCEL_GIT_COMMIT_SHA` as a non-secret release identifier so protected gates can bind a URL to an exact revision. Failures are surfaced as HTTP 503 and logged in Vercel runtime logs for debugging without returning raw credentials or connection strings to the caller.
 
 ## Follow-up hardening
 

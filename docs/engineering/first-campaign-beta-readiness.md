@@ -48,11 +48,12 @@ surface. It ends with `npm run beta:check -- --require-go`, so it cannot report 
 ready state while the assessment still contains blockers.
 
 The workflow compares `deployment_url` with the production `APP_BASE_URL`. It
-also binds the GO assessment to the workflow revision. `assessedCommit` must name
-the fully tested application commit, and only the JSON report and this runbook
-may differ between that commit and the revision running the final gate. This
-allows evidence to be recorded without letting later application or gate changes
-inherit stale approval.
+also requires `/api/health` to report the exact workflow revision and binds the
+GO assessment to that revision. `assessedCommit` must name the fully tested
+application commit, and only the JSON report and this runbook may differ between
+that commit and the revision running the final gate. This allows evidence to be
+recorded without letting later application, gate, or deployment changes inherit
+stale approval.
 
 ## Test Accounts And Data
 
@@ -141,16 +142,19 @@ Before changing any manual check to `pass`, populate `manualRehearsal` in the
 JSON report with:
 
 - `tester`: the person who completed the rehearsal
-- `completedAt`: an ISO-8601 timestamp
+- `completedAt`: an ISO-8601 timestamp on the report assessment date
 - `environment`: `production`
 - `deploymentUrl`: the exact tested production URL
-- `workflowUrl`: the successful protected rehearsal workflow run
 - `assessedCommit`: the tested application commit from the report
 - `result`: `pass`
 - `passedCheckIds`: every manual check proven by that rehearsal
 - `notes`: concise evidence or anomalies
 
-The validator rejects passed manual checks without this structured evidence.
+The validator rejects passed manual checks without this structured evidence and
+requires its deployment origin to match the final gate input. Run the protected
+workflow after recording the evidence; that workflow run is the independent
+machine-verifiable audit record, so a pre-existing workflow URL is neither
+required nor accepted as proof of the human rehearsal.
 
 ## Production Checks
 
@@ -158,12 +162,12 @@ Immediately before the campaign test:
 
 1. Confirm the production deployment points at the intended `main` commit.
 2. Run the protected `Campaign Beta Readiness` workflow against that URL.
-3. Confirm `/api/health` reports the production environment and healthy database.
+3. Confirm `/api/health` reports the exact release commit, production
+   environment, and healthy database.
 4. Confirm the public sign-in page has no deployment-configuration alert.
 5. Review current Vercel runtime logs for new authentication, database, or 5xx
    errors created by the rehearsal.
-6. Record the workflow URL, deployment URL, commit, date, tester, and results in
-   the assessment evidence.
+6. Retain the successful protected workflow run with the release record.
 
 ## Accepted First-Test Limitations
 

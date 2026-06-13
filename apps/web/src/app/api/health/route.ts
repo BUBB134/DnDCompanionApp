@@ -42,6 +42,7 @@ export async function GET() {
       checkedAt,
       checks,
       environment: publicEnv.NEXT_PUBLIC_APP_ENV,
+      revision: process.env.VERCEL_GIT_COMMIT_SHA ?? null,
       status,
       vercelEnvironment: process.env.VERCEL_ENV ?? null,
     },

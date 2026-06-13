@@ -38,6 +38,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Setup Node
         uses: actions/setup-node@v4
@@ -57,7 +59,7 @@ jobs:
         run: npm run db:check:supabase
 
       - name: Check deployment health
-        run: npm run deploy:check -- --url="$DEPLOYMENT_URL" --expect-env="$EXPECTED_ENVIRONMENT" --expect-origin="$APP_BASE_URL"
+        run: npm run deploy:check -- --url="$DEPLOYMENT_URL" --expect-env="$EXPECTED_ENVIRONMENT" --expect-origin="$APP_BASE_URL" --expect-revision="$READINESS_RELEASE_SHA"
 
       - name: Enforce go decision
-        run: npm run beta:check -- --require-go --release-sha="$READINESS_RELEASE_SHA"
+        run: npm run beta:check -- --require-go --release-sha="$READINESS_RELEASE_SHA" --deployment-url="$DEPLOYMENT_URL"

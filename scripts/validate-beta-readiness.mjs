@@ -6,8 +6,13 @@ import { fileURLToPath } from "node:url";
 const rootDir = dirname(dirname(fileURLToPath(import.meta.url)));
 const reportPath = "docs/engineering/first-campaign-beta-readiness.json";
 const runbookPath = "docs/engineering/first-campaign-beta-readiness.md";
+const workflowPath = ".github/workflows/beta-readiness.yml";
 const requireGo = process.argv.includes("--require-go");
 const releaseSha = readOption(process.argv.slice(2), "--release-sha");
+const releaseDeploymentUrl = readOption(
+  process.argv.slice(2),
+  "--deployment-url",
+);
 const failures = [];
 const assessmentArtifactPaths = new Set([reportPath, runbookPath]);
 const manualCheckIds = new Set([
@@ -75,7 +80,7 @@ const requiredChecks = new Map([
   ["go-no-go-recorded", [reportPath, runbookPath]],
 ]);
 
-for (const path of [reportPath, runbookPath]) {
+for (const path of [reportPath, runbookPath, workflowPath]) {
   expect(existsSync(resolve(path)), `Missing beta-readiness artifact: ${path}`);
 }
 
@@ -105,6 +110,23 @@ for (const section of [
   "## Latest Assessment",
 ]) {
   expect(runbook.includes(section), `Beta-readiness runbook is missing ${section}.`);
+}
+
+expect(
+  !runbook.includes("`workflowUrl`"),
+  "Manual rehearsal evidence must not depend on a pre-existing workflow run.",
+);
+
+const workflow = readText(workflowPath);
+for (const snippet of [
+  "fetch-depth: 0",
+  '--expect-revision="$READINESS_RELEASE_SHA"',
+  '--deployment-url="$DEPLOYMENT_URL"',
+]) {
+  expect(
+    workflow.includes(snippet),
+    `Beta-readiness workflow is missing release binding: ${snippet}`,
+  );
 }
 
 if (report) {
@@ -315,6 +337,10 @@ function validateReport(value) {
       typeof releaseSha === "string" && releaseSha.length > 0,
       "--require-go must include --release-sha.",
     );
+    expect(
+      isHttpsUrl(releaseDeploymentUrl),
+      "--require-go must include an HTTPS --deployment-url.",
+    );
 
     if (releaseSha) {
       validateReleaseRevision(value, releaseSha);
@@ -353,6 +379,11 @@ function validateManualEvidence(reportValue, checksById) {
     "manualRehearsal.completedAt must be an ISO-8601 timestamp.",
   );
   expect(
+    typeof evidence.completedAt === "string" &&
+      evidence.completedAt.slice(0, 10) === reportValue.assessmentDate,
+    "manualRehearsal.completedAt must fall on the report assessmentDate.",
+  );
+  expect(
     evidence.environment === "production",
     "manualRehearsal.environment must be production.",
   );
@@ -360,12 +391,13 @@ function validateManualEvidence(reportValue, checksById) {
     isHttpsUrl(evidence.deploymentUrl),
     "manualRehearsal.deploymentUrl must be an HTTPS URL.",
   );
-  expect(
-    /^https:\/\/github\.com\/BUBB134\/DnDCompanionApp\/actions\/runs\/\d+$/u.test(
-      evidence.workflowUrl ?? "",
-    ),
-    "manualRehearsal.workflowUrl must reference a DnDCompanionApp Actions run.",
-  );
+  if (requireGo && isHttpsUrl(releaseDeploymentUrl)) {
+    expect(
+      normalizeDeploymentUrl(evidence.deploymentUrl) ===
+        normalizeDeploymentUrl(releaseDeploymentUrl),
+      "manualRehearsal.deploymentUrl must match the deployment URL passed to the final gate.",
+    );
+  }
   expect(
     evidence.assessedCommit === reportValue.assessedCommit,
     "manualRehearsal.assessedCommit must match the report assessedCommit.",
@@ -491,6 +523,21 @@ function isHttpsUrl(value) {
     return new URL(value).protocol === "https:";
   } catch {
     return false;
+  }
+}
+
+function normalizeDeploymentUrl(value) {
+  try {
+    const url = new URL(value);
+
+    if (url.username || url.password || url.search || url.hash) {
+      return null;
+    }
+
+    const pathname = url.pathname.replace(/\/+$/u, "");
+    return `${url.origin}${pathname}`;
+  } catch {
+    return null;
   }
 }
 
