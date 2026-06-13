@@ -12,8 +12,10 @@ const requiredFiles = [
   "apps/web/src/components/session-editor.tsx",
   "apps/web/src/sessions/actions.ts",
   "apps/web/src/sessions/manage-session.ts",
+  "apps/web/src/sessions/note-draft.ts",
   "apps/web/src/sessions/note-document.ts",
   "apps/web/src/sessions/repository.ts",
+  "docs/engineering/session-note-first-test.md",
   "packages/db/migrations/0002_session_entity_tags.sql",
   "packages/db/migrations/0004_session_note_document.sql",
   "packages/types/src/campaign.ts",
@@ -37,6 +39,34 @@ for (const expectedText of [
   expect(
     sessionsPage.includes(expectedText),
     `Sessions page must include ${expectedText}.`,
+  );
+}
+
+const sessionEditorText = readText("apps/web/src/components/session-editor.tsx");
+for (const expectedText of [
+  "Unsaved changes",
+  "Save failed. Your changes are still in the editor.",
+  "Retry save",
+  "Recovered unsaved notes from this tab.",
+  "An older unsaved draft is available.",
+  "pagehide",
+  "window.sessionStorage",
+  "Type{\" \"}",
+]) {
+  expect(
+    sessionEditorText.includes(expectedText),
+    `Session editor must expose first-test note usability behavior: ${expectedText}`,
+  );
+}
+
+for (const expectedText of [
+  'aria-label="Session navigation"',
+  "Jump to a session",
+  "Back to session list",
+]) {
+  expect(
+    sessionsPage.includes(expectedText),
+    `Sessions page must expose live-session navigation: ${expectedText}`,
   );
 }
 
@@ -93,6 +123,13 @@ if (hasTypeScriptRuntime) {
     "apps/web/src/sessions/note-document.ts",
     [["@dnd/types", campaignTypesUrl]],
   );
+  const noteDraftUrl = await transpileModuleToDataUrl(
+    "apps/web/src/sessions/note-draft.ts",
+    [
+      ["@dnd/types", campaignTypesUrl],
+      ["@/sessions/note-document", noteDocumentUrl],
+    ],
+  );
   const wikiLinksUrl = await transpileModuleToDataUrl(
     "apps/web/src/sessions/wiki-links.ts",
     [
@@ -101,6 +138,7 @@ if (hasTypeScriptRuntime) {
     ],
   );
   const noteDocumentModule = await import(noteDocumentUrl);
+  const noteDraftModule = await import(noteDraftUrl);
   const manageSessionUrl = await transpileModuleToDataUrl(
     "apps/web/src/sessions/manage-session.ts",
     [
@@ -139,6 +177,38 @@ if (hasTypeScriptRuntime) {
     title: "  The drowned door  ",
     unresolvedHooks: " - Tell Captain Thorn\n\nFind the second lantern ",
   };
+
+  const draftSavedAt = "2026-06-13T12:00:00.000Z";
+  const draftRevision = "2026-06-13T11:00:00.000Z";
+  const serializedDraft = noteDraftModule.serializeSessionNoteDraft(
+    noteDocumentModule.createSessionNoteDocumentFromPlainText(
+      "Unsaved table notes.",
+    ),
+    draftRevision,
+    draftSavedAt,
+  );
+  const restoredDraft =
+    noteDraftModule.deserializeSessionNoteDraft(serializedDraft);
+  const emptyDraft = noteDraftModule.deserializeSessionNoteDraft(
+    noteDraftModule.serializeSessionNoteDraft(
+      noteDocumentModule.createEmptySessionNoteDocument(),
+      draftRevision,
+      draftSavedAt,
+    ),
+  );
+  expect(
+    noteDraftModule.createSessionNoteDraftKey(
+      "user-1",
+      savedCampaign.id,
+      "",
+    ) === `dnd-session-note-draft:user-1:${savedCampaign.id}:new` &&
+      restoredDraft?.baseRevision === draftRevision &&
+      restoredDraft?.savedAt === draftSavedAt &&
+      restoredDraft.document.blocks[0]?.text === "Unsaved table notes." &&
+      emptyDraft?.document.blocks[0]?.text === "" &&
+      noteDraftModule.deserializeSessionNoteDraft("not-json") === null,
+    "Session note drafts must round-trip safely and reject malformed browser state.",
+  );
 
   const valid = manageSessionModule.validateSessionValues(
     validValues,
@@ -269,7 +339,8 @@ if (hasTypeScriptRuntime) {
     createResult.ok &&
       capturedCreateInput?.campaignId === savedCampaign.id &&
       capturedCreateInput?.taggedEntityIds[0] === visibleEntities[0].id &&
-      createResult.state.savedSessionId === "session-1",
+      createResult.state.savedSessionId === "session-1" &&
+      createResult.state.savedSessionRevision === "2026-05-06T00:00:00.000Z",
     "Session creation submission must persist normalized tag values and reset after save.",
   );
 
@@ -322,6 +393,8 @@ if (hasTypeScriptRuntime) {
   expect(
     updateResult.ok &&
       capturedUpdateId === "session-1" &&
+      updateResult.state.savedSessionRevision ===
+        "2026-05-06T00:00:00.000Z" &&
       updateResult.state.successMessage === "Session saved.",
     "Session update submission must persist the selected session.",
   );
