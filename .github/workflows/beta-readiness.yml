@@ -1,0 +1,78 @@
+name: Campaign Beta Readiness
+
+on:
+  workflow_dispatch:
+    inputs:
+      deployment_url:
+        description: Exact production URL intended for the campaign
+        required: true
+        type: string
+
+jobs:
+  readiness:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    environment: production
+    env:
+      NEXT_PUBLIC_APP_ENV: production
+      APP_BASE_URL: ${{ vars.APP_BASE_URL }}
+      DEPLOYMENT_URL: ${{ inputs.deployment_url }}
+      EXPECTED_ENVIRONMENT: production
+      READINESS_RELEASE_SHA: ${{ github.sha }}
+      NEXT_PUBLIC_SUPABASE_URL: ${{ vars.NEXT_PUBLIC_SUPABASE_URL }}
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ vars.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+      AUTH_PROVIDER: supabase
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      DATABASE_CONNECTION_TIMEOUT_MS: 10000
+      DATABASE_IDLE_TIMEOUT_MS: 30000
+      DATABASE_POOL_MAX: 5
+      AI_GROUNDING_MODE: retrieval
+      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+      OPENAI_MODEL: ${{ vars.OPENAI_MODEL }}
+      OBSERVABILITY_PROVIDER: ${{ vars.OBSERVABILITY_PROVIDER || 'console' }}
+      SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
+      NEXT_PUBLIC_SENTRY_DSN: ${{ vars.NEXT_PUBLIC_SENTRY_DSN }}
+      LOG_LEVEL: ${{ vars.LOG_LEVEL || 'info' }}
+      STORAGE_PROVIDER: none
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install
+        run: npm install
+
+      - name: Validate readiness artifacts
+        run: npm run beta:check
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Test
+        run: npm test
+
+      - name: Build
+        run: npm run build
+
+      - name: Validate environment
+        run: npm run env:check -- --strict
+
+      - name: Check database
+        run: npm run db:check:supabase
+
+      - name: Check deployment health
+        run: npm run deploy:check -- --url="$DEPLOYMENT_URL" --expect-env="$EXPECTED_ENVIRONMENT" --expect-origin="$APP_BASE_URL" --expect-revision="$READINESS_RELEASE_SHA"
+
+      - name: Enforce go decision
+        run: npm run beta:check -- --require-go --release-sha="$READINESS_RELEASE_SHA" --deployment-url="$DEPLOYMENT_URL"

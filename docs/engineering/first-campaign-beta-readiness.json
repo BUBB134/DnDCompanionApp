@@ -1,0 +1,199 @@
+{
+  "schemaVersion": 1,
+  "assessmentDate": "2026-06-13",
+  "assessedCommit": "5c43479",
+  "decision": "no-go",
+  "automatedVerification": {
+    "date": "2026-06-13",
+    "result": "pass",
+    "commands": [
+      "npm run beta:check",
+      "npm run lint",
+      "npm run typecheck",
+      "npm test",
+      "npm run build"
+    ],
+    "localHttpSmoke": {
+      "url": "http://localhost:3000/sign-in?next=%2F",
+      "statusCode": 200,
+      "signInSurfacePresent": true,
+      "deploymentConfigurationAlertPresent": false
+    },
+    "notes": "Local automation and the public sign-in smoke pass. This is not evidence for managed production accounts, the production deployment, or mobile viewport behavior."
+  },
+  "manualRehearsal": null,
+  "blockingCheckIds": [
+    "dm-managed-auth",
+    "player-managed-auth",
+    "campaign-create",
+    "campaign-invite",
+    "player-join",
+    "session-create-open",
+    "notes-save-reload",
+    "character-companion",
+    "mobile-main-flows",
+    "production-deployment"
+  ],
+  "checks": [
+    {
+      "id": "dm-managed-auth",
+      "criterion": "DM can create an account and sign in.",
+      "status": "pending-manual",
+      "evidence": [
+        "scripts/validate-auth.mjs",
+        "docs/engineering/managed-auth.md",
+        "DND-20 / PR #73"
+      ],
+      "notes": "The managed-auth contract and preview build pass. A fresh production account confirmation and sign-in have not been recorded."
+    },
+    {
+      "id": "player-managed-auth",
+      "criterion": "Player can create an account and sign in.",
+      "status": "pending-manual",
+      "evidence": [
+        "scripts/validate-auth.mjs",
+        "docs/engineering/managed-auth.md",
+        "DND-20 / PR #73"
+      ],
+      "notes": "A second real account must complete confirmation and sign-in independently of the DM account."
+    },
+    {
+      "id": "campaign-create",
+      "criterion": "DM can create a campaign.",
+      "status": "pending-manual",
+      "evidence": [
+        "scripts/validate-campaign-creation.mjs",
+        "scripts/validate-campaign-onboarding.mjs",
+        "docs/engineering/campaign-onboarding.md"
+      ],
+      "notes": "Automated repository validation passes. Production persistence must be confirmed with the real DM account."
+    },
+    {
+      "id": "campaign-invite",
+      "criterion": "DM can invite a player with a shareable link.",
+      "status": "pending-manual",
+      "evidence": [
+        "scripts/validate-campaign-invites.mjs",
+        "docs/engineering/campaign-invites.md",
+        "DND-34"
+      ],
+      "notes": "Invite generation, hashing, expiry, rotation, and return-path contracts exist. A production link has not been exercised in this assessment."
+    },
+    {
+      "id": "player-join",
+      "criterion": "Player can join and access the campaign.",
+      "status": "pending-manual",
+      "evidence": [
+        "scripts/validate-campaign-access.mjs",
+        "scripts/validate-campaign-invites.mjs",
+        "docs/engineering/campaign-invites.md"
+      ],
+      "notes": "The invite acceptance and membership boundaries are validated in code. A separate production player session must prove access."
+    },
+    {
+      "id": "session-create-open",
+      "criterion": "DM can create and reopen a session.",
+      "status": "pending-manual",
+      "evidence": [
+        "scripts/validate-sessions.mjs",
+        "docs/engineering/session-note-editor.md"
+      ],
+      "notes": "Session create/update repository behavior is validated. The production UI journey remains to be recorded."
+    },
+    {
+      "id": "notes-save-reload",
+      "criterion": "Notes can be created, edited, saved, and recovered after reload.",
+      "status": "pending-manual",
+      "evidence": [
+        "scripts/validate-sessions.mjs",
+        "docs/engineering/session-note-editor.md",
+        "DND-51"
+      ],
+      "notes": "Transactional note persistence and fallback parsing are covered. A live save/reload marker test and first-session usability sign-off remain."
+    },
+    {
+      "id": "character-companion",
+      "criterion": "The character creation or companion path is usable for first players.",
+      "status": "blocked",
+      "evidence": [
+        "apps/web/src/characters/repository.ts",
+        "DND-13",
+        "DND-28"
+      ],
+      "notes": "Character summaries support notes and retrieval, but there is no player-facing character route, navigation item, creation flow, or companion screen."
+    },
+    {
+      "id": "mobile-main-flows",
+      "criterion": "Main DM and player flows work at a mobile viewport.",
+      "status": "pending-manual",
+      "evidence": [
+        "scripts/validate-pwa-shell.mjs",
+        "apps/web/src/components/protected-app-shell.tsx"
+      ],
+      "notes": "Responsive shell contracts exist. Auth, invite, campaign, session, and note flows still require a 390x844 production walkthrough."
+    },
+    {
+      "id": "production-deployment",
+      "criterion": "The production deployment is healthy before the test session.",
+      "status": "pending-manual",
+      "evidence": [
+        "scripts/check-deployment.mjs",
+        ".github/workflows/deployment-smoke.yml",
+        "docs/engineering/production-integrations.md",
+        "DND-46"
+      ],
+      "notes": "Deployment safeguards and health checks are merged. A fresh production readiness workflow run against the intended session URL is required."
+    },
+    {
+      "id": "known-limitations",
+      "criterion": "Known issues and acceptable limitations are documented.",
+      "status": "pass",
+      "evidence": [
+        "docs/engineering/first-campaign-beta-readiness.md"
+      ],
+      "notes": "The runbook separates release blockers from accepted first-test limitations."
+    },
+    {
+      "id": "go-no-go-recorded",
+      "criterion": "A go or no-go decision is recorded.",
+      "status": "pass",
+      "evidence": [
+        "docs/engineering/first-campaign-beta-readiness.json",
+        "docs/engineering/first-campaign-beta-readiness.md"
+      ],
+      "notes": "Decision: NO-GO until every blocking check is cleared and the protected readiness workflow passes."
+    }
+  ],
+  "knownLimitations": [
+    {
+      "severity": "blocking",
+      "ticket": "DND-13",
+      "summary": "No player-facing character companion or character creation path exists."
+    },
+    {
+      "severity": "blocking",
+      "ticket": "DND-51",
+      "summary": "Live note save/reload and at-table usability have not received first-test sign-off."
+    },
+    {
+      "severity": "blocking",
+      "ticket": "DND-20",
+      "summary": "Production SMTP, confirmation delivery, and two-account authentication require a live walkthrough."
+    },
+    {
+      "severity": "accepted",
+      "ticket": "DND-34",
+      "summary": "Only one active invite per campaign is supported; rotating a link revokes the previous link."
+    },
+    {
+      "severity": "accepted",
+      "ticket": "DND-20",
+      "summary": "Local test identities are not migrated automatically to managed production accounts."
+    },
+    {
+      "severity": "accepted",
+      "ticket": "DND-52",
+      "summary": "Advanced AI, rules automation, broad redesign, and performance benchmarking remain outside the first-test gate."
+    }
+  ]
+}

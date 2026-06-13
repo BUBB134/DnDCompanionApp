@@ -3,6 +3,10 @@ const validAppEnvironments = new Set(["local", "preview", "production"]);
 
 const options = parseOptions(process.argv.slice(2));
 const deploymentUrl = options.url ?? process.env.DEPLOYMENT_URL;
+const expectedOrigin =
+  options.expectedOrigin ?? process.env.EXPECTED_DEPLOYMENT_ORIGIN;
+const expectedRevision =
+  options.expectedRevision ?? process.env.EXPECTED_DEPLOYMENT_REVISION;
 const failures = [];
 
 if (!deploymentUrl) {
@@ -16,8 +20,20 @@ if (
   fail("--expect-env must be one of: local, preview, production.");
 }
 
+if (expectedOrigin && !resolveOrigin(expectedOrigin)) {
+  fail(`Invalid expected deployment origin: ${expectedOrigin}`);
+}
+
+if (expectedRevision && !/^[0-9a-f]{40}$/iu.test(expectedRevision)) {
+  fail("--expect-revision must be a full 40-character Git commit hash.");
+}
+
 if (failures.length === 0) {
-  await checkDeployment(deploymentUrl, options);
+  await checkDeployment(deploymentUrl, {
+    ...options,
+    expectedOrigin,
+    expectedRevision,
+  });
 }
 
 if (failures.length > 0) {
@@ -34,6 +50,8 @@ function parseOptions(args) {
   return {
     allowSkippedDatabase: args.includes("--allow-skipped-database"),
     expectedEnvironment: readOption(args, "--expect-env"),
+    expectedOrigin: readOption(args, "--expect-origin"),
+    expectedRevision: readOption(args, "--expect-revision"),
     timeoutMs: Number.isFinite(timeoutMs) && timeoutMs > 0 ? timeoutMs : defaultTimeoutMs,
     url: readOption(args, "--url"),
   };
@@ -58,9 +76,30 @@ function readOption(args, name) {
 async function checkDeployment(url, checkOptions) {
   const healthUrl = resolveDeploymentUrl(url, "/api/health");
   const signInUrl = resolveDeploymentUrl(url, "/sign-in?next=%2F");
+  const deploymentOrigin = resolveOrigin(url);
 
-  if (!healthUrl || !signInUrl) {
+  if (!healthUrl || !signInUrl || !deploymentOrigin) {
     fail(`Invalid deployment URL: ${url}`);
+    return;
+  }
+
+  if (
+    checkOptions.expectedOrigin &&
+    deploymentOrigin !== resolveOrigin(checkOptions.expectedOrigin)
+  ) {
+    fail(
+      `Deployment origin ${deploymentOrigin} does not match configured origin ${resolveOrigin(
+        checkOptions.expectedOrigin,
+      )}.`,
+    );
+    return;
+  }
+
+  if (
+    checkOptions.expectedOrigin &&
+    normalizeDeploymentUrl(url) !== resolveOrigin(checkOptions.expectedOrigin)
+  ) {
+    fail("Deployment URL must be the configured application origin.");
     return;
   }
 
@@ -192,6 +231,38 @@ function resolveDeploymentUrl(url, path) {
   }
 }
 
+function resolveOrigin(url) {
+  const normalizedUrl = /^https?:\/\//u.test(url) ? url : `https://${url}`;
+
+  try {
+    return new URL(normalizedUrl).origin;
+  } catch {
+    return null;
+  }
+}
+
+function normalizeDeploymentUrl(url) {
+  const normalizedUrl = /^https?:\/\//u.test(url) ? url : `https://${url}`;
+
+  try {
+    const parsedUrl = new URL(normalizedUrl);
+
+    if (
+      parsedUrl.username ||
+      parsedUrl.password ||
+      parsedUrl.search ||
+      parsedUrl.hash
+    ) {
+      return null;
+    }
+
+    const pathname = parsedUrl.pathname.replace(/\/+$/u, "");
+    return `${parsedUrl.origin}${pathname}`;
+  } catch {
+    return null;
+  }
+}
+
 async function readJson(response) {
   try {
     return await response.json();
@@ -217,12 +288,31 @@ function validatePayload(payload, checkOptions) {
     );
   }
 
+  if (
+    checkOptions.expectedRevision &&
+    payload.revision !== checkOptions.expectedRevision
+  ) {
+    fail(
+      `Expected deployed revision ${checkOptions.expectedRevision}, got ${readString(
+        payload.revision,
+        "missing",
+      )}.`,
+    );
+  }
+
   const checks = Array.isArray(payload.checks) ? payload.checks : [];
   const runtimeCheck = findCheck(checks, "runtime-env");
+  const revisionCheck = findCheck(checks, "deployment-revision");
   const databaseCheck = findCheck(checks, "database");
 
   if (runtimeCheck?.status !== "ok") {
     fail("Runtime environment check did not pass.");
+  }
+
+  if (checkOptions.expectedRevision && revisionCheck?.status !== "ok") {
+    fail(
+      "Deployment revision metadata is unavailable. Enable Vercel system environment variables.",
+    );
   }
 
   if (databaseCheck?.status !== "ok") {
