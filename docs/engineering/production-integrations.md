@@ -30,6 +30,11 @@ The Vercel project should use Git integration for pull request previews and prod
 
 Keep the linked `.vercel/project.json` file local and untracked. Contributors can link locally with `vercel link`, then pull environment values into `.env.local` with `vercel env pull .env.local --environment=preview --yes`.
 
+Enable **Automatically expose System Environment Variables** in the Vercel
+project settings. The release gate requires `VERCEL_GIT_COMMIT_SHA`; deployed
+preview and production health checks return HTTP 503 with a safe configuration
+message when that metadata is unavailable.
+
 ## Environment reference
 
 | Variable | Scope | Required | Purpose |
@@ -96,7 +101,7 @@ The workflow runs automatically for successful Production deployment statuses an
 
 The root app layout reports runtime environment issues to server logs without blocking the public sign-in route. Local development defaults to the local provider. Preview and production require `AUTH_PROVIDER=supabase`, `APP_BASE_URL`, and the Supabase public URL/key before the managed sign-in form is enabled. Protected app routes still call `assertValidRuntimeEnv(process.env)` after authentication, so invalid deployed configuration fails before users enter the app shell. `SUPABASE_SERVICE_ROLE_KEY` remains validated when present but is not required by the auth flow.
 
-The deployed `/api/health` route performs the same runtime environment validation and then runs a minimal `select 1` against the configured database. It reports `VERCEL_GIT_COMMIT_SHA` as a non-secret release identifier so protected gates can bind a URL to an exact revision. Failures are surfaced as HTTP 503 and logged in Vercel runtime logs for debugging without returning raw credentials or connection strings to the caller.
+The deployed `/api/health` route performs the same runtime environment validation, verifies that Vercel Git revision metadata is exposed, and then runs a minimal `select 1` against the configured database. It reports `VERCEL_GIT_COMMIT_SHA` as a non-secret release identifier so protected gates can bind a URL to an exact revision. Missing revision metadata, runtime failures, and database failures are surfaced as HTTP 503 and logged in Vercel runtime logs for debugging without returning raw credentials or connection strings to the caller.
 
 ## Follow-up hardening
 

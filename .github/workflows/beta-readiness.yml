@@ -10,6 +10,7 @@ on:
 
 jobs:
   readiness:
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     environment: production
     env:
@@ -51,6 +52,18 @@ jobs:
 
       - name: Validate readiness artifacts
         run: npm run beta:check
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Test
+        run: npm test
+
+      - name: Build
+        run: npm run build
 
       - name: Validate environment
         run: npm run env:check -- --strict

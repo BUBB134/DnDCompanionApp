@@ -10,7 +10,7 @@ export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
 type HealthCheck = {
-  name: "database" | "runtime-env";
+  name: "database" | "deployment-revision" | "runtime-env";
   status: "error" | "ok" | "skipped";
   message?: string;
 };
@@ -20,6 +20,7 @@ export async function GET() {
   const publicEnv = readPublicEnv(process.env);
   const checks: HealthCheck[] = [];
   const runtimeIssues = validateRuntimeEnv(process.env);
+  const revision = process.env.VERCEL_GIT_COMMIT_SHA ?? null;
 
   if (runtimeIssues.length > 0) {
     checks.push({
@@ -30,6 +31,8 @@ export async function GET() {
   } else {
     checks.push({ name: "runtime-env", status: "ok" });
   }
+
+  checks.push(checkDeploymentRevision(publicEnv.NEXT_PUBLIC_APP_ENV, revision));
 
   if (runtimeIssues.length === 0) {
     checks.push(await checkDatabase(publicEnv.NEXT_PUBLIC_APP_ENV));
@@ -42,7 +45,7 @@ export async function GET() {
       checkedAt,
       checks,
       environment: publicEnv.NEXT_PUBLIC_APP_ENV,
-      revision: process.env.VERCEL_GIT_COMMIT_SHA ?? null,
+      revision,
       status,
       vercelEnvironment: process.env.VERCEL_ENV ?? null,
     },
@@ -53,6 +56,30 @@ export async function GET() {
       status: status === "ok" ? 200 : 503,
     },
   );
+}
+
+function checkDeploymentRevision(
+  appEnvironment: ReturnType<typeof readPublicEnv>["NEXT_PUBLIC_APP_ENV"],
+  revision: string | null,
+): HealthCheck {
+  if (revision) {
+    return { name: "deployment-revision", status: "ok" };
+  }
+
+  if (isNonLocalAppEnvironment(appEnvironment)) {
+    return {
+      name: "deployment-revision",
+      status: "error",
+      message:
+        "Vercel Git metadata is unavailable. Enable system environment variables.",
+    };
+  }
+
+  return {
+    name: "deployment-revision",
+    status: "skipped",
+    message: "Git revision metadata is not required for local development.",
+  };
 }
 
 async function checkDatabase(

@@ -302,10 +302,17 @@ function validatePayload(payload, checkOptions) {
 
   const checks = Array.isArray(payload.checks) ? payload.checks : [];
   const runtimeCheck = findCheck(checks, "runtime-env");
+  const revisionCheck = findCheck(checks, "deployment-revision");
   const databaseCheck = findCheck(checks, "database");
 
   if (runtimeCheck?.status !== "ok") {
     fail("Runtime environment check did not pass.");
+  }
+
+  if (checkOptions.expectedRevision && revisionCheck?.status !== "ok") {
+    fail(
+      "Deployment revision metadata is unavailable. Enable Vercel system environment variables.",
+    );
   }
 
   if (databaseCheck?.status !== "ok") {

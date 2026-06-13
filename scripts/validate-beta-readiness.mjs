@@ -119,7 +119,12 @@ expect(
 
 const workflow = readText(workflowPath);
 for (const snippet of [
+  "if: github.ref == 'refs/heads/main'",
   "fetch-depth: 0",
+  "run: npm run lint",
+  "run: npm run typecheck",
+  "run: npm test",
+  "run: npm run build",
   '--expect-revision="$READINESS_RELEASE_SHA"',
   '--deployment-url="$DEPLOYMENT_URL"',
 ]) {

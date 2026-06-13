@@ -43,17 +43,19 @@ Before the live rehearsal, dispatch `.github/workflows/beta-readiness.yml` with:
 - `deployment_url`: the exact Vercel production URL intended for the session
 
 The protected workflow validates the checked-in assessment, production-shaped
-environment variables, Supabase connectivity, and the deployed health/sign-in
-surface. It ends with `npm run beta:check -- --require-go`, so it cannot report a
-ready state while the assessment still contains blockers.
+environment variables, the full lint/typecheck/test/build suite, Supabase
+connectivity, and the deployed health/sign-in surface. It ends with
+`npm run beta:check -- --require-go`, so it cannot report a ready state while the
+assessment still contains blockers.
 
-The workflow compares `deployment_url` with the production `APP_BASE_URL`. It
-also requires `/api/health` to report the exact workflow revision and binds the
-GO assessment to that revision. `assessedCommit` must name the fully tested
-application commit, and only the JSON report and this runbook may differ between
-that commit and the revision running the final gate. This allows evidence to be
-recorded without letting later application, gate, or deployment changes inherit
-stale approval.
+The workflow can run only from `main`, before the job receives production
+environment secrets. It compares `deployment_url` with the production
+`APP_BASE_URL`, requires `/api/health` to report the exact workflow revision, and
+binds the GO assessment to that revision. `assessedCommit` must name the fully
+tested application commit, and only the JSON report and this runbook may differ
+between that commit and the revision running the final gate. This allows
+evidence to be recorded without letting later application, gate, or deployment
+changes inherit stale approval.
 
 ## Test Accounts And Data
 
@@ -160,14 +162,17 @@ required nor accepted as proof of the human rehearsal.
 
 Immediately before the campaign test:
 
-1. Confirm the production deployment points at the intended `main` commit.
-2. Run the protected `Campaign Beta Readiness` workflow against that URL.
-3. Confirm `/api/health` reports the exact release commit, production
+1. In the Vercel project settings, confirm **Automatically expose System
+   Environment Variables** is enabled so `VERCEL_GIT_COMMIT_SHA` is available.
+2. Confirm the production deployment points at the intended `main` commit.
+3. Dispatch the protected `Campaign Beta Readiness` workflow from `main` against
+   that URL.
+4. Confirm `/api/health` reports the exact release commit, production
    environment, and healthy database.
-4. Confirm the public sign-in page has no deployment-configuration alert.
-5. Review current Vercel runtime logs for new authentication, database, or 5xx
+5. Confirm the public sign-in page has no deployment-configuration alert.
+6. Review current Vercel runtime logs for new authentication, database, or 5xx
    errors created by the rehearsal.
-6. Retain the successful protected workflow run with the release record.
+7. Retain the successful protected workflow run with the release record.
 
 ## Accepted First-Test Limitations
 

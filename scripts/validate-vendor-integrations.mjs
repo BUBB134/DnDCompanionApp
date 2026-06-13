@@ -163,6 +163,8 @@ for (const snippet of [
   "validateRuntimeEnv(process.env)",
   "await queryDatabase(\"select 1\")",
   "VERCEL_GIT_COMMIT_SHA",
+  "deployment-revision",
+  "Enable system environment variables.",
   "revision:",
   "\"cache-control\": \"no-store\"",
 ]) {
@@ -186,6 +188,7 @@ for (const snippet of [
   "Sign-in is unavailable because the submit button is disabled.",
   "Sign-in route reported incomplete deployment configuration.",
   "Deployment URL must be the configured application origin.",
+  "Deployment revision metadata is unavailable.",
   "Expected deployed revision",
 ]) {
   expect(
