@@ -19,6 +19,13 @@ export function AppShellNavigation({
   mobile = false,
 }: AppShellNavigationProps) {
   const pathname = usePathname();
+  const activeHref = items
+    .filter((item) =>
+      item.href === "/"
+        ? pathname === "/"
+        : pathname === item.href || pathname.startsWith(`${item.href}/`),
+    )
+    .sort((left, right) => right.href.length - left.href.length)[0]?.href;
 
   return (
     <nav
@@ -37,10 +44,7 @@ export function AppShellNavigation({
         }
       >
         {items.map((item) => {
-          const isActive =
-            item.href === "/"
-              ? pathname === "/"
-              : pathname === item.href || pathname.startsWith(`${item.href}/`);
+          const isActive = item.href === activeHref;
 
           const baseClasses = mobile
             ? "flex min-h-12 min-w-[5rem] shrink-0 items-center justify-center rounded-xl px-3 py-2 text-center text-xs font-semibold leading-tight transition focus:outline-none focus:ring-2 focus:ring-[#1f6f78] focus:ring-offset-2"

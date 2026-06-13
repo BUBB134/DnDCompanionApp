@@ -1,13 +1,43 @@
-import type { CampaignCharacterSummary, Visibility } from "@dnd/types";
-import { queryDatabase, type DatabaseQueryable } from "@dnd/db";
+import type {
+  AbilitySummary,
+  CampaignCharacterSummary,
+  CampaignCharacterView,
+  CampaignRole,
+  Visibility,
+} from "@dnd/types";
+import {
+  queryDatabase,
+  withDatabaseTransaction,
+  type DatabaseQueryable,
+} from "@dnd/db";
+import type { CharacterMutationInput } from "@/characters/manage-character";
 
 type CharacterSummaryRow = {
+  ancestry: string | null;
+  background: string | null;
   class_name: string | null;
   id: string;
+  is_owned_by_current_user: boolean;
   level: number;
   name: string;
+  owner_name: string | null;
   summary: string;
   visibility: Visibility;
+};
+
+type CharacterDetailRow = CharacterSummaryRow & {
+  abilities: unknown;
+  access_level: "full" | "summary";
+  backstory: string;
+  goals: string;
+  inventory_notes: string;
+  personal_notes: string;
+  relationships: string;
+  role: CampaignRole;
+};
+
+type CharacterIdRow = {
+  id: string;
 };
 
 export async function listCharacterSummariesForUser(
@@ -23,22 +53,316 @@ export async function listCharacterSummariesForUser(
         characters.summary,
         characters.class_name,
         characters.level,
-        characters.visibility
+        characters.ancestry,
+        characters.background,
+        characters.visibility,
+        users.name as owner_name,
+        characters.owner_user_id = $1 as is_owned_by_current_user
       from characters
       inner join campaign_memberships
         on campaign_memberships.campaign_id = characters.campaign_id
+      left join users on users.id = characters.owner_user_id
       where campaign_memberships.user_id = $1
         and characters.campaign_id = $2
         and (
           campaign_memberships.role = 'dm'
+          or characters.owner_user_id = $1
           or characters.visibility = 'player-safe'
         )
-      order by characters.updated_at desc, characters.name asc
+      order by
+        characters.owner_user_id = $1 desc,
+        characters.updated_at desc,
+        characters.name asc
     `,
     [userId, campaignId],
   );
 
   return result.rows.map(mapCharacterSummaryRow);
+}
+
+export async function getCharacterForUser(
+  userId: string,
+  campaignId: string,
+  characterId: string,
+  client: DatabaseQueryable = defaultDatabaseClient,
+): Promise<CampaignCharacterView | null> {
+  const result = await client.query<CharacterDetailRow>(
+    `
+      select
+        characters.id,
+        characters.name,
+        characters.summary,
+        characters.class_name,
+        characters.level,
+        characters.ancestry,
+        characters.background,
+        characters.visibility,
+        users.name as owner_name,
+        campaign_memberships.role,
+        characters.owner_user_id = $1 as is_owned_by_current_user,
+        case
+          when campaign_memberships.role = 'dm'
+            or characters.owner_user_id = $1
+          then 'full'
+          else 'summary'
+        end as access_level,
+        case
+          when campaign_memberships.role = 'dm'
+            or characters.owner_user_id = $1
+          then characters.backstory
+          else ''
+        end as backstory,
+        case
+          when campaign_memberships.role = 'dm'
+            or characters.owner_user_id = $1
+          then characters.goals
+          else ''
+        end as goals,
+        case
+          when campaign_memberships.role = 'dm'
+            or characters.owner_user_id = $1
+          then characters.relationships
+          else ''
+        end as relationships,
+        case
+          when campaign_memberships.role = 'dm'
+            or characters.owner_user_id = $1
+          then characters.inventory_notes
+          else ''
+        end as inventory_notes,
+        case
+          when campaign_memberships.role = 'dm'
+            or characters.owner_user_id = $1
+          then characters.personal_notes
+          else ''
+        end as personal_notes,
+        coalesce(
+          jsonb_agg(
+            jsonb_build_object(
+              'characterId', ability_summaries.character_id,
+              'id', ability_summaries.id,
+              'name', ability_summaries.name,
+              'summary', ability_summaries.summary,
+              'trigger', ability_summaries.trigger,
+              'visibility', ability_summaries.visibility
+            )
+            order by ability_summaries.created_at asc, ability_summaries.name asc
+          ) filter (where ability_summaries.id is not null),
+          '[]'::jsonb
+        ) as abilities
+      from characters
+      inner join campaign_memberships
+        on campaign_memberships.campaign_id = characters.campaign_id
+      left join users on users.id = characters.owner_user_id
+      left join ability_summaries
+        on ability_summaries.character_id = characters.id
+        and (
+          campaign_memberships.role = 'dm'
+          or characters.owner_user_id = $1
+        )
+      where campaign_memberships.user_id = $1
+        and characters.campaign_id = $2
+        and characters.id = $3
+        and (
+          campaign_memberships.role = 'dm'
+          or characters.owner_user_id = $1
+          or characters.visibility = 'player-safe'
+        )
+      group by
+        characters.id,
+        users.name,
+        campaign_memberships.role
+      limit 1
+    `,
+    [userId, campaignId, characterId],
+  );
+
+  return result.rows[0] ? mapCharacterDetailRow(result.rows[0]) : null;
+}
+
+export async function createCharacterForUser(
+  userId: string,
+  input: CharacterMutationInput,
+) {
+  return withDatabaseTransaction((client) =>
+    createCharacterWithClient(client, userId, input),
+  );
+}
+
+export async function updateCharacterForUser(
+  userId: string,
+  characterId: string,
+  input: CharacterMutationInput,
+) {
+  return withDatabaseTransaction((client) =>
+    updateCharacterWithClient(client, userId, characterId, input),
+  );
+}
+
+async function createCharacterWithClient(
+  client: DatabaseQueryable,
+  userId: string,
+  input: CharacterMutationInput,
+) {
+  const result = await client.query<CharacterIdRow>(
+    `
+      insert into characters (
+        campaign_id,
+        owner_user_id,
+        name,
+        summary,
+        class_name,
+        level,
+        ancestry,
+        background,
+        backstory,
+        goals,
+        relationships,
+        inventory_notes,
+        personal_notes,
+        visibility
+      )
+      select
+        campaign_memberships.campaign_id,
+        campaign_memberships.user_id,
+        $3,
+        $4,
+        $5,
+        $6,
+        $7,
+        $8,
+        $9,
+        $10,
+        $11,
+        $12,
+        $13,
+        $14
+      from campaign_memberships
+      where campaign_memberships.user_id = $1
+        and campaign_memberships.campaign_id = $2
+        and (
+          campaign_memberships.role = 'dm'
+          or $14 = 'player-safe'
+        )
+      returning id
+    `,
+    characterValues(userId, input),
+  );
+  const characterId = requireCharacterId(
+    result.rows[0],
+    "You do not have access to create this character.",
+  );
+
+  await replaceAbilitySummaries(client, characterId, input);
+
+  return requireFullCharacter(
+    await getCharacterForUser(userId, input.campaignId, characterId, client),
+    "The created character could not be loaded.",
+  );
+}
+
+async function updateCharacterWithClient(
+  client: DatabaseQueryable,
+  userId: string,
+  characterId: string,
+  input: CharacterMutationInput,
+) {
+  const result = await client.query<CharacterIdRow>(
+    `
+      update characters
+      set
+        name = $4,
+        summary = $5,
+        class_name = $6,
+        level = $7,
+        ancestry = $8,
+        background = $9,
+        backstory = $10,
+        goals = $11,
+        relationships = $12,
+        inventory_notes = $13,
+        personal_notes = $14,
+        visibility = $15,
+        updated_at = now()
+      from campaign_memberships
+      where characters.id = $3
+        and characters.campaign_id = $2
+        and campaign_memberships.campaign_id = characters.campaign_id
+        and campaign_memberships.user_id = $1
+        and (
+          campaign_memberships.role = 'dm'
+          or characters.owner_user_id = $1
+        )
+        and (
+          campaign_memberships.role = 'dm'
+          or $15 = 'player-safe'
+        )
+      returning characters.id
+    `,
+    [userId, input.campaignId, characterId, ...characterValues(userId, input).slice(2)],
+  );
+  const savedCharacterId = requireCharacterId(
+    result.rows[0],
+    "You do not have access to update this character.",
+  );
+
+  await replaceAbilitySummaries(client, savedCharacterId, input);
+
+  return requireFullCharacter(
+    await getCharacterForUser(
+      userId,
+      input.campaignId,
+      savedCharacterId,
+      client,
+    ),
+    "The updated character could not be loaded.",
+  );
+}
+
+async function replaceAbilitySummaries(
+  client: DatabaseQueryable,
+  characterId: string,
+  input: CharacterMutationInput,
+) {
+  await client.query(
+    "delete from ability_summaries where character_id = $1",
+    [characterId],
+  );
+
+  for (const ability of input.abilities) {
+    await client.query(
+      `
+        insert into ability_summaries (
+          character_id,
+          name,
+          summary,
+          trigger,
+          visibility
+        )
+        values ($1, $2, $3, $4, 'player-safe')
+      `,
+      [characterId, ability.name, ability.summary, ability.trigger],
+    );
+  }
+}
+
+function characterValues(userId: string, input: CharacterMutationInput) {
+  return [
+    userId,
+    input.campaignId,
+    input.name,
+    input.summary,
+    input.className,
+    input.level,
+    input.ancestry,
+    input.background,
+    input.backstory,
+    input.goals,
+    input.relationships,
+    input.inventoryNotes,
+    input.personalNotes,
+    input.visibility,
+  ] as const;
 }
 
 const defaultDatabaseClient: DatabaseQueryable = {
@@ -49,11 +373,102 @@ function mapCharacterSummaryRow(
   row: CharacterSummaryRow,
 ): CampaignCharacterSummary {
   return {
+    ancestry: row.ancestry,
+    background: row.background,
     className: row.class_name,
     id: row.id,
+    isOwnedByCurrentUser: row.is_owned_by_current_user,
     level: row.level,
     name: row.name,
+    ownerName: row.owner_name,
     summary: row.summary,
     visibility: row.visibility,
   };
+}
+
+function mapCharacterDetailRow(row: CharacterDetailRow): CampaignCharacterView {
+  const summary = mapCharacterSummaryRow(row);
+
+  if (row.access_level === "summary") {
+    return {
+      ...summary,
+      accessLevel: "summary",
+      canEdit: false,
+    };
+  }
+
+  return {
+    ...summary,
+    abilities: mapAbilities(row.abilities),
+    accessLevel: "full",
+    backstory: row.backstory,
+    canEdit: row.role === "dm" || row.is_owned_by_current_user,
+    goals: row.goals,
+    inventoryNotes: row.inventory_notes,
+    personalNotes: row.personal_notes,
+    relationships: row.relationships,
+  };
+}
+
+function mapAbilities(value: unknown): AbilitySummary[] {
+  const abilities = typeof value === "string" ? parseJson(value) : value;
+
+  if (!Array.isArray(abilities)) {
+    return [];
+  }
+
+  return abilities.flatMap((ability): AbilitySummary[] => {
+    if (!isAbilitySummary(ability)) {
+      return [];
+    }
+
+    return [ability];
+  });
+}
+
+function isAbilitySummary(value: unknown): value is AbilitySummary {
+  if (!value || typeof value !== "object") {
+    return false;
+  }
+
+  const ability = value as Record<string, unknown>;
+
+  return (
+    typeof ability.characterId === "string" &&
+    typeof ability.id === "string" &&
+    typeof ability.name === "string" &&
+    typeof ability.summary === "string" &&
+    (typeof ability.trigger === "string" || ability.trigger === null) &&
+    (ability.visibility === "dm-only" || ability.visibility === "player-safe")
+  );
+}
+
+function parseJson(value: string): unknown {
+  try {
+    return JSON.parse(value) as unknown;
+  } catch {
+    return [];
+  }
+}
+
+function requireCharacterId(
+  row: CharacterIdRow | undefined,
+  errorMessage: string,
+) {
+  if (!row) {
+    throw new Error(errorMessage);
+  }
+
+  return row.id;
+}
+
+function requireFullCharacter(
+  character: CampaignCharacterView | null,
+  errorMessage: string,
+) {
+  if (!character || character.accessLevel !== "full") {
+    throw new Error(errorMessage);
+  }
+
+  return character;
 }

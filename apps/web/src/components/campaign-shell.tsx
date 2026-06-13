@@ -47,6 +47,11 @@ const campaignActions: readonly CampaignAction[] = [
     visibility: "player-safe",
   },
   {
+    body: "Open lightweight character profiles, ability reminders, and personal campaign notes.",
+    title: "Review characters",
+    visibility: "player-safe",
+  },
+  {
     body: "Search conditions and mechanics, or tap linked terms from session notes.",
     title: "Search rules",
     visibility: "player-safe",
@@ -283,6 +288,14 @@ export function CampaignShell({
                       href="/rules"
                     >
                       Open rules panel
+                    </Link>
+                  ) : null}
+                  {action.title === "Review characters" ? (
+                    <Link
+                      className="mt-3 inline-flex min-h-10 items-center rounded-md border border-[#17161f]/15 bg-[#fffaf0] px-3 py-2 text-sm font-semibold transition hover:border-[#1f6f78] focus:outline-none focus:ring-2 focus:ring-[#1f6f78] focus:ring-offset-2"
+                      href={`/campaigns/${campaign.id}/characters`}
+                    >
+                      Open characters
                     </Link>
                   ) : null}
                 </article>
