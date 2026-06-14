@@ -48,9 +48,13 @@ for (const accessRule of [
   "campaign_memberships.role = 'dm'",
   "characters.owner_user_id = $1",
   "characters.visibility = 'player-safe'",
+  "else characters.visibility",
   "left join ability_summaries",
   "insert into characters",
   "update characters",
+  "characters.updated_at = $16::timestamptz",
+  "pg_advisory_xact_lock",
+  "regexp_replace(btrim(characters.name)",
   "delete from ability_summaries",
 ]) {
   expect(
@@ -59,10 +63,23 @@ for (const accessRule of [
   );
 }
 
+const migrationText = readText(
+  "packages/db/migrations/0009_character_companion_profiles.sql",
+);
+expect(
+  migrationText.includes(
+    "set level = greatest(1, least(20, level))",
+  ) &&
+    migrationText.indexOf("set level = greatest(1, least(20, level))") <
+      migrationText.indexOf("add constraint characters_level_range_check"),
+  "Character migration must normalize legacy levels before adding the range constraint.",
+);
+
 const listPageText = readText(
   "apps/web/src/app/(protected)/campaigns/[campaignId]/characters/page.tsx",
 );
 for (const expectedText of [
+  "isDatabaseCampaignId",
   "listCharacterSummariesForUser",
   "CharacterListView",
 ]) {
@@ -88,6 +105,8 @@ const detailPageText = readText(
   "apps/web/src/app/(protected)/campaigns/[campaignId]/characters/[characterId]/page.tsx",
 );
 for (const expectedText of [
+  "isDatabaseCampaignId",
+  "isDatabaseId",
   "getCharacterForUser",
   "CharacterProfile",
 ]) {
@@ -96,6 +115,17 @@ for (const expectedText of [
     `Character detail route must include ${expectedText}.`,
   );
 }
+
+const navigationText = readText(
+  "apps/web/src/components/app-shell-navigation.tsx",
+);
+expect(
+  navigationText.includes('campaignScoped?: "characters"') &&
+    navigationText.includes(
+      "href: `/campaigns/${routeCampaignId}/characters`",
+    ),
+  "Character navigation must follow the campaign id in the current route.",
+);
 
 const characterProfileText = readText(
   "apps/web/src/components/character-profile.tsx",
@@ -163,6 +193,7 @@ if (typescript) {
     name: "Mira Voss",
     personalNotes: "Captain Thorn knows too much.",
     relationships: "Owes Captain Thorn a favour.",
+    revision: "",
     summary: "A practical fighter who reads the tides.",
     visibility: "player-safe",
   };
@@ -193,6 +224,46 @@ if (typescript) {
     playerDmOnly.fieldErrors.visibility ===
       "Only DMs can mark characters as DM only.",
     "Players must not create DM-only character profiles.",
+  );
+
+  const preservedPlayerDmOnly = manageCharacter.validateCharacterValues(
+    {
+      ...validValues,
+      characterId: "22222222-2222-5222-8222-222222222222",
+      visibility: "dm-only",
+    },
+    {
+      ...dmCampaign,
+      role: "player",
+    },
+    {
+      allowPreservedDmOnlyVisibility: true,
+    },
+  );
+  expect(
+    !preservedPlayerDmOnly.fieldErrors.visibility,
+    "Player edits must be able to preserve a DM-only visibility set by a DM.",
+  );
+
+  const missingRevision = await manageCharacter.updateCharacterSubmission(
+    {
+      async updateCharacterForUser() {
+        throw new Error("Repository must not run without a revision.");
+      },
+    },
+    "33333333-3333-5333-8333-333333333333",
+    dmCampaign,
+    {
+      ...validValues,
+      characterId: "22222222-2222-5222-8222-222222222222",
+    },
+    String,
+  );
+  expect(
+    !missingRevision.ok &&
+      missingRevision.state.fieldErrors.revision ===
+        "Reload this character before saving changes.",
+    "Character updates must reject forms that do not carry a valid revision.",
   );
 
   const invalidAbilities = manageCharacter.validateCharacterValues(

@@ -35,6 +35,7 @@ export type CharacterFormValues = {
   name: string;
   personalNotes: string;
   relationships: string;
+  revision: string;
   summary: string;
   visibility: string;
 };
@@ -79,6 +80,7 @@ type UpdateCharacterRepository = {
     userId: string,
     characterId: string,
     input: CharacterMutationInput,
+    expectedRevision: string,
   ): Promise<CampaignCharacterFullView>;
 };
 
@@ -107,6 +109,7 @@ export const emptyCharacterFormValues: CharacterFormValues = {
   name: "",
   personalNotes: "",
   relationships: "",
+  revision: "",
   summary: "",
   visibility: "player-safe",
 };
@@ -174,11 +177,19 @@ export async function updateCharacterSubmission(
   values: CharacterFormValues,
   formatError: (error: unknown) => string,
 ): Promise<CharacterSubmissionResult> {
-  const validation = validateCharacterValues(values, campaign);
+  const validation = validateCharacterValues(values, campaign, {
+    allowPreservedDmOnlyVisibility: true,
+  });
   const characterId = values.characterId.trim();
+  const revision = values.revision.trim();
 
   if (!characterId) {
     validation.fieldErrors.characterId = "Character id is required.";
+  }
+
+  if (!revision || Number.isNaN(Date.parse(revision))) {
+    validation.fieldErrors.revision =
+      "Reload this character before saving changes.";
   }
 
   if (hasFieldErrors(validation.fieldErrors)) {
@@ -193,6 +204,7 @@ export async function updateCharacterSubmission(
       userId,
       characterId,
       validation.input,
+      revision,
     );
 
     return {
@@ -240,6 +252,7 @@ export function characterToFormValues(
     name: character.name,
     personalNotes: character.personalNotes,
     relationships: character.relationships,
+    revision: character.updatedAt,
     summary: character.summary,
     visibility: character.visibility,
   };
@@ -248,6 +261,9 @@ export function characterToFormValues(
 export function validateCharacterValues(
   values: CharacterFormValues,
   campaign: Campaign,
+  options: {
+    allowPreservedDmOnlyVisibility?: boolean;
+  } = {},
 ) {
   const normalizedVisibility = normalizeVisibility(values.visibility);
   const normalizedLevel = Number(values.level.trim());
@@ -266,6 +282,7 @@ export function validateCharacterValues(
     name: values.name.trim(),
     personalNotes: values.personalNotes.trim(),
     relationships: values.relationships.trim(),
+    revision: values.revision.trim(),
     summary: values.summary.trim(),
     visibility: normalizedVisibility ?? values.visibility,
   };
@@ -323,7 +340,8 @@ export function validateCharacterValues(
     fieldErrors.visibility = "Choose a supported visibility.";
   } else if (
     !isDungeonMaster(campaign.role) &&
-    normalizedVisibility === "dm-only"
+    normalizedVisibility === "dm-only" &&
+    !options.allowPreservedDmOnlyVisibility
   ) {
     fieldErrors.visibility = "Only DMs can mark characters as DM only.";
   }

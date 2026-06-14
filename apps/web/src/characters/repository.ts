@@ -34,6 +34,7 @@ type CharacterDetailRow = CharacterSummaryRow & {
   personal_notes: string;
   relationships: string;
   role: CampaignRole;
+  updated_at: string;
 };
 
 type CharacterIdRow = {
@@ -97,6 +98,10 @@ export async function getCharacterForUser(
         characters.ancestry,
         characters.background,
         characters.visibility,
+        to_char(
+          characters.updated_at at time zone 'UTC',
+          'YYYY-MM-DD"T"HH24:MI:SS.US"Z"'
+        ) as updated_at,
         users.name as owner_name,
         campaign_memberships.role,
         characters.owner_user_id = $1 as is_owned_by_current_user,
@@ -193,9 +198,16 @@ export async function updateCharacterForUser(
   userId: string,
   characterId: string,
   input: CharacterMutationInput,
+  expectedRevision: string,
 ) {
   return withDatabaseTransaction((client) =>
-    updateCharacterWithClient(client, userId, characterId, input),
+    updateCharacterWithClient(
+      client,
+      userId,
+      characterId,
+      input,
+      expectedRevision,
+    ),
   );
 }
 
@@ -204,6 +216,13 @@ async function createCharacterWithClient(
   userId: string,
   input: CharacterMutationInput,
 ) {
+  await ensureCharacterNameAvailable(
+    client,
+    userId,
+    input.campaignId,
+    input.name,
+  );
+
   const result = await client.query<CharacterIdRow>(
     `
       insert into characters (
@@ -266,7 +285,16 @@ async function updateCharacterWithClient(
   userId: string,
   characterId: string,
   input: CharacterMutationInput,
+  expectedRevision: string,
 ) {
+  await ensureCharacterNameAvailable(
+    client,
+    userId,
+    input.campaignId,
+    input.name,
+    characterId,
+  );
+
   const result = await client.query<CharacterIdRow>(
     `
       update characters
@@ -282,7 +310,10 @@ async function updateCharacterWithClient(
         relationships = $12,
         inventory_notes = $13,
         personal_notes = $14,
-        visibility = $15,
+        visibility = case
+          when campaign_memberships.role = 'dm' then $15
+          else characters.visibility
+        end,
         updated_at = now()
       from campaign_memberships
       where characters.id = $3
@@ -293,17 +324,20 @@ async function updateCharacterWithClient(
           campaign_memberships.role = 'dm'
           or characters.owner_user_id = $1
         )
-        and (
-          campaign_memberships.role = 'dm'
-          or $15 = 'player-safe'
-        )
+        and characters.updated_at = $16::timestamptz
       returning characters.id
     `,
-    [userId, input.campaignId, characterId, ...characterValues(userId, input).slice(2)],
+    [
+      userId,
+      input.campaignId,
+      characterId,
+      ...characterValues(userId, input).slice(2),
+      expectedRevision,
+    ],
   );
   const savedCharacterId = requireCharacterId(
     result.rows[0],
-    "You do not have access to update this character.",
+    "This character changed after you opened it, or you no longer have edit access. Reload before saving again.",
   );
 
   await replaceAbilitySummaries(client, savedCharacterId, input);
@@ -342,6 +376,44 @@ async function replaceAbilitySummaries(
         values ($1, $2, $3, $4, 'player-safe')
       `,
       [characterId, ability.name, ability.summary, ability.trigger],
+    );
+  }
+}
+
+async function ensureCharacterNameAvailable(
+  client: DatabaseQueryable,
+  userId: string,
+  campaignId: string,
+  name: string,
+  excludedCharacterId: string | null = null,
+) {
+  await client.query(
+    "select pg_advisory_xact_lock(hashtextextended($1::text, 0))",
+    [campaignId],
+  );
+
+  const result = await client.query<CharacterIdRow>(
+    `
+      select characters.id
+      from campaign_memberships
+      inner join characters
+        on characters.campaign_id = campaign_memberships.campaign_id
+      where campaign_memberships.user_id = $1
+        and campaign_memberships.campaign_id = $2
+        and lower(
+          regexp_replace(btrim(characters.name), '[[:space:]]+', ' ', 'g')
+        ) = lower(
+          regexp_replace(btrim($3), '[[:space:]]+', ' ', 'g')
+        )
+        and ($4::uuid is null or characters.id <> $4)
+      limit 1
+    `,
+    [userId, campaignId, name, excludedCharacterId],
+  );
+
+  if (result.rows[0]) {
+    throw new Error(
+      `A character named "${name}" already exists in this campaign.`,
     );
   }
 }
@@ -407,6 +479,7 @@ function mapCharacterDetailRow(row: CharacterDetailRow): CampaignCharacterView {
     inventoryNotes: row.inventory_notes,
     personalNotes: row.personal_notes,
     relationships: row.relationships,
+    updatedAt: row.updated_at,
   };
 }
 

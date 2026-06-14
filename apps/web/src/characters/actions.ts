@@ -115,6 +115,7 @@ function readCharacterFormValues(formData: FormData): CharacterFormValues {
     name: getStringField(formData, "name"),
     personalNotes: getStringField(formData, "personalNotes"),
     relationships: getStringField(formData, "relationships"),
+    revision: getStringField(formData, "revision"),
     summary: getStringField(formData, "summary"),
     visibility: getStringField(formData, "visibility"),
   };

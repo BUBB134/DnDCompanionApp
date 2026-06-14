@@ -3,8 +3,10 @@
 import type { Route } from "next";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { isDatabaseCampaignId } from "@/campaigns/database-id";
 
 type NavigationItem = {
+  campaignScoped?: "characters";
   href: Route;
   label: string;
 };
@@ -19,7 +21,21 @@ export function AppShellNavigation({
   mobile = false,
 }: AppShellNavigationProps) {
   const pathname = usePathname();
-  const activeHref = items
+  const matchedCampaignId = pathname.match(
+    /^\/campaigns\/([^/]+)(?:\/|$)/,
+  )?.[1];
+  const routeCampaignId = isDatabaseCampaignId(matchedCampaignId ?? "")
+    ? matchedCampaignId
+    : null;
+  const resolvedItems = items.map((item) =>
+    item.campaignScoped === "characters" && routeCampaignId
+      ? {
+          ...item,
+          href: `/campaigns/${routeCampaignId}/characters` as Route,
+        }
+      : item,
+  );
+  const activeHref = resolvedItems
     .filter((item) =>
       item.href === "/"
         ? pathname === "/"
@@ -43,7 +59,7 @@ export function AppShellNavigation({
             : "grid gap-1"
         }
       >
-        {items.map((item) => {
+        {resolvedItems.map((item) => {
           const isActive = item.href === activeHref;
 
           const baseClasses = mobile

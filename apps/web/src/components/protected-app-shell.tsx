@@ -32,6 +32,7 @@ export function ProtectedAppShell({
     ? [
         ...baseNavigationItems.slice(0, 2),
         {
+          campaignScoped: "characters" as const,
           href: `/campaigns/${campaign?.id}/characters` as Route,
           label: "Characters",
         },

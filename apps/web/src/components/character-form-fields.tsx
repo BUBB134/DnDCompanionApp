@@ -25,6 +25,8 @@ export function CharacterFormFields({
 
   return (
     <div className={compact ? "grid gap-4" : "grid gap-5"}>
+      <input name="revision" type="hidden" value={state.values.revision} />
+
       <div className="grid gap-4 md:grid-cols-[minmax(0,1.4fr)_minmax(8rem,0.6fr)]">
         <TextField
           error={state.fieldErrors.name}
@@ -169,7 +171,13 @@ export function CharacterFormFields({
           />
         </div>
       ) : (
-        <input name="visibility" type="hidden" value="player-safe" />
+        <input
+          name="visibility"
+          type="hidden"
+          value={
+            state.values.visibility === "dm-only" ? "dm-only" : "player-safe"
+          }
+        />
       )}
     </div>
   );

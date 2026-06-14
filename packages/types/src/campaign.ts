@@ -169,6 +169,7 @@ export type CampaignCharacterFullView = CampaignCharacterSummary & {
   inventoryNotes: string;
   personalNotes: string;
   relationships: string;
+  updatedAt: string;
 };
 
 export type CampaignCharacterSummaryView = CampaignCharacterSummary & {

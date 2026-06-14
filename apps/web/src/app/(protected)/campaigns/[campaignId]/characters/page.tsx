@@ -1,6 +1,7 @@
 import { formatDatabaseError } from "@dnd/db";
 import { notFound } from "next/navigation";
 import { requireAuthSession } from "@/auth/server";
+import { isDatabaseCampaignId } from "@/campaigns/database-id";
 import { getDatabaseCampaignAccessForUser } from "@/campaigns/repository";
 import { listCharacterSummariesForUser } from "@/characters/repository";
 import { CharacterListView } from "@/components/character-list-view";
@@ -14,8 +15,13 @@ type CharacterListPageProps = {
 export default async function CharacterListPage({
   params,
 }: CharacterListPageProps) {
-  const session = await requireAuthSession();
   const { campaignId } = await params;
+
+  if (!isDatabaseCampaignId(campaignId)) {
+    notFound();
+  }
+
+  const session = await requireAuthSession();
   const campaign = await getDatabaseCampaignAccessForUser(
     session.user.id,
     campaignId,

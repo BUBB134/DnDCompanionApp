@@ -7,6 +7,10 @@ alter table characters
   add column if not exists inventory_notes text not null default '',
   add column if not exists personal_notes text not null default '';
 
+update characters
+set level = greatest(1, least(20, level))
+where level < 1 or level > 20;
+
 alter table characters
   add constraint characters_level_range_check
   check (level between 1 and 20);
