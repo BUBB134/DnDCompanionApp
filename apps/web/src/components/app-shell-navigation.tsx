@@ -3,8 +3,10 @@
 import type { Route } from "next";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { isDatabaseCampaignId } from "@/campaigns/database-id";
 
 type NavigationItem = {
+  campaignScoped?: "characters";
   href: Route;
   label: string;
 };
@@ -19,6 +21,27 @@ export function AppShellNavigation({
   mobile = false,
 }: AppShellNavigationProps) {
   const pathname = usePathname();
+  const matchedCampaignId = pathname.match(
+    /^\/campaigns\/([^/]+)(?:\/|$)/,
+  )?.[1];
+  const routeCampaignId = isDatabaseCampaignId(matchedCampaignId ?? "")
+    ? matchedCampaignId
+    : null;
+  const resolvedItems = items.map((item) =>
+    item.campaignScoped === "characters" && routeCampaignId
+      ? {
+          ...item,
+          href: `/campaigns/${routeCampaignId}/characters` as Route,
+        }
+      : item,
+  );
+  const activeHref = resolvedItems
+    .filter((item) =>
+      item.href === "/"
+        ? pathname === "/"
+        : pathname === item.href || pathname.startsWith(`${item.href}/`),
+    )
+    .sort((left, right) => right.href.length - left.href.length)[0]?.href;
 
   return (
     <nav
@@ -36,11 +59,8 @@ export function AppShellNavigation({
             : "grid gap-1"
         }
       >
-        {items.map((item) => {
-          const isActive =
-            item.href === "/"
-              ? pathname === "/"
-              : pathname === item.href || pathname.startsWith(`${item.href}/`);
+        {resolvedItems.map((item) => {
+          const isActive = item.href === activeHref;
 
           const baseClasses = mobile
             ? "flex min-h-12 min-w-[5rem] shrink-0 items-center justify-center rounded-xl px-3 py-2 text-center text-xs font-semibold leading-tight transition focus:outline-none focus:ring-2 focus:ring-[#1f6f78] focus:ring-offset-2"

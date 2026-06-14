@@ -1,8 +1,10 @@
 import Image from "next/image";
+import type { Route } from "next";
 import { isDungeonMaster, type AuthSession, type Campaign } from "@dnd/types";
 import { StatusPill } from "@dnd/ui";
 import { signOutAction } from "@/auth/actions";
 import { AuthStatusNotice } from "@/auth/status-notice";
+import { isDatabaseCampaignId } from "@/campaigns/database-id";
 import { AppShellNavigation } from "@/components/app-shell-navigation";
 
 type ProtectedAppShellProps = {
@@ -12,7 +14,7 @@ type ProtectedAppShellProps = {
   session: AuthSession;
 };
 
-const navigationItems = [
+const baseNavigationItems = [
   { href: "/", label: "Dashboard" },
   { href: "/campaigns", label: "Campaigns" },
   { href: "/sessions", label: "Sessions" },
@@ -26,6 +28,18 @@ export function ProtectedAppShell({
   children,
   session,
 }: ProtectedAppShellProps) {
+  const navigationItems = isDatabaseCampaignId(campaign?.id ?? "")
+    ? [
+        ...baseNavigationItems.slice(0, 2),
+        {
+          campaignScoped: "characters" as const,
+          href: `/campaigns/${campaign?.id}/characters` as Route,
+          label: "Characters",
+        },
+        ...baseNavigationItems.slice(2),
+      ]
+    : baseNavigationItems;
+
   return (
     <main className="min-h-screen px-3 py-4 text-[#17161f] sm:px-6 lg:px-8">
       <div className="mx-auto flex w-full max-w-7xl flex-col gap-4 pb-6 sm:gap-5">

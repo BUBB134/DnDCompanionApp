@@ -148,13 +148,38 @@ export type CampaignEntityWithBacklinks = CampaignEntity & {
 };
 
 export type CampaignCharacterSummary = {
+  ancestry?: string | null;
+  background?: string | null;
   className?: string | null;
   id: string;
+  isOwnedByCurrentUser: boolean;
   level: number;
   name: string;
+  ownerName?: string | null;
   summary: string;
   visibility: Visibility;
 };
+
+export type CampaignCharacterFullView = CampaignCharacterSummary & {
+  abilities: AbilitySummary[];
+  accessLevel: "full";
+  backstory: string;
+  canEdit: boolean;
+  goals: string;
+  inventoryNotes: string;
+  personalNotes: string;
+  relationships: string;
+  updatedAt: string;
+};
+
+export type CampaignCharacterSummaryView = CampaignCharacterSummary & {
+  accessLevel: "summary";
+  canEdit: false;
+};
+
+export type CampaignCharacterView =
+  | CampaignCharacterFullView
+  | CampaignCharacterSummaryView;
 
 export type RuleSnippet = {
   aliases: string[];
@@ -177,7 +202,8 @@ export type AbilitySummary = {
   id: string;
   name: string;
   summary: string;
-  trigger?: string;
+  trigger?: string | null;
+  visibility: Visibility;
 };
 
 export type CampaignMemoryMetadata = Record<

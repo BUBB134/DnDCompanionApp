@@ -101,11 +101,20 @@ export const baselineSchemaStatements = [
     name text not null,
     summary text not null default '',
     class_name text,
-    level integer not null default 1,
+    level integer not null default 1 check (level between 1 and 20),
+    ancestry text,
+    background text,
+    backstory text not null default '',
+    goals text not null default '',
+    relationships text not null default '',
+    inventory_notes text not null default '',
+    personal_notes text not null default '',
     visibility visibility not null default 'player-safe',
     created_at timestamptz not null default now(),
     updated_at timestamptz not null default now()
   );`,
+  `create index characters_campaign_owner_idx
+    on characters (campaign_id, owner_user_id, updated_at desc);`,
   `create table entities (
     id uuid primary key default gen_random_uuid(),
     campaign_id uuid not null references campaigns (id) on delete cascade,
