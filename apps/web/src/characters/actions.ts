@@ -25,7 +25,10 @@ export async function createCharacterAction(
 ): Promise<CharacterActionState> {
   void _previousState;
   const session = await requireAuthSession();
-  const values = readCharacterFormValues(formData);
+  const values = {
+    ...readCharacterFormValues(formData),
+    creationMode: "guided",
+  };
 
   if (!isDatabaseCampaignId(values.campaignId)) {
     return {
@@ -109,6 +112,7 @@ function readCharacterFormValues(formData: FormData): CharacterFormValues {
     campaignId: getStringField(formData, "campaignId"),
     characterId: getStringField(formData, "characterId"),
     className: getStringField(formData, "className"),
+    creationMode: getStringField(formData, "creationMode"),
     goals: getStringField(formData, "goals"),
     inventoryNotes: getStringField(formData, "inventoryNotes"),
     level: getStringField(formData, "level"),

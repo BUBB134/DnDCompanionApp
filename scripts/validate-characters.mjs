@@ -91,7 +91,8 @@ for (const expectedText of [
 
 const listViewText = readText("apps/web/src/components/character-list-view.tsx");
 for (const expectedText of [
-  "CharacterCreateForm",
+  "/characters/new",
+  "Start guided creation",
   "No characters yet",
   "Open character",
 ]) {
@@ -187,6 +188,7 @@ if (typescript) {
     campaignId: savedCampaignId,
     characterId: "",
     className: "Fighter",
+    creationMode: "standard",
     goals: "Open the drowned vault.",
     inventoryNotes: "Tide key, rope, lantern.",
     level: "3",

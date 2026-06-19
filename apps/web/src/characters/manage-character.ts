@@ -29,6 +29,7 @@ export type CharacterFormValues = {
   campaignId: string;
   characterId: string;
   className: string;
+  creationMode: string;
   goals: string;
   inventoryNotes: string;
   level: string;
@@ -103,6 +104,7 @@ export const emptyCharacterFormValues: CharacterFormValues = {
   campaignId: "",
   characterId: "",
   className: "",
+  creationMode: "standard",
   goals: "",
   inventoryNotes: "",
   level: "1",
@@ -246,6 +248,7 @@ export function characterToFormValues(
     campaignId,
     characterId: character.id,
     className: character.className ?? "",
+    creationMode: "standard",
     goals: character.goals,
     inventoryNotes: character.inventoryNotes,
     level: String(character.level),
@@ -276,6 +279,7 @@ export function validateCharacterValues(
     campaignId: values.campaignId.trim(),
     characterId: values.characterId.trim(),
     className: values.className.trim(),
+    creationMode: values.creationMode?.trim() || "standard",
     goals: values.goals.trim(),
     inventoryNotes: values.inventoryNotes.trim(),
     level: values.level.trim(),
@@ -305,6 +309,27 @@ export function validateCharacterValues(
   validateShortField(normalizedValues.className, "className", fieldErrors);
   validateShortField(normalizedValues.ancestry, "ancestry", fieldErrors);
   validateShortField(normalizedValues.background, "background", fieldErrors);
+
+  if (normalizedValues.creationMode === "guided") {
+    if (!normalizedValues.className) {
+      fieldErrors.className = "Choose a class before creating this character.";
+    }
+
+    if (!normalizedValues.ancestry) {
+      fieldErrors.ancestry =
+        "Choose an ancestry or species before creating this character.";
+    }
+
+    if (!normalizedValues.background) {
+      fieldErrors.background =
+        "Choose a background before creating this character.";
+    }
+
+    if (!normalizedValues.summary) {
+      fieldErrors.summary =
+        "Choose a roleplay direction or add a short profile.";
+    }
+  }
 
   if (
     !Number.isInteger(normalizedLevel) ||

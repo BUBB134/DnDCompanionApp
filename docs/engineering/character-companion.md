@@ -31,10 +31,15 @@ work can extend the character without replacing this model.
 
 ## Routes
 
-- `/campaigns/[campaignId]/characters` lists visible characters and creates a
-  character for the signed-in user.
+- `/campaigns/[campaignId]/characters` lists visible characters and links the
+  signed-in user into guided creation.
+- `/campaigns/[campaignId]/characters/new` guides the user through identity,
+  class, ancestry/species, background, roleplay direction, and review.
 - `/campaigns/[campaignId]/characters/[characterId]` shows either the full
   owner/DM profile or a player-safe summary.
 
 The campaign dashboard and protected navigation link into the list route for
 saved campaigns.
+
+See `docs/engineering/guided-character-creation.md` for the creation catalog,
+draft recovery, and generated ability-summary contract.
