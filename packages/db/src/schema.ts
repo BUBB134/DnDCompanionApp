@@ -16,6 +16,9 @@ export const coreTableNames = [
   "sessions",
   "characters",
   "character_creation_options",
+  "spell_definitions",
+  "character_spells",
+  "character_spell_slots",
   "entities",
   "session_entity_tags",
   "notes",
@@ -140,6 +143,64 @@ export const baselineSchemaStatements = [
   );`,
   `create index character_creation_options_category_order_idx
     on character_creation_options (category, display_order, name);`,
+  `create table spell_definitions (
+    id uuid primary key default gen_random_uuid(),
+    campaign_id uuid references campaigns (id) on delete cascade,
+    slug text not null,
+    name text not null,
+    spell_level integer not null check (spell_level between 0 and 9),
+    school text not null,
+    casting_time text not null,
+    range_text text not null,
+    duration text not null,
+    concentration boolean not null default false,
+    ritual boolean not null default false,
+    summary text not null,
+    class_names text[] not null default '{}'::text[],
+    visibility visibility not null default 'player-safe',
+    source text not null default 'dnd-companion-mvp',
+    source_version text not null default '2026-06-mvp',
+    display_order integer not null default 0,
+    created_at timestamptz not null default now(),
+    updated_at timestamptz not null default now()
+  );`,
+  `create unique index spell_definitions_global_slug_unique_idx
+    on spell_definitions (slug)
+    where campaign_id is null;`,
+  `create unique index spell_definitions_campaign_slug_unique_idx
+    on spell_definitions (campaign_id, slug)
+    where campaign_id is not null;`,
+  `create index spell_definitions_lookup_idx
+    on spell_definitions (campaign_id, spell_level, visibility, display_order, name);`,
+  `create index spell_definitions_class_names_idx
+    on spell_definitions using gin (class_names);`,
+  `create table character_spells (
+    id uuid primary key default gen_random_uuid(),
+    character_id uuid not null references characters (id) on delete cascade,
+    spell_id uuid not null references spell_definitions (id) on delete cascade,
+    preparation_state text not null check (
+      preparation_state in ('known', 'prepared')
+    ),
+    created_at timestamptz not null default now(),
+    updated_at timestamptz not null default now(),
+    constraint character_spells_character_spell_unique
+      unique (character_id, spell_id)
+  );`,
+  `create index character_spells_character_idx
+    on character_spells (character_id, preparation_state, updated_at desc);`,
+  `create table character_spell_slots (
+    id uuid primary key default gen_random_uuid(),
+    character_id uuid not null references characters (id) on delete cascade,
+    spell_level integer not null check (spell_level between 1 and 9),
+    total_slots integer not null check (total_slots between 1 and 9),
+    used_slots integer not null default 0 check (
+      used_slots between 0 and total_slots
+    ),
+    created_at timestamptz not null default now(),
+    updated_at timestamptz not null default now(),
+    constraint character_spell_slots_character_level_unique
+      unique (character_id, spell_level)
+  );`,
   `create table entities (
     id uuid primary key default gen_random_uuid(),
     campaign_id uuid not null references campaigns (id) on delete cascade,

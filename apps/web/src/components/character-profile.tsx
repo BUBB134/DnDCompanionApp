@@ -74,6 +74,27 @@ export function CharacterProfile({
           ) : (
             <>
               <Surface className="p-5">
+                <p className="text-sm font-semibold uppercase tracking-wide text-[#8b2f39]">
+                  At-table magic
+                </p>
+                <h2 className="mt-1 text-lg font-semibold">
+                  Spellbook and slots
+                </h2>
+                <p className="mt-2 text-sm leading-6 text-[#4b4657]">
+                  Open the character&apos;s spellbook to track known or prepared
+                  spells and mark spell slots used or restored during play.
+                </p>
+                <Link
+                  className="mt-4 inline-flex min-h-11 items-center rounded-md bg-[#17161f] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#2d2937] focus:outline-none focus:ring-2 focus:ring-[#8b2f39] focus:ring-offset-2"
+                  href={
+                    `/campaigns/${campaign.id}/characters/${character.id}/spellbook` as Route
+                  }
+                >
+                  Open spellbook
+                </Link>
+              </Surface>
+
+              <Surface className="p-5">
                 <h2 className="text-lg font-semibold">Character story</h2>
                 <div className="mt-4 grid gap-5 md:grid-cols-2">
                   <LongDetail label="Backstory" value={character.backstory} />
