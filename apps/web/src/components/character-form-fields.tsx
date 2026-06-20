@@ -30,6 +30,10 @@ export function CharacterFormFields({
         type="hidden"
         value={state.values.creationMode}
       />
+      <input name="ancestryOptionSlug" type="hidden" value="" />
+      <input name="backgroundOptionSlug" type="hidden" value="" />
+      <input name="classOptionSlug" type="hidden" value="" />
+      <input name="roleplayTraitOptionSlug" type="hidden" value="" />
       <input name="revision" type="hidden" value={state.values.revision} />
 
       <div className="grid gap-4 md:grid-cols-[minmax(0,1.4fr)_minmax(8rem,0.6fr)]">

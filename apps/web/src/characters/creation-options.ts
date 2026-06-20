@@ -1,8 +1,10 @@
+import { coreCharacterCreationOptions } from "@dnd/db/character-creation-content";
 import { queryDatabase, type DatabaseQueryable } from "@dnd/db";
 import type {
   CharacterCreationOption,
   CharacterCreationOptionCategory,
 } from "@dnd/types";
+import { hasCompleteCharacterCreationCatalog } from "@/characters/creation-profile";
 
 type CharacterCreationOptionRow = {
   ability_summaries: unknown;
@@ -63,6 +65,37 @@ export async function listCharacterCreationOptionsForUser(
   );
 
   return result.rows.map(mapCharacterCreationOptionRow);
+}
+
+export async function loadCharacterCreationCatalogForUser(
+  userId: string,
+  campaignId: string,
+) {
+  try {
+    const storedOptions = await listCharacterCreationOptionsForUser(
+      userId,
+      campaignId,
+    );
+
+    if (hasCompleteCharacterCreationCatalog(storedOptions)) {
+      return {
+        loadNotice: null,
+        options: storedOptions,
+      };
+    }
+
+    return {
+      loadNotice:
+        "The saved choice library is incomplete, so this flow is using the bundled MVP choices.",
+      options: coreCharacterCreationOptions,
+    };
+  } catch {
+    return {
+      loadNotice:
+        "The saved choice library could not be refreshed, so this flow is using the bundled MVP choices.",
+      options: coreCharacterCreationOptions,
+    };
+  }
 }
 
 const defaultDatabaseClient: DatabaseQueryable = {
