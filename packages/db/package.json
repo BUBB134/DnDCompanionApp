@@ -5,6 +5,7 @@
   "type": "module",
   "exports": {
     ".": "./src/index.ts",
+    "./character-creation-content": "./src/character-creation-content.ts",
     "./domain-content": "./src/domain-content.ts"
   },
   "types": "./src/index.ts",

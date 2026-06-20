@@ -15,6 +15,7 @@ export const coreTableNames = [
   "campaign_invite_acceptances",
   "sessions",
   "characters",
+  "character_creation_options",
   "entities",
   "session_entity_tags",
   "notes",
@@ -115,6 +116,30 @@ export const baselineSchemaStatements = [
   );`,
   `create index characters_campaign_owner_idx
     on characters (campaign_id, owner_user_id, updated_at desc);`,
+  `create table character_creation_options (
+    id uuid primary key default gen_random_uuid(),
+    slug text not null unique,
+    category text not null check (
+      category in ('class', 'ancestry', 'background', 'roleplay-trait')
+    ),
+    name text not null,
+    summary text not null,
+    gameplay text not null default '',
+    flavour text not null default '',
+    actions jsonb not null default '[]'::jsonb,
+    traits jsonb not null default '[]'::jsonb,
+    proficiencies jsonb not null default '[]'::jsonb,
+    quirks jsonb not null default '[]'::jsonb,
+    ability_summaries jsonb not null default '[]'::jsonb,
+    magic_capable boolean not null default false,
+    source text not null default 'dnd-companion-mvp',
+    source_version text not null default '2026-06-mvp',
+    display_order integer not null default 0,
+    created_at timestamptz not null default now(),
+    updated_at timestamptz not null default now()
+  );`,
+  `create index character_creation_options_category_order_idx
+    on character_creation_options (category, display_order, name);`,
   `create table entities (
     id uuid primary key default gen_random_uuid(),
     campaign_id uuid not null references campaigns (id) on delete cascade,

@@ -36,3 +36,18 @@ rendering code.
 The current MVP deliberately does not ingest a full rules compendium. Add new
 baseline snippets through a migration and the DB package seed together so local
 fallbacks, tests, and persisted environments stay aligned.
+
+## Character creation content
+
+Guided character creation follows the same ownership rule:
+
+- baseline choices live in
+  `packages/db/src/character-creation-content.ts`
+- persisted choices live in `character_creation_options`
+- the web loader requires campaign membership before returning the catalog
+- the route may use the DB-package baseline as an explicit fallback when the
+  persisted catalog is unavailable
+
+Class, ancestry/species, background, and roleplay-direction descriptions should
+not be hardcoded inside the wizard component. Keep the catalog intentionally
+small until first-session feedback shows which additional choices are useful.

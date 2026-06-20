@@ -23,6 +23,12 @@ export const sessionNoteBlockTypes = [
 export type SessionNoteBlockType = (typeof sessionNoteBlockTypes)[number];
 
 export const sessionNoteReferenceTypes = ["character", "entity", "rule"] as const;
+export const characterCreationOptionCategories = [
+  "class",
+  "ancestry",
+  "background",
+  "roleplay-trait",
+] as const;
 export type SessionNoteReferenceType =
   (typeof sessionNoteReferenceTypes)[number];
 
@@ -204,6 +210,33 @@ export type AbilitySummary = {
   summary: string;
   trigger?: string | null;
   visibility: Visibility;
+};
+
+export type CharacterCreationOptionCategory =
+  (typeof characterCreationOptionCategories)[number];
+
+export type CharacterCreationAbility = {
+  name: string;
+  summary: string;
+  trigger?: string | null;
+};
+
+export type CharacterCreationOption = {
+  abilities: CharacterCreationAbility[];
+  actions: string[];
+  category: CharacterCreationOptionCategory;
+  flavour: string;
+  gameplay: string;
+  id: string;
+  magicCapable: boolean;
+  name: string;
+  proficiencies: string[];
+  quirks: string[];
+  slug: string;
+  source: string;
+  sourceVersion: string;
+  summary: string;
+  traits: string[];
 };
 
 export type CampaignMemoryMetadata = Record<

@@ -2,7 +2,6 @@ import type { Campaign, CampaignCharacterSummary } from "@dnd/types";
 import type { Route } from "next";
 import Link from "next/link";
 import { EmptyState, StatusPill, Surface } from "@dnd/ui";
-import { CharacterCreateForm } from "@/components/character-create-form";
 
 type CharacterListViewProps = {
   campaign: Campaign;
@@ -30,11 +29,19 @@ export function CharacterListView({
             notes close without replacing the full character sheet.
           </p>
         </div>
-        <div className="flex flex-wrap gap-2">
-          <StatusPill tone="gold">{characters.length} visible</StatusPill>
-          <StatusPill tone={campaign.role === "dm" ? "red" : "teal"}>
-            {campaign.role === "dm" ? "DM access" : "Player access"}
-          </StatusPill>
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="flex flex-wrap gap-2">
+            <StatusPill tone="gold">{characters.length} visible</StatusPill>
+            <StatusPill tone={campaign.role === "dm" ? "red" : "teal"}>
+              {campaign.role === "dm" ? "DM access" : "Player access"}
+            </StatusPill>
+          </div>
+          <Link
+            className="inline-flex min-h-11 items-center rounded-md bg-[#17161f] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#2d2937] focus:outline-none focus:ring-2 focus:ring-[#8b2f39] focus:ring-offset-2"
+            href={`/campaigns/${campaign.id}/characters/new` as Route}
+          >
+            Create a character
+          </Link>
         </div>
       </section>
 
@@ -43,12 +50,8 @@ export function CharacterListView({
           <EmptyState body={loadError} title="Characters are unavailable" />
         </Surface>
       ) : (
-        <section className="grid gap-5 xl:grid-cols-[minmax(300px,0.85fr)_minmax(0,1.15fr)]">
-          <Surface className="p-5">
-            <CharacterCreateForm campaign={campaign} />
-          </Surface>
-
-          <Surface className="p-5">
+        <section>
+          <Surface className="p-5 sm:p-6">
             <div className="flex items-center justify-between gap-3">
               <h2 className="text-lg font-semibold">Campaign characters</h2>
               <Link
@@ -61,10 +64,18 @@ export function CharacterListView({
 
             <div className="mt-5 grid gap-4">
               {characters.length === 0 ? (
-                <EmptyState
-                  body="Create the first lightweight character profile for this campaign."
-                  title="No characters yet"
-                />
+                <div className="grid gap-4">
+                  <EmptyState
+                    body="Use guided creation to choose a class, roots, and roleplay direction for the first campaign character."
+                    title="No characters yet"
+                  />
+                  <Link
+                    className="inline-flex min-h-11 w-fit items-center rounded-md bg-[#17161f] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#2d2937] focus:outline-none focus:ring-2 focus:ring-[#8b2f39] focus:ring-offset-2"
+                    href={`/campaigns/${campaign.id}/characters/new` as Route}
+                  >
+                    Start guided creation
+                  </Link>
+                </div>
               ) : (
                 characters.map((character) => (
                   <article
