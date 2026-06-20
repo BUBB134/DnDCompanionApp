@@ -183,11 +183,14 @@ if (typescript) {
     abilities:
       "Second Wind | Regain a small pool of hit points. | Bonus action\nAction Surge | Take one additional action. | Once per rest",
     ancestry: "Human",
+    ancestryOptionSlug: "",
     background: "Sailor",
+    backgroundOptionSlug: "",
     backstory: "Raised among the Ashen Coast privateers.",
     campaignId: savedCampaignId,
     characterId: "",
     className: "Fighter",
+    classOptionSlug: "",
     creationMode: "standard",
     goals: "Open the drowned vault.",
     inventoryNotes: "Tide key, rope, lantern.",
@@ -196,6 +199,7 @@ if (typescript) {
     personalNotes: "Captain Thorn knows too much.",
     relationships: "Owes Captain Thorn a favour.",
     revision: "",
+    roleplayTraitOptionSlug: "",
     summary: "A practical fighter who reads the tides.",
     visibility: "player-safe",
   };

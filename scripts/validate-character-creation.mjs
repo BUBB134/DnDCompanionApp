@@ -56,8 +56,8 @@ const routeText = readText(
 );
 for (const expectedText of [
   "getDatabaseCampaignAccessForUser",
-  "listCharacterCreationOptionsForUser",
-  "coreCharacterCreationOptions",
+  "loadCharacterCreationCatalogForUser",
+  "draftOwnerId={session.user.id}",
   "CharacterCreateForm",
 ]) {
   expect(
@@ -69,12 +69,14 @@ for (const expectedText of [
 const wizardText = readText("apps/web/src/components/character-create-form.tsx");
 for (const expectedText of [
   "dnd-character-creation-draft-v1",
+  "draftOwnerId",
   "Guided character creation",
+  "noValidate",
   "Roleplay directions",
   "Spellbook-ready foundation",
   'name="creationMode"',
   'value="guided"',
-  "formatCharacterCreationAbilities",
+  "validateCharacterCreationStep",
 ]) {
   expect(
     wizardText.includes(expectedText),
@@ -104,8 +106,14 @@ expect(
 expect(
   readText("apps/web/src/characters/actions.ts").includes(
     'creationMode: "guided"',
-  ),
-  "Character creation action must enforce guided validation independently of client input.",
+  ) &&
+    readText("apps/web/src/characters/actions.ts").includes(
+      "resolveGuidedCharacterSelection",
+    ) &&
+    readText("apps/web/src/characters/actions.ts").includes(
+      "formatCharacterCreationAbilities",
+    ),
+  "Character creation action must reload and canonicalize guided choices independently of client input.",
 );
 
 const repositoryText = readText(
@@ -131,12 +139,36 @@ const typescript = typescriptRuntime
   : null;
 
 if (typescript) {
-  const contentModule = await import(
-    await transpileModuleToDataUrl(
-      "packages/db/src/character-creation-content.ts",
-    ),
+  const contentModuleUrl = await transpileModuleToDataUrl(
+    "packages/db/src/character-creation-content.ts",
   );
+  const contentModule = await import(contentModuleUrl);
+  const creationProfileModuleUrl = await transpileModuleToDataUrl(
+    "apps/web/src/characters/creation-profile.ts",
+  );
+  const creationProfileModule = await import(creationProfileModuleUrl);
   const options = contentModule.coreCharacterCreationOptions;
+
+  for (const invalidLevel of ["", "0", "2.5", "21"]) {
+    const invalidLevelError =
+      creationProfileModule.validateCharacterCreationStep(
+        "identity",
+        {
+          ancestry: "",
+          background: "",
+          className: "",
+          level: invalidLevel,
+          name: "Mira Voss",
+          summary: "",
+        },
+        "",
+      );
+    expect(
+      invalidLevelError ===
+        "Starting level must be a whole number from 1 to 20.",
+      `Identity step must reject invalid level value: ${invalidLevel || "empty"}.`,
+    );
+  }
 
   for (const category of [
     "class",
@@ -191,7 +223,11 @@ if (typescript) {
   const creationOptionsModule = await import(
     await transpileModuleToDataUrl(
       "apps/web/src/characters/creation-options.ts",
-      [["@dnd/db", dbStubModuleUrl]],
+      [
+        ["@dnd/db/character-creation-content", contentModuleUrl],
+        ["@dnd/db", dbStubModuleUrl],
+        ["@/characters/creation-profile", creationProfileModuleUrl],
+      ],
     ),
   );
   const listedOptions =
@@ -209,12 +245,17 @@ if (typescript) {
     dbStubModule.queries[0]?.values.join(",") === "user-1,campaign-1",
     "Character option retrieval must carry user and campaign membership scope.",
   );
-
-  const creationProfileModule = await import(
-    await transpileModuleToDataUrl(
-      "apps/web/src/characters/creation-profile.ts",
-    ),
+  const fallbackCatalog =
+    await creationOptionsModule.loadCharacterCreationCatalogForUser(
+      "user-1",
+      "campaign-1",
+    );
+  expect(
+    fallbackCatalog.loadNotice?.includes("incomplete") &&
+      fallbackCatalog.options.length === options.length,
+    "Incomplete persisted catalogs must use the complete bundled catalog for rendering and submission validation.",
   );
+
   const abilityText =
     creationProfileModule.formatCharacterCreationAbilities(listedOptions);
   expect(
@@ -226,6 +267,34 @@ if (typescript) {
     !creationProfileModule.hasCompleteCharacterCreationCatalog(listedOptions) &&
       creationProfileModule.hasCompleteCharacterCreationCatalog(options),
     "Character creation must fall back when persisted catalog categories are incomplete.",
+  );
+
+  const validSelection =
+    creationProfileModule.resolveGuidedCharacterSelection(options, {
+      ancestryOptionSlug: "human",
+      backgroundOptionSlug: "soldier",
+      classOptionSlug: "fighter",
+      roleplayTraitOptionSlug: "steadfast-guardian",
+    });
+  expect(
+    validSelection.ok &&
+      validSelection.classOption.name === "Fighter" &&
+      validSelection.ancestryOption.name === "Human" &&
+      validSelection.backgroundOption.name === "Soldier",
+    "Guided selection must resolve canonical profile values from stable catalog slugs.",
+  );
+
+  const staleSelection =
+    creationProfileModule.resolveGuidedCharacterSelection(options, {
+      ancestryOptionSlug: "human",
+      backgroundOptionSlug: "retired-option",
+      classOptionSlug: "fighter",
+      roleplayTraitOptionSlug: "",
+    });
+  expect(
+    !staleSelection.ok &&
+      staleSelection.fieldErrors.background?.includes("current background"),
+    "Guided selection must reject stale or tampered catalog slugs.",
   );
 }
 
