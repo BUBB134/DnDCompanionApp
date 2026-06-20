@@ -39,6 +39,13 @@ seed content lives in the DB package and is loaded through permission-aware
 repositories, with nullable campaign ownership reserved for future
 campaign-specific overrides. See `docs/engineering/domain-content.md`.
 
+## Character spellbooks
+Magic-capable character companions use database-backed spell definitions,
+character known/prepared selections, and explicit slot resource state. The
+owner/DM access model remains aligned with private character details, and the
+shared contract is intended for the future action hotbar. See
+`docs/engineering/character-spellbook.md`.
+
 ## Campaign memory retrieval
 Grounded AI and recap flows should retrieve campaign memory through the
 deterministic corpus in `apps/web/src/memory`. It combines session notes,

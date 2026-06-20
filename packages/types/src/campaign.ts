@@ -29,8 +29,10 @@ export const characterCreationOptionCategories = [
   "background",
   "roleplay-trait",
 ] as const;
+export const spellPreparationStates = ["known", "prepared"] as const;
 export type SessionNoteReferenceType =
   (typeof sessionNoteReferenceTypes)[number];
+export type SpellPreparationState = (typeof spellPreparationStates)[number];
 
 export const campaignMemorySourceTypes = [
   "character",
@@ -210,6 +212,46 @@ export type AbilitySummary = {
   summary: string;
   trigger?: string | null;
   visibility: Visibility;
+};
+
+export type SpellDefinition = {
+  campaignId?: string | null;
+  castingTime: string;
+  classNames: string[];
+  concentration: boolean;
+  duration: string;
+  id: string;
+  level: number;
+  name: string;
+  range: string;
+  ritual: boolean;
+  school: string;
+  slug: string;
+  source: string;
+  sourceVersion: string;
+  summary: string;
+  visibility: Visibility;
+};
+
+export type CharacterSpell = SpellDefinition & {
+  preparation: SpellPreparationState;
+};
+
+export type CharacterSpellSlot = {
+  level: number;
+  total: number;
+  used: number;
+};
+
+export type CharacterSpellbook = {
+  availableSpells: SpellDefinition[];
+  canManage: boolean;
+  characterId: string;
+  characterName: string;
+  className?: string | null;
+  isMagicCapable: boolean;
+  slots: CharacterSpellSlot[];
+  spells: CharacterSpell[];
 };
 
 export type CharacterCreationOptionCategory =

@@ -27,7 +27,9 @@ The MVP profile stores:
 - short ability summaries with an optional trigger
 
 Ability summaries are stored as child rows so future spellbook and action-hotbar
-work can extend the character without replacing this model.
+work can extend the character without replacing this model. DND-50 attaches
+database-backed spell selections and slot state through the same character id;
+see `docs/engineering/character-spellbook.md`.
 
 ## Routes
 

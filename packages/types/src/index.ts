@@ -10,6 +10,7 @@ export {
   ruleSnippetCategories,
   sessionNoteBlockTypes,
   sessionNoteReferenceTypes,
+  spellPreparationStates,
   visibilities,
 } from "./campaign";
 
@@ -30,6 +31,9 @@ export type {
   CampaignCharacterSummary,
   CampaignCharacterSummaryView,
   CampaignCharacterView,
+  CharacterSpell,
+  CharacterSpellbook,
+  CharacterSpellSlot,
   CharacterCreationAbility,
   CharacterCreationOption,
   CharacterCreationOptionCategory,
@@ -56,6 +60,8 @@ export type {
   SessionNoteReferenceType,
   SessionRecapGrounding,
   SessionSummary,
+  SpellDefinition,
+  SpellPreparationState,
   Visibility,
 } from "./campaign";
 
