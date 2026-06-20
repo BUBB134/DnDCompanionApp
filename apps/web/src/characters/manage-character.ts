@@ -24,11 +24,14 @@ export type CharacterAbilityInput = {
 export type CharacterFormValues = {
   abilities: string;
   ancestry: string;
+  ancestryOptionSlug: string;
   background: string;
+  backgroundOptionSlug: string;
   backstory: string;
   campaignId: string;
   characterId: string;
   className: string;
+  classOptionSlug: string;
   creationMode: string;
   goals: string;
   inventoryNotes: string;
@@ -37,6 +40,7 @@ export type CharacterFormValues = {
   personalNotes: string;
   relationships: string;
   revision: string;
+  roleplayTraitOptionSlug: string;
   summary: string;
   visibility: string;
 };
@@ -99,11 +103,14 @@ type CharacterSubmissionResult =
 export const emptyCharacterFormValues: CharacterFormValues = {
   abilities: "",
   ancestry: "",
+  ancestryOptionSlug: "",
   background: "",
+  backgroundOptionSlug: "",
   backstory: "",
   campaignId: "",
   characterId: "",
   className: "",
+  classOptionSlug: "",
   creationMode: "standard",
   goals: "",
   inventoryNotes: "",
@@ -112,6 +119,7 @@ export const emptyCharacterFormValues: CharacterFormValues = {
   personalNotes: "",
   relationships: "",
   revision: "",
+  roleplayTraitOptionSlug: "",
   summary: "",
   visibility: "player-safe",
 };
@@ -243,11 +251,14 @@ export function characterToFormValues(
       )
       .join("\n"),
     ancestry: character.ancestry ?? "",
+    ancestryOptionSlug: "",
     background: character.background ?? "",
+    backgroundOptionSlug: "",
     backstory: character.backstory,
     campaignId,
     characterId: character.id,
     className: character.className ?? "",
+    classOptionSlug: "",
     creationMode: "standard",
     goals: character.goals,
     inventoryNotes: character.inventoryNotes,
@@ -256,6 +267,7 @@ export function characterToFormValues(
     personalNotes: character.personalNotes,
     relationships: character.relationships,
     revision: character.updatedAt,
+    roleplayTraitOptionSlug: "",
     summary: character.summary,
     visibility: character.visibility,
   };
@@ -274,11 +286,14 @@ export function validateCharacterValues(
   const normalizedValues = {
     abilities: values.abilities.trim(),
     ancestry: values.ancestry.trim(),
+    ancestryOptionSlug: values.ancestryOptionSlug?.trim() || "",
     background: values.background.trim(),
+    backgroundOptionSlug: values.backgroundOptionSlug?.trim() || "",
     backstory: values.backstory.trim(),
     campaignId: values.campaignId.trim(),
     characterId: values.characterId.trim(),
     className: values.className.trim(),
+    classOptionSlug: values.classOptionSlug?.trim() || "",
     creationMode: values.creationMode?.trim() || "standard",
     goals: values.goals.trim(),
     inventoryNotes: values.inventoryNotes.trim(),
@@ -287,6 +302,8 @@ export function validateCharacterValues(
     personalNotes: values.personalNotes.trim(),
     relationships: values.relationships.trim(),
     revision: values.revision.trim(),
+    roleplayTraitOptionSlug:
+      values.roleplayTraitOptionSlug?.trim() || "",
     summary: values.summary.trim(),
     visibility: normalizedVisibility ?? values.visibility,
   };

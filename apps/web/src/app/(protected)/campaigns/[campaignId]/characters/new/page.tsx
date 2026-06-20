@@ -1,5 +1,3 @@
-import { coreCharacterCreationOptions } from "@dnd/db/character-creation-content";
-import type { CharacterCreationOption } from "@dnd/types";
 import type { Route } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -7,8 +5,7 @@ import { Surface } from "@dnd/ui";
 import { requireAuthSession } from "@/auth/server";
 import { isDatabaseCampaignId } from "@/campaigns/database-id";
 import { getDatabaseCampaignAccessForUser } from "@/campaigns/repository";
-import { listCharacterCreationOptionsForUser } from "@/characters/creation-options";
-import { hasCompleteCharacterCreationCatalog } from "@/characters/creation-profile";
+import { loadCharacterCreationCatalogForUser } from "@/characters/creation-options";
 import { CharacterCreateForm } from "@/components/character-create-form";
 
 type CharacterCreatePageProps = {
@@ -36,25 +33,10 @@ export default async function CharacterCreatePage({
     notFound();
   }
 
-  let options: CharacterCreationOption[] = coreCharacterCreationOptions;
-  let loadNotice: string | null = null;
-
-  try {
-    const storedOptions = await listCharacterCreationOptionsForUser(
-      session.user.id,
-      campaign.id,
-    );
-
-    if (hasCompleteCharacterCreationCatalog(storedOptions)) {
-      options = storedOptions;
-    } else {
-      loadNotice =
-        "The saved choice library is incomplete, so this flow is using the bundled MVP choices.";
-    }
-  } catch {
-    loadNotice =
-      "The saved choice library could not be refreshed, so this flow is using the bundled MVP choices.";
-  }
+  const catalog = await loadCharacterCreationCatalogForUser(
+    session.user.id,
+    campaign.id,
+  );
 
   return (
     <div className="grid gap-5">
@@ -69,8 +51,9 @@ export default async function CharacterCreatePage({
       <Surface className="p-4 sm:p-6">
         <CharacterCreateForm
           campaign={campaign}
-          loadNotice={loadNotice}
-          options={options}
+          draftOwnerId={session.user.id}
+          loadNotice={catalog.loadNotice}
+          options={catalog.options}
         />
       </Surface>
     </div>

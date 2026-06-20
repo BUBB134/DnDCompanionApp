@@ -7,6 +7,11 @@ import { redirect } from "next/navigation";
 import { requireAuthSession } from "@/auth/server";
 import { getCurrentCampaignAccess } from "@/campaigns/bootstrap";
 import { isDatabaseCampaignId } from "@/campaigns/database-id";
+import { loadCharacterCreationCatalogForUser } from "@/characters/creation-options";
+import {
+  formatCharacterCreationAbilities,
+  resolveGuidedCharacterSelection,
+} from "@/characters/creation-profile";
 import {
   createCharacterActionState,
   createCharacterSubmission,
@@ -46,11 +51,40 @@ export async function createCharacterAction(
     };
   }
 
+  const catalog = await loadCharacterCreationCatalogForUser(
+    session.user.id,
+    campaign.id,
+  );
+  const selection = resolveGuidedCharacterSelection(catalog.options, values);
+
+  if (!selection.ok) {
+    return {
+      ...createCharacterActionState(values),
+      fieldErrors: selection.fieldErrors,
+    };
+  }
+
+  const canonicalValues: CharacterFormValues = {
+    ...values,
+    abilities: formatCharacterCreationAbilities([
+      selection.classOption,
+      selection.ancestryOption,
+      selection.backgroundOption,
+    ]),
+    ancestry: selection.ancestryOption.name,
+    background: selection.backgroundOption.name,
+    className: selection.classOption.name,
+    summary:
+      values.summary.trim() ||
+      selection.roleplayTraitOption?.summary ||
+      values.summary,
+  };
+
   const result = await createCharacterSubmission(
     { createCharacterForUser },
     session.user.id,
     campaign,
-    values,
+    canonicalValues,
     formatDatabaseError,
   );
 
@@ -107,11 +141,14 @@ function readCharacterFormValues(formData: FormData): CharacterFormValues {
   return {
     abilities: getStringField(formData, "abilities"),
     ancestry: getStringField(formData, "ancestry"),
+    ancestryOptionSlug: getStringField(formData, "ancestryOptionSlug"),
     background: getStringField(formData, "background"),
+    backgroundOptionSlug: getStringField(formData, "backgroundOptionSlug"),
     backstory: getStringField(formData, "backstory"),
     campaignId: getStringField(formData, "campaignId"),
     characterId: getStringField(formData, "characterId"),
     className: getStringField(formData, "className"),
+    classOptionSlug: getStringField(formData, "classOptionSlug"),
     creationMode: getStringField(formData, "creationMode"),
     goals: getStringField(formData, "goals"),
     inventoryNotes: getStringField(formData, "inventoryNotes"),
@@ -120,6 +157,10 @@ function readCharacterFormValues(formData: FormData): CharacterFormValues {
     personalNotes: getStringField(formData, "personalNotes"),
     relationships: getStringField(formData, "relationships"),
     revision: getStringField(formData, "revision"),
+    roleplayTraitOptionSlug: getStringField(
+      formData,
+      "roleplayTraitOptionSlug",
+    ),
     summary: getStringField(formData, "summary"),
     visibility: getStringField(formData, "visibility"),
   };
