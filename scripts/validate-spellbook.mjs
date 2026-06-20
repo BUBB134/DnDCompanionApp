@@ -24,6 +24,7 @@ for (const snippet of [
   '"character_spells"',
   '"character_spell_slots"',
   "preparation_state in ('known', 'prepared')",
+  "unique (character_id, spell_slug)",
   "used_slots between 0 and total_slots",
 ]) {
   expect(
@@ -56,6 +57,8 @@ for (const snippet of [
   "characters.owner_user_id = $1",
   "spell_definitions.visibility = 'player-safe'",
   "character_spells.preparation_state",
+  "character_spells.spell_slug = effective_spells.slug",
+  "on conflict (character_id, spell_slug)",
   "used_slots + $3 between 0 and total_slots",
   "withDatabaseTransaction",
 ]) {

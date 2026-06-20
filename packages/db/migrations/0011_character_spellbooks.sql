@@ -43,14 +43,14 @@ create index if not exists spell_definitions_class_names_idx
 create table if not exists character_spells (
   id uuid primary key default gen_random_uuid(),
   character_id uuid not null references characters (id) on delete cascade,
-  spell_id uuid not null references spell_definitions (id) on delete cascade,
+  spell_slug text not null,
   preparation_state text not null check (
     preparation_state in ('known', 'prepared')
   ),
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
-  constraint character_spells_character_spell_unique
-    unique (character_id, spell_id)
+  constraint character_spells_character_slug_unique
+    unique (character_id, spell_slug)
 );
 
 create index if not exists character_spells_character_idx

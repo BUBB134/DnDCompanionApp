@@ -49,6 +49,10 @@ type IdRow = {
   id: string;
 };
 
+type SpellSelectionRow = IdRow & {
+  slug: string;
+};
+
 export async function getCharacterSpellbookForUser(
   userId: string,
   campaignId: string,
@@ -136,7 +140,7 @@ export async function getCharacterSpellbookForUser(
         from effective_spells
         left join character_spells
           on character_spells.character_id = $3
-          and character_spells.spell_id = effective_spells.id
+          and character_spells.spell_slug = effective_spells.slug
         order by
           effective_spells.spell_level,
           effective_spells.display_order,
@@ -202,7 +206,7 @@ export async function setCharacterSpellForUser(
 ) {
   return withDatabaseTransaction(async (client) => {
     await requireMagicCharacter(client, userId, campaignId, characterId);
-    await requireAvailableSpell(
+    const spell = await requireAvailableSpell(
       client,
       userId,
       campaignId,
@@ -214,16 +218,16 @@ export async function setCharacterSpellForUser(
       `
         insert into character_spells (
           character_id,
-          spell_id,
+          spell_slug,
           preparation_state
         )
         values ($1, $2, $3)
-        on conflict (character_id, spell_id) do update
+        on conflict (character_id, spell_slug) do update
         set
           preparation_state = excluded.preparation_state,
           updated_at = now()
       `,
-      [characterId, spellId, preparation],
+      [characterId, spell.slug, preparation],
     );
   });
 }
@@ -236,19 +240,20 @@ export async function removeCharacterSpellForUser(
 ) {
   return withDatabaseTransaction(async (client) => {
     await requireMagicCharacter(client, userId, campaignId, characterId);
+    const spell = await requireAvailableSpell(
+      client,
+      userId,
+      campaignId,
+      characterId,
+      spellId,
+    );
     await client.query(
       `
         delete from character_spells
-        using spell_definitions
         where character_spells.character_id = $1
-          and character_spells.spell_id = $2
-          and spell_definitions.id = character_spells.spell_id
-          and (
-            spell_definitions.campaign_id = $3
-            or spell_definitions.campaign_id is null
-          )
+          and character_spells.spell_slug = $2
       `,
-      [characterId, spellId, campaignId],
+      [characterId, spell.slug],
     );
   });
 }
@@ -412,9 +417,11 @@ async function requireAvailableSpell(
   characterId: string,
   spellId: string,
 ) {
-  const result = await client.query<IdRow>(
+  const result = await client.query<SpellSelectionRow>(
     `
-      select spell_definitions.id
+      select
+        spell_definitions.id,
+        spell_definitions.slug
       from spell_definitions
       inner join characters
         on characters.id = $3
@@ -446,6 +453,8 @@ async function requireAvailableSpell(
   if (!result.rows[0]) {
     throw new Error("Choose a spell available to this character.");
   }
+
+  return result.rows[0];
 }
 
 function mapSpellDefinition(row: SpellRow): SpellDefinition {

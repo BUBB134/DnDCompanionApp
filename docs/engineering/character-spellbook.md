@@ -17,7 +17,9 @@ sheet or spell rules engine.
 - `spell_definitions` stores concise database-backed spell metadata.
 - Global baseline spells use a null `campaign_id`; future campaign content can
   override a global spell with the same slug.
-- `character_spells` records whether a spell is currently `known` or `prepared`.
+- `character_spells` records whether a stable spell slug is currently `known`
+  or `prepared`, so a campaign override can replace definition metadata without
+  detaching the character's selection.
 - `character_spell_slots` stores total and used slots for levels 1 through 9.
 
 The initial catalog is intentionally limited to a few Cleric and Wizard spells.
