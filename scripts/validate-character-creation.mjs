@@ -149,6 +149,21 @@ if (typescript) {
   const creationProfileModule = await import(creationProfileModuleUrl);
   const options = contentModule.coreCharacterCreationOptions;
 
+  expect(
+    creationProfileModule.resolveOptionalRoleplayTraitSlug(
+      options,
+      "steadfast-guardian",
+    ) === "steadfast-guardian",
+    "Current optional roleplay choices must survive draft hydration.",
+  );
+  expect(
+    creationProfileModule.resolveOptionalRoleplayTraitSlug(
+      options,
+      "retired-roleplay-option",
+    ) === "",
+    "Stale optional roleplay choices must be cleared during draft hydration.",
+  );
+
   for (const invalidLevel of ["", "0", "2.5", "21"]) {
     const invalidLevelError =
       creationProfileModule.validateCharacterCreationStep(

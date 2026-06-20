@@ -9,6 +9,7 @@ import { useActionState, useEffect, useMemo, useRef, useState } from "react";
 import { useFormStatus } from "react-dom";
 import { createCharacterAction } from "@/characters/actions";
 import {
+  resolveOptionalRoleplayTraitSlug,
   validateCharacterCreationStep,
   type CharacterCreationStepId,
 } from "@/characters/creation-profile";
@@ -113,6 +114,7 @@ export function CharacterCreateForm({
     "slug",
     draft.roleplayTraitOptionSlug,
   );
+  const selectedTraitSlug = selectedTrait?.slug ?? "";
   const draftStorageKey =
     `dnd-character-creation-draft-v1:${draftOwnerId}:${campaign.id}`;
 
@@ -126,6 +128,10 @@ export function CharacterCreateForm({
           ...storedDraft.values,
           campaignId: campaign.id,
           creationMode: "guided",
+          roleplayTraitOptionSlug: resolveOptionalRoleplayTraitSlug(
+            options,
+            storedDraft.values.roleplayTraitOptionSlug ?? "",
+          ),
         });
         setCurrentStepIndex(
           Math.min(
@@ -139,7 +145,7 @@ export function CharacterCreateForm({
     }
 
     hasLoadedStoredDraftRef.current = true;
-  }, [campaign.id, draftStorageKey, initialState.values]);
+  }, [campaign.id, draftStorageKey, initialState.values, options]);
 
   useEffect(() => {
     if (!hasLoadedStoredDraftRef.current) {
@@ -161,6 +167,10 @@ export function CharacterCreateForm({
           ...state.values,
           campaignId: campaign.id,
           creationMode: "guided",
+          roleplayTraitOptionSlug: resolveOptionalRoleplayTraitSlug(
+            options,
+            state.values.roleplayTraitOptionSlug,
+          ),
         });
       });
     }
@@ -170,7 +180,7 @@ export function CharacterCreateForm({
         setCurrentStepIndex(errorStepIndex);
       });
     }
-  }, [campaign.id, state]);
+  }, [campaign.id, options, state]);
 
   function updateDraft(field: keyof CharacterFormValues, value: string) {
     setDraft((currentDraft) => ({
@@ -233,7 +243,7 @@ export function CharacterCreateForm({
     const error = validateCharacterCreationStep(
       currentStep.id,
       draft,
-      draft.roleplayTraitOptionSlug,
+      selectedTraitSlug,
     );
 
     if (error) {
@@ -257,7 +267,7 @@ export function CharacterCreateForm({
       const error = validateCharacterCreationStep(
         currentStep.id,
         draft,
-        draft.roleplayTraitOptionSlug,
+        selectedTraitSlug,
       );
 
       if (error) {
@@ -478,7 +488,7 @@ export function CharacterCreateForm({
           label="Roleplay directions"
           onSelect={selectOption}
           options={groupedOptions["roleplay-trait"]}
-          selectedSlug={draft.roleplayTraitOptionSlug}
+          selectedSlug={selectedTraitSlug}
         />
         <FieldError
           error={state.fieldErrors.roleplayTraitOptionSlug}
@@ -639,7 +649,7 @@ export function CharacterCreateForm({
       <input
         name="roleplayTraitOptionSlug"
         type="hidden"
-        value={draft.roleplayTraitOptionSlug}
+        value={selectedTraitSlug}
       />
       <input name="summary" type="hidden" value={draft.summary} />
 

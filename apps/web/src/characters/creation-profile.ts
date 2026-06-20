@@ -117,6 +117,13 @@ export function resolveGuidedCharacterSelection(
   };
 }
 
+export function resolveOptionalRoleplayTraitSlug(
+  options: CharacterCreationOption[],
+  slug: string,
+) {
+  return findCatalogOption(options, "roleplay-trait", slug)?.slug ?? "";
+}
+
 type CharacterCreationStepValues = Pick<
   CharacterFormValues,
   "ancestry" | "background" | "className" | "level" | "name" | "summary"
