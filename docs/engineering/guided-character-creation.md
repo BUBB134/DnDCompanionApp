@@ -51,6 +51,10 @@ as stable catalog slugs. The server reloads the membership-scoped catalog,
 rejects stale or tampered slugs, and derives canonical display names and ability
 summaries before calling the character repository.
 
+`dnd-character-creation-draft-v1:<campaign-id>`. Storage failure never blocks
+the server-backed form. The draft is cleared when the final submission starts;
+server validation errors repopulate normalized values in the active wizard.
+
 ## Fallback behavior
 
 The route first loads `character_creation_options` after confirming campaign

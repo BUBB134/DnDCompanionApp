@@ -1,3 +1,5 @@
+import { coreCharacterCreationOptions } from "@dnd/db/character-creation-content";
+import type { CharacterCreationOption } from "@dnd/types";
 import type { Route } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -6,6 +8,8 @@ import { requireAuthSession } from "@/auth/server";
 import { isDatabaseCampaignId } from "@/campaigns/database-id";
 import { getDatabaseCampaignAccessForUser } from "@/campaigns/repository";
 import { loadCharacterCreationCatalogForUser } from "@/characters/creation-options";
+import { listCharacterCreationOptionsForUser } from "@/characters/creation-options";
+import { hasCompleteCharacterCreationCatalog } from "@/characters/creation-profile";
 import { CharacterCreateForm } from "@/components/character-create-form";
 
 type CharacterCreatePageProps = {
@@ -37,6 +41,25 @@ export default async function CharacterCreatePage({
     session.user.id,
     campaign.id,
   );
+  let options: CharacterCreationOption[] = coreCharacterCreationOptions;
+  let loadNotice: string | null = null;
+
+  try {
+    const storedOptions = await listCharacterCreationOptionsForUser(
+      session.user.id,
+      campaign.id,
+    );
+
+    if (hasCompleteCharacterCreationCatalog(storedOptions)) {
+      options = storedOptions;
+    } else {
+      loadNotice =
+        "The saved choice library is incomplete, so this flow is using the bundled MVP choices.";
+    }
+  } catch {
+    loadNotice =
+      "The saved choice library could not be refreshed, so this flow is using the bundled MVP choices.";
+  }
 
   return (
     <div className="grid gap-5">
@@ -54,6 +77,8 @@ export default async function CharacterCreatePage({
           draftOwnerId={session.user.id}
           loadNotice={catalog.loadNotice}
           options={catalog.options}
+          loadNotice={loadNotice}
+          options={options}
         />
       </Surface>
     </div>

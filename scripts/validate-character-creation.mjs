@@ -58,6 +58,8 @@ for (const expectedText of [
   "getDatabaseCampaignAccessForUser",
   "loadCharacterCreationCatalogForUser",
   "draftOwnerId={session.user.id}",
+  "listCharacterCreationOptionsForUser",
+  "coreCharacterCreationOptions",
   "CharacterCreateForm",
 ]) {
   expect(
@@ -72,11 +74,13 @@ for (const expectedText of [
   "draftOwnerId",
   "Guided character creation",
   "noValidate",
+  "Guided character creation",
   "Roleplay directions",
   "Spellbook-ready foundation",
   'name="creationMode"',
   'value="guided"',
   "validateCharacterCreationStep",
+  "formatCharacterCreationAbilities",
 ]) {
   expect(
     wizardText.includes(expectedText),
@@ -114,6 +118,8 @@ expect(
       "formatCharacterCreationAbilities",
     ),
   "Character creation action must reload and canonicalize guided choices independently of client input.",
+  ),
+  "Character creation action must enforce guided validation independently of client input.",
 );
 
 const repositoryText = readText(
@@ -169,6 +175,13 @@ if (typescript) {
       `Identity step must reject invalid level value: ${invalidLevel || "empty"}.`,
     );
   }
+
+  const contentModule = await import(
+    await transpileModuleToDataUrl(
+      "packages/db/src/character-creation-content.ts",
+    ),
+  );
+  const options = contentModule.coreCharacterCreationOptions;
 
   for (const category of [
     "class",
@@ -228,6 +241,7 @@ if (typescript) {
         ["@dnd/db", dbStubModuleUrl],
         ["@/characters/creation-profile", creationProfileModuleUrl],
       ],
+      [["@dnd/db", dbStubModuleUrl]],
     ),
   );
   const listedOptions =
@@ -256,6 +270,12 @@ if (typescript) {
     "Incomplete persisted catalogs must use the complete bundled catalog for rendering and submission validation.",
   );
 
+
+  const creationProfileModule = await import(
+    await transpileModuleToDataUrl(
+      "apps/web/src/characters/creation-profile.ts",
+    ),
+  );
   const abilityText =
     creationProfileModule.formatCharacterCreationAbilities(listedOptions);
   expect(

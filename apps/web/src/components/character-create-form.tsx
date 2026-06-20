@@ -13,6 +13,8 @@ import {
   type CharacterCreationStepId,
 } from "@/characters/creation-profile";
 import {
+import { formatCharacterCreationAbilities } from "@/characters/creation-profile";
+import {
   createCharacterActionState,
   type CharacterFormValues,
 } from "@/characters/manage-character";
@@ -33,6 +35,24 @@ type CreationStep = {
 
 type StoredDraft = {
   currentStepIndex: number;
+  values: CharacterFormValues;
+};
+
+  loadNotice?: string | null;
+  options: CharacterCreationOption[];
+};
+
+type StepId = "identity" | "class" | "roots" | "roleplay" | "review";
+
+type CreationStep = {
+  body: string;
+  id: StepId;
+  title: string;
+};
+
+type StoredDraft = {
+  currentStepIndex: number;
+  selectedTraitSlug: string;
   values: CharacterFormValues;
 };
 
@@ -89,6 +109,7 @@ export function CharacterCreateForm({
   );
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
   const [draft, setDraft] = useState<CharacterFormValues>(initialState.values);
+  const [selectedTraitSlug, setSelectedTraitSlug] = useState("");
   const [stepError, setStepError] = useState<string | null>(null);
   const hasLoadedStoredDraftRef = useRef(false);
   const currentStep = creationSteps[currentStepIndex] ?? creationSteps[0]!;
@@ -107,6 +128,18 @@ export function CharacterCreateForm({
     groupedOptions.background,
     "slug",
     draft.backgroundOptionSlug,
+    "name",
+    draft.className,
+  );
+  const selectedAncestry = findOption(
+    groupedOptions.ancestry,
+    "name",
+    draft.ancestry,
+  );
+  const selectedBackground = findOption(
+    groupedOptions.background,
+    "name",
+    draft.background,
   );
   const selectedTrait = findOption(
     groupedOptions["roleplay-trait"],
@@ -115,6 +148,14 @@ export function CharacterCreateForm({
   );
   const draftStorageKey =
     `dnd-character-creation-draft-v1:${draftOwnerId}:${campaign.id}`;
+    selectedTraitSlug,
+  );
+  const abilityText = formatCharacterCreationAbilities([
+    selectedClass,
+    selectedAncestry,
+    selectedBackground,
+  ]);
+  const draftStorageKey = `dnd-character-creation-draft-v1:${campaign.id}`;
 
   useEffect(() => {
     const storedDraft = readStoredDraft(draftStorageKey);
@@ -127,6 +168,7 @@ export function CharacterCreateForm({
           campaignId: campaign.id,
           creationMode: "guided",
         });
+        setSelectedTraitSlug(storedDraft.selectedTraitSlug);
         setCurrentStepIndex(
           Math.min(
             Math.max(storedDraft.currentStepIndex, 0),
@@ -151,6 +193,10 @@ export function CharacterCreateForm({
       values: draft,
     });
   }, [currentStepIndex, draft, draftStorageKey]);
+      selectedTraitSlug,
+      values: draft,
+    });
+  }, [currentStepIndex, draft, draftStorageKey, selectedTraitSlug]);
 
   useEffect(() => {
     const errorStepIndex = findFirstErrorStepIndex(state);
@@ -188,6 +234,7 @@ export function CharacterCreateForm({
         classOptionSlug: option.slug,
       }));
       setStepError(null);
+      updateDraft("className", option.name);
       return;
     }
 
@@ -198,6 +245,7 @@ export function CharacterCreateForm({
         ancestryOptionSlug: option.slug,
       }));
       setStepError(null);
+      updateDraft("ancestry", option.name);
       return;
     }
 
@@ -208,6 +256,7 @@ export function CharacterCreateForm({
         backgroundOptionSlug: option.slug,
       }));
       setStepError(null);
+      updateDraft("background", option.name);
       return;
     }
 
@@ -220,6 +269,12 @@ export function CharacterCreateForm({
     setDraft((currentDraft) => ({
       ...currentDraft,
       roleplayTraitOptionSlug: option.slug,
+      selectedTraitSlug,
+    );
+
+    setSelectedTraitSlug(option.slug);
+    setDraft((currentDraft) => ({
+      ...currentDraft,
       summary:
         !currentDraft.summary.trim() ||
         currentDraft.summary === previousTrait?.summary
@@ -235,6 +290,7 @@ export function CharacterCreateForm({
       draft,
       draft.roleplayTraitOptionSlug,
     );
+    const error = validateStep(currentStep.id, draft, selectedTraitSlug);
 
     if (error) {
       setStepError(error);
@@ -259,6 +315,7 @@ export function CharacterCreateForm({
         draft,
         draft.roleplayTraitOptionSlug,
       );
+      const error = validateStep(currentStep.id, draft, selectedTraitSlug);
 
       if (error) {
         setStepError(error);
@@ -302,6 +359,14 @@ export function CharacterCreateForm({
         type="hidden"
         value={draft.classOptionSlug}
       />
+      onSubmit={clearStoredDraftOnSubmit}
+    >
+      <input name="abilities" type="hidden" value={abilityText} />
+      <input name="ancestry" type="hidden" value={draft.ancestry} />
+      <input name="background" type="hidden" value={draft.background} />
+      <input name="campaignId" type="hidden" value={campaign.id} />
+      <input name="characterId" type="hidden" value="" />
+      <input name="className" type="hidden" value={draft.className} />
       <input name="creationMode" type="hidden" value="guided" />
       <input name="inventoryNotes" type="hidden" value="" />
       <input name="revision" type="hidden" value="" />
@@ -483,6 +548,7 @@ export function CharacterCreateForm({
         <FieldError
           error={state.fieldErrors.roleplayTraitOptionSlug}
           id="roleplayTraitOptionSlug-error"
+          selectedSlug={selectedTraitSlug}
         />
         <TextAreaField
           error={state.fieldErrors.summary}
@@ -946,6 +1012,30 @@ function findOption(
   return options.find((option) => option[field] === value) ?? null;
 }
 
+function validateStep(
+  step: StepId,
+  values: CharacterFormValues,
+  selectedTraitSlug: string,
+) {
+  if (step === "identity" && !values.name.trim()) {
+    return "Give the character a name before continuing.";
+  }
+
+  if (step === "class" && !values.className.trim()) {
+    return "Choose a class before continuing.";
+  }
+
+  if (step === "roots" && (!values.ancestry || !values.background)) {
+    return "Choose both an ancestry or species and a background before continuing.";
+  }
+
+  if (step === "roleplay" && !selectedTraitSlug && !values.summary.trim()) {
+    return "Choose a roleplay direction or write a short first impression.";
+  }
+
+  return null;
+}
+
 function findFirstErrorStepIndex(
   state: ReturnType<typeof createCharacterActionState>,
 ) {
@@ -968,6 +1058,7 @@ function findFirstErrorStepIndex(
     state.fieldErrors.relationships ||
     state.fieldErrors.personalNotes ||
     state.fieldErrors.roleplayTraitOptionSlug
+    state.fieldErrors.personalNotes
   ) {
     return 3;
   }
@@ -997,6 +1088,7 @@ function readStoredDraft(storageKey: string): StoredDraft | null {
 
     if (
       typeof draft.currentStepIndex !== "number" ||
+      typeof draft.selectedTraitSlug !== "string" ||
       !draft.values ||
       typeof draft.values !== "object"
     ) {
@@ -1005,6 +1097,7 @@ function readStoredDraft(storageKey: string): StoredDraft | null {
 
     return {
       currentStepIndex: draft.currentStepIndex,
+      selectedTraitSlug: draft.selectedTraitSlug,
       values: Object.fromEntries(
         Object.entries(draft.values).filter(
           ([, value]) => typeof value === "string",
