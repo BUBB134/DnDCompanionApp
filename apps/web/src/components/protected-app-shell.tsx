@@ -15,11 +15,27 @@ type ProtectedAppShellProps = {
 };
 
 const baseNavigationItems = [
-  { href: "/", label: "Dashboard" },
-  { href: "/campaigns", label: "Campaigns" },
-  { href: "/sessions", label: "Sessions" },
-  { href: "/rules", label: "Rules" },
-  { href: "/entities", label: "Entities" },
+  { description: "Recap, open hooks, and table shortcuts", href: "/", label: "Home" },
+  {
+    description: "Create, join, or switch campaign context",
+    href: "/campaigns",
+    label: "Campaigns",
+  },
+  {
+    description: "Capture notes and continue the latest session",
+    href: "/sessions",
+    label: "Sessions",
+  },
+  {
+    description: "Find conditions and mechanics quickly",
+    href: "/rules",
+    label: "Rules",
+  },
+  {
+    description: "Review people, places, quests, and items",
+    href: "/entities",
+    label: "Entities",
+  },
 ] as const;
 
 export function ProtectedAppShell({
@@ -33,6 +49,7 @@ export function ProtectedAppShell({
         ...baseNavigationItems.slice(0, 2),
         {
           campaignScoped: "characters" as const,
+          description: "Profiles, abilities, spells, and actions",
           href: `/campaigns/${campaign?.id}/characters` as Route,
           label: "Characters",
         },
@@ -59,7 +76,10 @@ export function ProtectedAppShell({
                   <p className="text-xs font-semibold uppercase tracking-wide text-[#8b2f39]">
                     D&D Companion
                   </p>
-                  <h1 className="text-2xl font-semibold leading-tight">Campaign table</h1>
+                  <h1 className="text-2xl font-semibold leading-tight">Your campaign table</h1>
+                  <p className="mt-1 text-sm text-[#625d6d]">
+                    Remember the story. Find what matters. Keep playing.
+                  </p>
                 </div>
               </div>
 
@@ -92,11 +112,12 @@ export function ProtectedAppShell({
               </div>
             </div>
 
-            <div className="lg:hidden">
-              <AppShellNavigation items={navigationItems} mobile />
-            </div>
           </div>
         </header>
+
+        <div className="sticky top-2 z-30 lg:hidden">
+          <AppShellNavigation items={navigationItems} mobile />
+        </div>
 
         <div className="grid gap-5 lg:grid-cols-[240px_minmax(0,1fr)] lg:items-start">
           <aside className="hidden lg:block">

@@ -35,6 +35,21 @@ const statusMessages: Record<string, string> = {
   "password-updated": "Password updated. Sign in with the new password.",
 };
 
+const firstCampaignSteps = [
+  {
+    body: "Use your account on any device and follow campaign invite links safely.",
+    title: "Join the table",
+  },
+  {
+    body: "Create a campaign as DM or step into the one your group already shares.",
+    title: "Choose the campaign",
+  },
+  {
+    body: "Open the latest session, capture notes, and recover the context you need.",
+    title: "Keep the story moving",
+  },
+] as const;
+
 export default async function SignInPage({ searchParams }: SignInPageProps) {
   const params = await searchParams;
   const nextPath = getSafeReturnPath(params?.next);
@@ -58,7 +73,7 @@ export default async function SignInPage({ searchParams }: SignInPageProps) {
       : null;
 
   return (
-    <main className="grid min-h-screen bg-[#f7f1e5] px-4 py-6 text-[#17161f] sm:px-6">
+    <main className="grid min-h-screen bg-[radial-gradient(circle_at_top_left,rgba(31,111,120,0.13),transparent_34%),linear-gradient(180deg,#fbf7ee_0%,#f7f1e5_100%)] px-4 py-6 text-[#17161f] sm:px-6">
       <section className="mx-auto flex w-full max-w-5xl flex-col justify-center gap-8 lg:grid lg:grid-cols-[minmax(0,1fr)_minmax(360px,440px)] lg:items-center">
         <div className="max-w-2xl">
           <Image
@@ -84,6 +99,27 @@ export default async function SignInPage({ searchParams }: SignInPageProps) {
               ? "Create a real account for campaign invitations and access across devices."
               : "Local bootstrap mode: use dm@local.test for the DM view or player@local.test for the player-safe view."}
           </p>
+
+          <div className="mt-7 rounded-2xl border border-[#17161f]/10 bg-white/75 p-4 shadow-sm backdrop-blur sm:p-5">
+            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#8b2f39]">
+              Your first campaign starts here
+            </p>
+            <ol className="mt-4 grid gap-4">
+              {firstCampaignSteps.map((step, index) => (
+                <li className="flex gap-3" key={step.title}>
+                  <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#17161f] text-sm font-semibold text-white">
+                    {index + 1}
+                  </span>
+                  <div>
+                    <p className="font-semibold">{step.title}</p>
+                    <p className="mt-1 text-sm leading-6 text-[#4b4657]">
+                      {step.body}
+                    </p>
+                  </div>
+                </li>
+              ))}
+            </ol>
+          </div>
         </div>
 
         <div className="flex w-full flex-col gap-4">

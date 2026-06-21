@@ -34,10 +34,13 @@ expect(
 const campaignShell = readText("apps/web/src/components/campaign-shell.tsx");
 for (const expectedText of [
   "Latest session",
-  "No latest session yet",
+  "The first session is ready when you are",
   "Entities",
   "No entities yet",
-  "Key actions",
+  "Table shortcuts",
+  "Open latest session",
+  "Start first session",
+  "Browse campaign memory",
   "Player-safe dashboard",
   "DM brief",
 ]) {
@@ -47,8 +50,27 @@ for (const expectedText of [
   );
 }
 expect(
-  campaignShell.includes("canAccessVisibility"),
-  "Campaign shell actions must respect DM-only versus player-safe visibility.",
+  campaignShell.includes("openCampaignAction") &&
+    campaignShell.includes('name="campaignId"') &&
+    campaignShell.includes('name="destination"'),
+  "Campaign tool shortcuts must activate the displayed campaign before redirecting.",
+);
+expect(
+  !campaignShell.includes("Open DM notes") &&
+    !campaignShell.includes("private prep and DM-only context"),
+  "Campaign shortcuts must not describe shared session notes as private DM prep.",
+);
+expect(
+  !campaignShell.includes("Placeholder"),
+  "Campaign dashboard shortcuts must be real actions rather than placeholder cards.",
+);
+
+const campaignActions = readText("apps/web/src/campaigns/actions.ts");
+expect(
+  campaignActions.includes("getCampaignToolDestination") &&
+    campaignActions.includes('["/entities", "/rules", "/sessions"]') &&
+    campaignActions.includes("redirect(destination ??"),
+  "Campaign activation must only redirect to approved campaign tool destinations.",
 );
 
 expect(

@@ -100,8 +100,11 @@ expect(
 
 expect(
   readText("apps/web/src/components/campaign-shell.tsx").includes(
-    "Open session editor",
-  ),
+    "destination: sessionHref",
+  ) &&
+    readText("apps/web/src/components/campaign-shell.tsx").includes(
+      "Start first session",
+    ),
   "Campaign shell should route users into the session editor.",
 );
 

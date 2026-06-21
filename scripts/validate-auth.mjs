@@ -93,6 +93,20 @@ expect(
   signInPage.includes('name="next"'),
   "Sign-in page must submit the safe return path.",
 );
+expect(
+  signInPage.includes("Your first campaign starts here") &&
+    signInPage.includes("Keep the story moving"),
+  "Sign-in should explain the path from account access to the first campaign session.",
+);
+
+const campaignAccessState = readText(
+  "apps/web/src/components/campaign-access-state.tsx",
+);
+expect(
+  campaignAccessState.includes('href="/campaigns"') &&
+    campaignAccessState.includes("Create or open a campaign"),
+  "Users without campaign access should receive an actionable campaign onboarding path.",
+);
 
 const actions = readText("apps/web/src/auth/actions.ts");
 expect(
