@@ -1,0 +1,91 @@
+insert into rule_snippets (
+  slug,
+  category,
+  content_key,
+  source,
+  source_version,
+  title,
+  summary,
+  body,
+  aliases,
+  tags,
+  visibility
+) values
+  (
+    'action-dash',
+    'core-mechanic',
+    'core-mechanic.action.dash',
+    'dnd-5e-srd-mvp',
+    '2026-05-mvp',
+    'Dash',
+    'Trade your action for extra movement this turn.',
+    'Use your action to gain extra movement for the turn, usually equal to your current speed after modifiers.',
+    array['dash action', 'dash'],
+    array['core-mechanic', 'common-action', 'action-hotbar', 'action'],
+    'player-safe'
+  ),
+  (
+    'action-disengage',
+    'core-mechanic',
+    'core-mechanic.action.disengage',
+    'dnd-5e-srd-mvp',
+    '2026-05-mvp',
+    'Disengage',
+    'Move away without normally inviting opportunity attacks.',
+    'Use your action to move more carefully so your movement this turn does not normally invite opportunity attacks.',
+    array['disengage action', 'disengage'],
+    array['core-mechanic', 'common-action', 'action-hotbar', 'action'],
+    'player-safe'
+  ),
+  (
+    'action-dodge',
+    'core-mechanic',
+    'core-mechanic.action.dodge',
+    'dnd-5e-srd-mvp',
+    '2026-05-mvp',
+    'Dodge',
+    'Focus on defence until the start of your next turn.',
+    'Use your action to focus on defence. Visible attackers have a harder time hitting you, and you are better positioned against avoidable effects until your next turn while you can still act.',
+    array['dodge action', 'dodge'],
+    array['core-mechanic', 'common-action', 'action-hotbar', 'action'],
+    'player-safe'
+  ),
+  (
+    'action-help',
+    'core-mechanic',
+    'core-mechanic.action.help',
+    'dnd-5e-srd-mvp',
+    '2026-05-mvp',
+    'Help',
+    'Assist an ally with a task or nearby attack.',
+    'Use your action to assist an ally with a task or create a useful opening against a nearby foe when the situation allows it.',
+    array['help action', 'help'],
+    array['core-mechanic', 'common-action', 'action-hotbar', 'action'],
+    'player-safe'
+  ),
+  (
+    'action-hide',
+    'core-mechanic',
+    'core-mechanic.action.hide',
+    'dnd-5e-srd-mvp',
+    '2026-05-mvp',
+    'Hide',
+    'Try to become unseen when the surroundings allow it.',
+    'Use your action to try to become unseen when your position, cover, and surroundings make hiding possible.',
+    array['hide action', 'hide'],
+    array['core-mechanic', 'common-action', 'action-hotbar', 'action'],
+    'player-safe'
+  )
+on conflict (slug) where campaign_id is null do update
+set
+  category = excluded.category,
+  content_key = excluded.content_key,
+  source = excluded.source,
+  source_version = excluded.source_version,
+  title = excluded.title,
+  summary = excluded.summary,
+  body = excluded.body,
+  aliases = excluded.aliases,
+  tags = excluded.tags,
+  visibility = excluded.visibility,
+  updated_at = now();

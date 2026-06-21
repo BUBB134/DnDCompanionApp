@@ -117,6 +117,7 @@ packages/
 - `docs/engineering/campaign-memory-retrieval.md`
 - `docs/engineering/campaign-invites.md`
 - `docs/engineering/campaign-onboarding.md`
+- `docs/engineering/character-action-hotbar.md`
 - `docs/engineering/character-spellbook.md`
 - `docs/engineering/domain-content.md`
 - `docs/engineering/entity-backlinks.md`
