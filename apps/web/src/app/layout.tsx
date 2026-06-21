@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { connection } from "next/server";
 import { Analytics } from "@vercel/analytics/next";
+import { SpeedInsights } from "@vercel/speed-insights/next";
 import { AuthProvider } from "@/auth/provider";
 import { getAuthSession } from "@/auth/server";
 import { reportRuntimeEnvironmentIssues } from "@/env/runtime";
@@ -42,6 +43,7 @@ export default async function RootLayout({
       <body>
         <AuthProvider initialSession={session}>{children}</AuthProvider>
         <Analytics />
+        <SpeedInsights />
       </body>
     </html>
   );
