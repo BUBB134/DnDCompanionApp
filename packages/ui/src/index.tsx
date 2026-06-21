@@ -14,6 +14,7 @@ type StatusPillProps = {
 
 type EmptyStateProps = {
   body: string;
+  children?: ReactNode;
   title: string;
 };
 
@@ -49,11 +50,22 @@ export function StatusPill({ children, tone = "teal" }: StatusPillProps) {
   );
 }
 
-export function EmptyState({ body, title }: EmptyStateProps) {
+export function EmptyState({ body, children, title }: EmptyStateProps) {
   return (
-    <div className="rounded-lg border border-dashed border-[#17161f]/20 bg-white p-4">
-      <p className="font-semibold">{title}</p>
-      <p className="mt-1 text-sm leading-6 text-[#4b4657]">{body}</p>
+    <div className="rounded-xl border border-dashed border-[#17161f]/20 bg-[#fffaf0]/70 p-5">
+      <div className="flex items-start gap-3">
+        <span
+          aria-hidden="true"
+          className="mt-0.5 inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-[#c3943e]/35 bg-white text-sm font-bold text-[#8b2f39]"
+        >
+          ✦
+        </span>
+        <div className="min-w-0">
+          <p className="font-semibold">{title}</p>
+          <p className="mt-1 text-sm leading-6 text-[#4b4657]">{body}</p>
+        </div>
+      </div>
+      {children ? <div className="mt-4 flex flex-wrap gap-2">{children}</div> : null}
     </div>
   );
 }

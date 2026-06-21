@@ -145,7 +145,7 @@ for (const expectedText of [
 
 expect(
   readText("apps/web/src/components/campaign-shell.tsx").includes(
-    "Open characters",
+    "View characters",
   ),
   "Campaign dashboard must link to character companions.",
 );

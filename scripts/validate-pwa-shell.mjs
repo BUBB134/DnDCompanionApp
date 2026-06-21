@@ -55,10 +55,19 @@ expect(
   navigation.includes('aria-current={isActive ? "page" : undefined}'),
   "Shell navigation must expose the active page for accessibility.",
 );
+expect(
+  navigation.includes("description") &&
+    navigation.includes("border-[#17161f] bg-[#17161f] text-white"),
+  "Shell navigation must provide route context and a high-contrast active state.",
+);
 
 const shell = readText("apps/web/src/components/protected-app-shell.tsx");
 expect(shell.includes("AppShellNavigation"), "Protected shell must use the shared navigation.");
 expect(shell.includes("lg:hidden"), "Protected shell must render a mobile navigation state.");
+expect(
+  shell.includes("sticky top-2 z-30 lg:hidden"),
+  "Mobile navigation must remain reachable while using the campaign table.",
+);
 
 const protectedLoading = readText("apps/web/src/app/(protected)/loading.tsx");
 expect(

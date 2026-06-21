@@ -34,10 +34,13 @@ expect(
 const campaignShell = readText("apps/web/src/components/campaign-shell.tsx");
 for (const expectedText of [
   "Latest session",
-  "No latest session yet",
+  "The first session is ready when you are",
   "Entities",
   "No entities yet",
-  "Key actions",
+  "Table shortcuts",
+  "Open latest session",
+  "Start first session",
+  "Browse campaign memory",
   "Player-safe dashboard",
   "DM brief",
 ]) {
@@ -49,6 +52,10 @@ for (const expectedText of [
 expect(
   campaignShell.includes("canAccessVisibility"),
   "Campaign shell actions must respect DM-only versus player-safe visibility.",
+);
+expect(
+  !campaignShell.includes("Placeholder"),
+  "Campaign dashboard shortcuts must be real actions rather than placeholder cards.",
 );
 
 expect(
