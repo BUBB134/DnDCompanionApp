@@ -39,9 +39,14 @@ see `docs/engineering/character-spellbook.md`.
   class, ancestry/species, background, roleplay direction, and review.
 - `/campaigns/[campaignId]/characters/[characterId]` shows either the full
   owner/DM profile or a player-safe summary.
+- `/campaigns/[campaignId]/characters/[characterId]/level-up` guides owners and
+  DMs through a one-level progression and records its history.
 
 The campaign dashboard and protected navigation link into the list route for
 saved campaigns.
 
 See `docs/engineering/guided-character-creation.md` for the creation catalog,
 draft recovery, and generated ability-summary contract.
+
+See `docs/engineering/guided-character-level-up.md` for the transactional
+progression, history, action-bar, and retrieval contracts.

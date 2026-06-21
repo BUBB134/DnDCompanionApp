@@ -3,6 +3,7 @@ import type {
   CampaignCharacterSummary,
   CampaignCharacterView,
   CampaignRole,
+  CharacterLevelProgression,
   Visibility,
 } from "@dnd/types";
 import {
@@ -10,7 +11,11 @@ import {
   withDatabaseTransaction,
   type DatabaseQueryable,
 } from "@dnd/db";
-import type { CharacterMutationInput } from "@/characters/manage-character";
+import {
+  CHARACTER_ABILITY_MAX_COUNT,
+  type CharacterMutationInput,
+} from "@/characters/manage-character";
+import type { CharacterLevelUpInput } from "@/characters/manage-level-up";
 
 type CharacterSummaryRow = {
   ancestry: string | null;
@@ -21,6 +26,7 @@ type CharacterSummaryRow = {
   level: number;
   name: string;
   owner_name: string | null;
+  progressions: unknown;
   summary: string;
   visibility: Visibility;
 };
@@ -41,6 +47,10 @@ type CharacterIdRow = {
   id: string;
 };
 
+type AbilityCountRow = {
+  ability_count: number;
+};
+
 export async function listCharacterSummariesForUser(
   userId: string,
   campaignId: string,
@@ -58,7 +68,38 @@ export async function listCharacterSummariesForUser(
         characters.background,
         characters.visibility,
         users.name as owner_name,
-        characters.owner_user_id = $1 as is_owned_by_current_user
+        characters.owner_user_id = $1 as is_owned_by_current_user,
+        case
+          when campaign_memberships.role = 'dm'
+            or characters.owner_user_id = $1
+          then coalesce(
+            (
+              select jsonb_agg(
+                jsonb_build_object(
+                  'characterId', character_level_progressions.character_id,
+                  'createdAt', to_char(
+                    character_level_progressions.created_at at time zone 'UTC',
+                    'YYYY-MM-DD"T"HH24:MI:SS.US"Z"'
+                  ),
+                  'createdByName', progression_users.name,
+                  'features', character_level_progressions.added_abilities,
+                  'fromLevel', character_level_progressions.from_level,
+                  'id', character_level_progressions.id,
+                  'summary', character_level_progressions.summary,
+                  'toLevel', character_level_progressions.to_level
+                )
+                order by character_level_progressions.to_level desc
+              )
+              from character_level_progressions
+              left join users progression_users
+                on progression_users.id =
+                  character_level_progressions.created_by_user_id
+              where character_level_progressions.character_id = characters.id
+            ),
+            '[]'::jsonb
+          )
+          else '[]'::jsonb
+        end as progressions
       from characters
       inner join campaign_memberships
         on campaign_memberships.campaign_id = characters.campaign_id
@@ -141,6 +182,37 @@ export async function getCharacterForUser(
           then characters.personal_notes
           else ''
         end as personal_notes,
+        case
+          when campaign_memberships.role = 'dm'
+            or characters.owner_user_id = $1
+          then coalesce(
+            (
+              select jsonb_agg(
+                jsonb_build_object(
+                  'characterId', character_level_progressions.character_id,
+                  'createdAt', to_char(
+                    character_level_progressions.created_at at time zone 'UTC',
+                    'YYYY-MM-DD"T"HH24:MI:SS.US"Z"'
+                  ),
+                  'createdByName', progression_users.name,
+                  'features', character_level_progressions.added_abilities,
+                  'fromLevel', character_level_progressions.from_level,
+                  'id', character_level_progressions.id,
+                  'summary', character_level_progressions.summary,
+                  'toLevel', character_level_progressions.to_level
+                )
+                order by character_level_progressions.to_level desc
+              )
+              from character_level_progressions
+              left join users progression_users
+                on progression_users.id =
+                  character_level_progressions.created_by_user_id
+              where character_level_progressions.character_id = characters.id
+            ),
+            '[]'::jsonb
+          )
+          else '[]'::jsonb
+        end as progressions,
         coalesce(
           jsonb_agg(
             jsonb_build_object(
@@ -208,6 +280,15 @@ export async function updateCharacterForUser(
       input,
       expectedRevision,
     ),
+  );
+}
+
+export async function completeCharacterLevelUpForUser(
+  userId: string,
+  input: CharacterLevelUpInput,
+) {
+  return withDatabaseTransaction((client) =>
+    completeCharacterLevelUpWithClient(client, userId, input),
   );
 }
 
@@ -324,6 +405,7 @@ async function updateCharacterWithClient(
           campaign_memberships.role = 'dm'
           or characters.owner_user_id = $1
         )
+        and characters.level = $7
         and characters.updated_at = $16::timestamptz
       returning characters.id
     `,
@@ -350,6 +432,114 @@ async function updateCharacterWithClient(
       client,
     ),
     "The updated character could not be loaded.",
+  );
+}
+
+async function completeCharacterLevelUpWithClient(
+  client: DatabaseQueryable,
+  userId: string,
+  input: CharacterLevelUpInput,
+) {
+  const result = await client.query<CharacterIdRow>(
+    `
+      update characters
+      set
+        level = $4,
+        updated_at = now()
+      from campaign_memberships
+      where characters.id = $3
+        and characters.campaign_id = $2
+        and campaign_memberships.campaign_id = characters.campaign_id
+        and campaign_memberships.user_id = $1
+        and (
+          campaign_memberships.role = 'dm'
+          or characters.owner_user_id = $1
+        )
+        and characters.level = $5
+        and $4 = characters.level + 1
+        and characters.level < 20
+        and characters.updated_at = $6::timestamptz
+      returning characters.id
+    `,
+    [
+      userId,
+      input.campaignId,
+      input.characterId,
+      input.targetLevel,
+      input.currentLevel,
+      input.expectedRevision,
+    ],
+  );
+  const characterId = requireCharacterId(
+    result.rows[0],
+    "This character changed after you opened the level-up flow, is already level 20, or you no longer have edit access. Reload and try again.",
+  );
+  const abilityCountResult = await client.query<AbilityCountRow>(
+    `
+      select count(*)::integer as ability_count
+      from ability_summaries
+      where character_id = $1
+    `,
+    [characterId],
+  );
+  const currentAbilityCount =
+    abilityCountResult.rows[0]?.ability_count ?? 0;
+
+  if (
+    currentAbilityCount + input.abilities.length >
+    CHARACTER_ABILITY_MAX_COUNT
+  ) {
+    throw new Error(
+      `This character can keep up to ${CHARACTER_ABILITY_MAX_COUNT} ability reminders. Remove an existing reminder before completing this level-up.`,
+    );
+  }
+
+  await client.query(
+    `
+      insert into character_level_progressions (
+        character_id,
+        created_by_user_id,
+        from_level,
+        to_level,
+        summary,
+        added_abilities
+      )
+      values ($1, $2, $3, $4, $5, $6::jsonb)
+    `,
+    [
+      characterId,
+      userId,
+      input.currentLevel,
+      input.targetLevel,
+      input.summary,
+      JSON.stringify(input.abilities),
+    ],
+  );
+
+  for (const ability of input.abilities) {
+    await client.query(
+      `
+        insert into ability_summaries (
+          character_id,
+          name,
+          summary,
+          trigger,
+          visibility
+        )
+        values ($1, $2, $3, $4, 'player-safe')
+      `,
+      [characterId, ability.name, ability.summary, ability.trigger],
+    );
+  }
+
+  return requireFullCharacter(
+    await getCharacterForUser(
+      userId,
+      input.campaignId,
+      characterId,
+      client,
+    ),
+    "The levelled character could not be loaded.",
   );
 }
 
@@ -453,9 +643,23 @@ function mapCharacterSummaryRow(
     level: row.level,
     name: row.name,
     ownerName: row.owner_name,
+    progressions: mapProgressions(row.progressions),
     summary: row.summary,
     visibility: row.visibility,
   };
+}
+
+function mapProgressions(value: unknown): CharacterLevelProgression[] {
+  const progressions = typeof value === "string" ? parseJson(value) : value;
+
+  if (!Array.isArray(progressions)) {
+    return [];
+  }
+
+  return progressions.flatMap(
+    (progression): CharacterLevelProgression[] =>
+      isCharacterLevelProgression(progression) ? [progression] : [],
+  );
 }
 
 function mapCharacterDetailRow(row: CharacterDetailRow): CampaignCharacterView {
@@ -513,6 +717,43 @@ function isAbilitySummary(value: unknown): value is AbilitySummary {
     typeof ability.summary === "string" &&
     (typeof ability.trigger === "string" || ability.trigger === null) &&
     (ability.visibility === "dm-only" || ability.visibility === "player-safe")
+  );
+}
+
+function isCharacterLevelProgression(
+  value: unknown,
+): value is CharacterLevelProgression {
+  if (!value || typeof value !== "object") {
+    return false;
+  }
+
+  const progression = value as Record<string, unknown>;
+
+  return (
+    typeof progression.characterId === "string" &&
+    typeof progression.createdAt === "string" &&
+    (typeof progression.createdByName === "string" ||
+      progression.createdByName === null) &&
+    Array.isArray(progression.features) &&
+    progression.features.every(isLevelUpFeature) &&
+    typeof progression.fromLevel === "number" &&
+    typeof progression.id === "string" &&
+    typeof progression.summary === "string" &&
+    typeof progression.toLevel === "number"
+  );
+}
+
+function isLevelUpFeature(value: unknown) {
+  if (!value || typeof value !== "object") {
+    return false;
+  }
+
+  const feature = value as Record<string, unknown>;
+
+  return (
+    typeof feature.name === "string" &&
+    typeof feature.summary === "string" &&
+    (typeof feature.trigger === "string" || feature.trigger === null)
   );
 }
 

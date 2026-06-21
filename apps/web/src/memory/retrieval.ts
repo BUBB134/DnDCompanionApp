@@ -8,6 +8,7 @@ import type {
   CampaignMemoryResult,
   CampaignMemorySourceType,
   CampaignSession,
+  CharacterLevelProgression,
   RuleSnippet,
 } from "@dnd/types";
 import { canAccessVisibility } from "@dnd/types";
@@ -57,9 +58,19 @@ export function createCampaignMemoryDocuments({
       .map((rule) => createRuleMemoryDocument(campaign, rule)),
     ...characters
       .filter((character) =>
+        character.isOwnedByCurrentUser ||
         canAccessVisibility(campaign.role, character.visibility),
       )
-      .map((character) => createCharacterMemoryDocument(campaign, character)),
+      .flatMap((character) => [
+        createCharacterMemoryDocument(campaign, character),
+        ...(character.progressions ?? []).map((progression) =>
+          createCharacterProgressionMemoryDocument(
+            campaign,
+            character,
+            progression,
+          ),
+        ),
+      ]),
   ];
 }
 
@@ -335,6 +346,54 @@ function createCharacterMemoryDocument(
     sourceType: "character",
     summary: character.summary || classLine,
     title: character.name,
+    visibility: character.visibility,
+  };
+}
+
+function createCharacterProgressionMemoryDocument(
+  campaign: Campaign,
+  character: CampaignCharacterSummary,
+  progression: CharacterLevelProgression,
+): CampaignMemoryDocument {
+  const featureSummary = progression.features
+    .map((feature) =>
+      [feature.name, feature.summary, feature.trigger]
+        .filter(Boolean)
+        .join(": "),
+    )
+    .join("\n");
+
+  return {
+    body: [progression.summary, featureSummary].filter(Boolean).join("\n\n"),
+    campaignId: campaign.id,
+    grounding: createGrounding(
+      "character",
+      progression.id,
+      `${character.name} level ${progression.toLevel}`,
+      "character_level_progressions",
+    ),
+    id: `character-progression:${progression.id}`,
+    keywords: [
+      character.name,
+      character.className ?? "",
+      `level ${progression.toLevel}`,
+      progression.summary,
+      ...progression.features.flatMap((feature) => [
+        feature.name,
+        feature.summary,
+        feature.trigger ?? "",
+      ]),
+    ],
+    metadata: {
+      characterId: character.id,
+      fromLevel: progression.fromLevel,
+      toLevel: progression.toLevel,
+    },
+    sourceId: character.id,
+    sourceType: "character",
+    summary: progression.summary,
+    title: `${character.name} reached level ${progression.toLevel}`,
+    updatedAt: progression.createdAt,
     visibility: character.visibility,
   };
 }

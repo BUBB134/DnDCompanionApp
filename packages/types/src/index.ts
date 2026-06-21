@@ -31,6 +31,8 @@ export type {
   CampaignCharacterSummary,
   CampaignCharacterSummaryView,
   CampaignCharacterView,
+  CharacterLevelProgression,
+  CharacterLevelProgressionFeature,
   CharacterSpell,
   CharacterSpellbook,
   CharacterSpellSlot,

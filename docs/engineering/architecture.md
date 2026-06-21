@@ -46,6 +46,14 @@ owner/DM access model remains aligned with private character details, and the
 shared contract is intended for the future action hotbar. See
 `docs/engineering/character-spellbook.md`.
 
+## Character progression
+
+Guided level-ups advance one level transactionally, persist an inspectable
+history event, and append concise feature reminders to the existing character
+ability surface. Progression history remains owner/DM scoped and is available
+to grounded campaign-memory retrieval. See
+`docs/engineering/guided-character-level-up.md`.
+
 ## Campaign memory retrieval
 Grounded AI and recap flows should retrieve campaign memory through the
 deterministic corpus in `apps/web/src/memory`. It combines session notes,

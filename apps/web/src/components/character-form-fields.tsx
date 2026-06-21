@@ -45,17 +45,30 @@ export function CharacterFormFields({
           required
           value={state.values.name}
         />
-        <TextField
-          error={state.fieldErrors.level}
-          fieldPrefix={fieldPrefix}
-          label="Level"
-          max={20}
-          min={1}
-          name="level"
-          required
-          type="number"
-          value={state.values.level}
-        />
+        {compact ? (
+          <div>
+            <input name="level" type="hidden" value={state.values.level} />
+            <p className="text-sm font-semibold text-[#17161f]">Level</p>
+            <p className="mt-2 flex min-h-11 items-center rounded-md border border-[#17161f]/10 bg-[#f2efe8] px-3 text-sm font-semibold text-[#4b4657]">
+              Level {state.values.level}
+            </p>
+            <p className="mt-1 text-xs leading-5 text-[#6d6578]">
+              Use the guided level-up flow to record progression history.
+            </p>
+          </div>
+        ) : (
+          <TextField
+            error={state.fieldErrors.level}
+            fieldPrefix={fieldPrefix}
+            label="Level"
+            max={20}
+            min={1}
+            name="level"
+            required
+            type="number"
+            value={state.values.level}
+          />
+        )}
       </div>
 
       <div className="grid gap-4 md:grid-cols-3">

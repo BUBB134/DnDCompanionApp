@@ -164,6 +164,7 @@ export type CampaignCharacterSummary = {
   level: number;
   name: string;
   ownerName?: string | null;
+  progressions?: CharacterLevelProgression[];
   summary: string;
   visibility: Visibility;
 };
@@ -212,6 +213,23 @@ export type AbilitySummary = {
   summary: string;
   trigger?: string | null;
   visibility: Visibility;
+};
+
+export type CharacterLevelProgressionFeature = {
+  name: string;
+  summary: string;
+  trigger?: string | null;
+};
+
+export type CharacterLevelProgression = {
+  characterId: string;
+  createdAt: string;
+  createdByName?: string | null;
+  features: CharacterLevelProgressionFeature[];
+  fromLevel: number;
+  id: string;
+  summary: string;
+  toLevel: number;
 };
 
 export type SpellDefinition = {

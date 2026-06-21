@@ -15,6 +15,7 @@ campaign data into cited retrieval results.
 - campaign entities, including linked session and mention backlink context
 - rule snippets
 - character summaries
+- owner/DM-authorized character progression milestones and added features
 
 The current implementation is lexical and intentionally inspectable. It scores
 title, summary, body, aliases, tags, and reference labels so the MVP can support
