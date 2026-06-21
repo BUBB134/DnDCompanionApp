@@ -3,6 +3,7 @@ import type {
   CharacterLevelProgressionFeature,
 } from "@dnd/types";
 import { isDatabaseCampaignId, isDatabaseId } from "@/campaigns/database-id";
+import { CHARACTER_ABILITY_MAX_COUNT } from "@/characters/manage-character";
 
 const LEVEL_UP_SUMMARY_MAX_LENGTH = 1000;
 const LEVEL_UP_FEATURE_MAX_COUNT = 6;
@@ -181,6 +182,18 @@ export function validateLevelUpValues(
 
   if (abilityResult.error) {
     fieldErrors.abilities = abilityResult.error;
+  } else if (
+    character.abilities.length + abilityResult.features.length >
+    CHARACTER_ABILITY_MAX_COUNT
+  ) {
+    const remainingAbilityCount = Math.max(
+      0,
+      CHARACTER_ABILITY_MAX_COUNT - character.abilities.length,
+    );
+    fieldErrors.abilities =
+      remainingAbilityCount === 0
+        ? `Remove an existing ability reminder before levelling up. Characters can keep up to ${CHARACTER_ABILITY_MAX_COUNT}.`
+        : `Add ${remainingAbilityCount} new feature reminder${remainingAbilityCount === 1 ? "" : "s"} or fewer so the character stays within the ${CHARACTER_ABILITY_MAX_COUNT}-ability limit.`;
   }
 
   return {

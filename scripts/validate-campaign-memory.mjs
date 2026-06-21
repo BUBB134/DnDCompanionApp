@@ -342,9 +342,11 @@ if (hasTypeScriptRuntime) {
   )[0];
   expect(
     progressionResult?.title === "Mira reached level 3" &&
+      progressionResult.sourceId === "character-1" &&
+      progressionResult.grounding.sourceId === "progression-1" &&
       progressionResult.grounding.sourcePath ===
         "character_level_progressions",
-    "Campaign memory retrieval must ground character progression features in their history rows.",
+    "Progression memory must link through the character id while grounding the progression row.",
   );
 
   const campaignRepositoryStubUrl = moduleDataUrl(`

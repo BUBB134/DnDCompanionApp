@@ -55,6 +55,8 @@ for (const snippet of [
   "characters.owner_user_id = $1",
   "and $4 = characters.level + 1",
   "characters.updated_at = $6::timestamptz",
+  "select count(*)::integer as ability_count",
+  "CHARACTER_ABILITY_MAX_COUNT",
   "insert into character_level_progressions",
   "insert into ability_summaries",
   "added_abilities",
@@ -168,10 +170,12 @@ async function validateLevelUpHelpers() {
       fileName: "apps/web/src/campaigns/database-id.ts",
     }).outputText,
   );
-  const source = readText("apps/web/src/characters/manage-level-up.ts").replaceAll(
-    "@/campaigns/database-id",
-    databaseIdUrl,
+  const manageCharacterUrl = moduleDataUrl(
+    "export const CHARACTER_ABILITY_MAX_COUNT = 12;",
   );
+  const source = readText("apps/web/src/characters/manage-level-up.ts")
+    .replaceAll("@/campaigns/database-id", databaseIdUrl)
+    .replaceAll("@/characters/manage-character", manageCharacterUrl);
   const compiled = typescript.transpileModule(source, {
     compilerOptions: {
       module: typescript.ModuleKind.ES2022,
@@ -244,6 +248,31 @@ async function validateLevelUpHelpers() {
     maxLevel.fieldErrors.currentLevel ===
       "This character is already level 20.",
     "Level-up validation must enforce the level 20 cap.",
+  );
+
+  const abilityLimit = levelUp.validateLevelUpValues(
+    {
+      ...values,
+      abilities:
+        "Extra Attack | Attack twice. | 1 action\nIndomitable | Reroll a failed save. | Once per rest",
+    },
+    {
+      ...character,
+      abilities: Array.from({ length: 11 }, (_, index) => ({
+        characterId,
+        id: `ability-${index}`,
+        name: `Ability ${index}`,
+        summary: "Existing reminder.",
+        trigger: null,
+        visibility: "player-safe",
+      })),
+    },
+  );
+  expect(
+    abilityLimit.fieldErrors.abilities?.includes(
+      "Add 1 new feature reminder or fewer",
+    ),
+    "Level-up validation must keep appended reminders within the ordinary edit cap.",
   );
 
   let repositoryInput = null;

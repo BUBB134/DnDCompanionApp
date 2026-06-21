@@ -11,7 +11,10 @@ import {
   withDatabaseTransaction,
   type DatabaseQueryable,
 } from "@dnd/db";
-import type { CharacterMutationInput } from "@/characters/manage-character";
+import {
+  CHARACTER_ABILITY_MAX_COUNT,
+  type CharacterMutationInput,
+} from "@/characters/manage-character";
 import type { CharacterLevelUpInput } from "@/characters/manage-level-up";
 
 type CharacterSummaryRow = {
@@ -42,6 +45,10 @@ type CharacterDetailRow = CharacterSummaryRow & {
 
 type CharacterIdRow = {
   id: string;
+};
+
+type AbilityCountRow = {
+  ability_count: number;
 };
 
 export async function listCharacterSummariesForUser(
@@ -467,6 +474,25 @@ async function completeCharacterLevelUpWithClient(
     result.rows[0],
     "This character changed after you opened the level-up flow, is already level 20, or you no longer have edit access. Reload and try again.",
   );
+  const abilityCountResult = await client.query<AbilityCountRow>(
+    `
+      select count(*)::integer as ability_count
+      from ability_summaries
+      where character_id = $1
+    `,
+    [characterId],
+  );
+  const currentAbilityCount =
+    abilityCountResult.rows[0]?.ability_count ?? 0;
+
+  if (
+    currentAbilityCount + input.abilities.length >
+    CHARACTER_ABILITY_MAX_COUNT
+  ) {
+    throw new Error(
+      `This character can keep up to ${CHARACTER_ABILITY_MAX_COUNT} ability reminders. Remove an existing reminder before completing this level-up.`,
+    );
+  }
 
   await client.query(
     `

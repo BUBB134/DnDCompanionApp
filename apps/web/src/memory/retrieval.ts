@@ -389,7 +389,7 @@ function createCharacterProgressionMemoryDocument(
       fromLevel: progression.fromLevel,
       toLevel: progression.toLevel,
     },
-    sourceId: progression.id,
+    sourceId: character.id,
     sourceType: "character",
     summary: progression.summary,
     title: `${character.name} reached level ${progression.toLevel}`,
