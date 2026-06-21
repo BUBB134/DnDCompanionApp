@@ -5,16 +5,22 @@ import type {
 import type { Route } from "next";
 import Link from "next/link";
 import { EmptyState, StatusPill, Surface } from "@dnd/ui";
+import type { CharacterActionHotbarModel } from "@/characters/action-hotbar";
+import { CharacterActionHotbar } from "@/components/character-action-hotbar";
 import { CharacterEditForm } from "@/components/character-edit-form";
 
 type CharacterProfileProps = {
   campaign: Campaign;
   character: CampaignCharacterView;
+  hotbar: CharacterActionHotbarModel | null;
+  hotbarLoadNotice: string | null;
 };
 
 export function CharacterProfile({
   campaign,
   character,
+  hotbar,
+  hotbarLoadNotice,
 }: CharacterProfileProps) {
   return (
     <div className="grid gap-5">
@@ -73,16 +79,25 @@ export function CharacterProfile({
             </Surface>
           ) : (
             <>
+              {hotbar ? (
+                <CharacterActionHotbar
+                  campaignId={campaign.id}
+                  characterId={character.id}
+                  hotbar={hotbar}
+                  loadNotice={hotbarLoadNotice}
+                />
+              ) : null}
+
               <Surface className="p-5">
                 <p className="text-sm font-semibold uppercase tracking-wide text-[#8b2f39]">
-                  At-table magic
+                  Spellbook setup
                 </p>
                 <h2 className="mt-1 text-lg font-semibold">
-                  Spellbook and slots
+                  Manage spells and slots
                 </h2>
                 <p className="mt-2 text-sm leading-6 text-[#4b4657]">
-                  Open the character&apos;s spellbook to track known or prepared
-                  spells and mark spell slots used or restored during play.
+                  Configure the spells and slot pools that feed the live action
+                  bar above.
                 </p>
                 <Link
                   className="mt-4 inline-flex min-h-11 items-center rounded-md bg-[#17161f] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#2d2937] focus:outline-none focus:ring-2 focus:ring-[#8b2f39] focus:ring-offset-2"
