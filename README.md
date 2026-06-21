@@ -113,6 +113,7 @@ packages/
 - `docs/engineering/architecture.md`
 - `docs/engineering/first-campaign-beta-readiness.md`
 - `docs/engineering/guided-character-creation.md`
+- `docs/engineering/guided-character-level-up.md`
 - `docs/engineering/branch_protection.md`
 - `docs/engineering/campaign-memory-retrieval.md`
 - `docs/engineering/campaign-invites.md`

@@ -213,10 +213,49 @@ if (hasTypeScriptRuntime) {
     {
       className: "Wizard",
       id: "character-1",
+      isOwnedByCurrentUser: true,
       level: 3,
       name: "Mira",
+      progressions: [
+        {
+          characterId: "character-1",
+          createdAt: "2026-05-07T00:00:00.000Z",
+          createdByName: "Mira Player",
+          features: [
+            {
+              name: "Arcane Recovery",
+              summary: "Recover a small amount of spell-slot power.",
+              trigger: "Short rest",
+            },
+          ],
+          fromLevel: 2,
+          id: "progression-1",
+          summary: "Mira learned to recover magical focus between encounters.",
+          toLevel: 3,
+        },
+      ],
       summary: "Keeps concentration under pressure.",
       visibility: "player-safe",
+    },
+    {
+      className: "Rogue",
+      id: "character-owned-private",
+      isOwnedByCurrentUser: true,
+      level: 2,
+      name: "Nyx",
+      progressions: [],
+      summary: "Keeps a hidden pact.",
+      visibility: "dm-only",
+    },
+    {
+      className: "Warlock",
+      id: "character-hidden",
+      isOwnedByCurrentUser: false,
+      level: 2,
+      name: "Hidden rival",
+      progressions: [],
+      summary: "Should remain hidden from this player.",
+      visibility: "dm-only",
     },
   ];
   const documents = retrievalModule.createCampaignMemoryDocuments({
@@ -243,16 +282,17 @@ if (hasTypeScriptRuntime) {
   }
 
   expect(
-    documents.every((document) => document.visibility === "player-safe") &&
-      !documents.some((document) => document.title.includes("Lantern ward")) &&
-      !documents.some((document) => document.title.includes("Secret rule")),
-    "Campaign memory corpus must filter DM-only documents for player access.",
+    !documents.some((document) => document.title.includes("Lantern ward")) &&
+      !documents.some((document) => document.title.includes("Secret rule")) &&
+      documents.some((document) => document.title === "Nyx") &&
+      !documents.some((document) => document.title === "Hidden rival"),
+    "Campaign memory corpus must keep owner-authorized characters while filtering unrelated DM-only context.",
   );
 
   const results = retrievalModule.retrieveCampaignMemory(
     "Captain Thorn prone concentration Mira",
     documents,
-    { limit: 6 },
+    { limit: 10 },
   );
   expect(
     results.length >= 4 &&
@@ -295,6 +335,16 @@ if (hasTypeScriptRuntime) {
     retrievalModule.retrieveCampaignMemory("Lantern ward secret", documents)
       .length === 0,
     "Campaign memory retrieval must not return filtered DM-only content.",
+  );
+  const progressionResult = retrievalModule.retrieveCampaignMemory(
+    "Arcane Recovery",
+    documents,
+  )[0];
+  expect(
+    progressionResult?.title === "Mira reached level 3" &&
+      progressionResult.grounding.sourcePath ===
+        "character_level_progressions",
+    "Campaign memory retrieval must ground character progression features in their history rows.",
   );
 
   const campaignRepositoryStubUrl = moduleDataUrl(`

@@ -89,6 +89,72 @@ export function CharacterProfile({
               ) : null}
 
               <Surface className="p-5">
+                <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                  <div>
+                    <p className="text-sm font-semibold uppercase tracking-wide text-[#8b2f39]">
+                      Character progression
+                    </p>
+                    <h2 className="mt-1 text-lg font-semibold">
+                      Level-up history
+                    </h2>
+                    <p className="mt-2 text-sm leading-6 text-[#4b4657]">
+                      Record meaningful changes and add the new reminders that
+                      should appear in the live action bar.
+                    </p>
+                  </div>
+                  {character.canEdit && character.level < 20 ? (
+                    <Link
+                      className="inline-flex min-h-11 shrink-0 items-center rounded-md bg-[#8b2f39] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#6f2430] focus:outline-none focus:ring-2 focus:ring-[#8b2f39] focus:ring-offset-2"
+                      href={
+                        `/campaigns/${campaign.id}/characters/${character.id}/level-up` as Route
+                      }
+                    >
+                      Start level-up
+                    </Link>
+                  ) : (
+                    <StatusPill tone="gold">
+                      {character.level >= 20
+                        ? "Level 20 reached"
+                        : "View only"}
+                    </StatusPill>
+                  )}
+                </div>
+                <div className="mt-4 grid gap-3">
+                  {(character.progressions ?? []).length === 0 ? (
+                    <EmptyState
+                      body="The first guided level-up will add a milestone here with its new feature reminders."
+                      title="No level-ups recorded yet"
+                    />
+                  ) : (
+                    (character.progressions ?? []).map((progression) => (
+                      <article
+                        className="rounded-lg border border-[#c3943e]/25 bg-[#fff7df] p-4"
+                        key={progression.id}
+                      >
+                        <div className="flex flex-wrap items-center justify-between gap-2">
+                          <h3 className="font-semibold">
+                            Level {progression.fromLevel} →{" "}
+                            {progression.toLevel}
+                          </h3>
+                          <StatusPill tone="gold">
+                            {progression.features.length} new
+                          </StatusPill>
+                        </div>
+                        <p className="mt-2 text-sm leading-6 text-[#4b4657]">
+                          {progression.summary}
+                        </p>
+                        <p className="mt-3 text-xs font-medium text-[#6d6578]">
+                          {progression.features
+                            .map((feature) => feature.name)
+                            .join(" · ")}
+                        </p>
+                      </article>
+                    ))
+                  )}
+                </div>
+              </Surface>
+
+              <Surface className="p-5">
                 <p className="text-sm font-semibold uppercase tracking-wide text-[#8b2f39]">
                   Spellbook setup
                 </p>
