@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { connection } from "next/server";
+import { Analytics } from "@vercel/analytics/next";
 import { AuthProvider } from "@/auth/provider";
 import { getAuthSession } from "@/auth/server";
 import { reportRuntimeEnvironmentIssues } from "@/env/runtime";
@@ -40,6 +41,7 @@ export default async function RootLayout({
     <html lang="en">
       <body>
         <AuthProvider initialSession={session}>{children}</AuthProvider>
+        <Analytics />
       </body>
     </html>
   );
