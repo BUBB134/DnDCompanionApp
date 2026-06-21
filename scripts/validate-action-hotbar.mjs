@@ -79,7 +79,8 @@ const ruleLoaderText = readText("apps/web/src/rules/action-hotbar.ts");
 expect(
   ruleLoaderText.includes("listRuleSnippetsForUser") &&
     ruleLoaderText.includes("coreRuleSnippets") &&
-    ruleLoaderText.includes("common-action"),
+    ruleLoaderText.includes("common-action") &&
+    ruleLoaderText.includes("hasCompleteCommonActionCatalog"),
   "Common actions must prefer membership-scoped DB content with a bundled fallback.",
 );
 
@@ -118,6 +119,14 @@ async function validateHotbarModel() {
   const hotbarModule = await import(moduleDataUrl(compiled));
   const character = {
     abilities: [
+      {
+        characterId: "character-1",
+        id: "ability-shove",
+        name: "Shove",
+        summary: "Push a nearby creature.",
+        trigger: "1 action",
+        visibility: "player-safe",
+      },
       {
         characterId: "character-1",
         id: "ability-cunning-action",
@@ -191,6 +200,11 @@ async function validateHotbarModel() {
         total: 1,
         used: 1,
       },
+      {
+        level: 2,
+        total: 1,
+        used: 0,
+      },
     ],
     spells: [
       {
@@ -233,6 +247,25 @@ async function validateHotbarModel() {
       },
       {
         campaignId: null,
+        castingTime: "1 bonus action",
+        classNames: ["wizard"],
+        concentration: false,
+        duration: "Instantaneous",
+        id: "spell-misty-step",
+        level: 2,
+        name: "Misty Step",
+        preparation: "prepared",
+        range: "Self",
+        ritual: false,
+        school: "Conjuration",
+        slug: "misty-step",
+        source: "test",
+        sourceVersion: "test",
+        summary: "Teleport to a nearby place.",
+        visibility: "player-safe",
+      },
+      {
+        campaignId: null,
         castingTime: "1 reaction",
         classNames: ["wizard"],
         concentration: false,
@@ -263,6 +296,7 @@ async function validateHotbarModel() {
     (item) => item.name === "Magic Missile",
   );
   const shield = model.items.find((item) => item.name === "Shield");
+  const mistyStep = model.items.find((item) => item.name === "Misty Step");
 
   expect(
     model.items.some(
@@ -270,6 +304,12 @@ async function validateHotbarModel() {
         item.name === "Cunning Action" && item.category === "bonus-actions",
     ),
     "Ability triggers must place bonus actions in the correct filter.",
+  );
+  expect(
+    model.items.some(
+      (item) => item.name === "Shove" && item.category === "actions",
+    ),
+    "Action-cost ability triggers must appear in the Actions filter.",
   );
   expect(
     model.items.some((item) => item.name === "Recall hidden lore") &&
@@ -288,14 +328,33 @@ async function validateHotbarModel() {
     "Cantrips must remain available without spell slots.",
   );
   expect(
-    magicMissile?.available === false &&
-      magicMissile.unavailableReason?.includes("No level 1"),
-    "Prepared spells must reflect exhausted slot pools.",
+    magicMissile?.available === true &&
+      magicMissile.slotLevel === 2 &&
+      magicMissile.resource?.includes("level 2"),
+    "Prepared lower-level spells must use the lowest available higher-level slot.",
   );
   expect(
     shield?.available === false &&
       shield.unavailableReason === "This spell is known but not prepared.",
     "Known but unprepared spells must be visibly unavailable.",
+  );
+  expect(
+    mistyStep?.category === "spells" &&
+      mistyStep.actionCategory === "bonus-actions",
+    "Bonus-action spells must remain spells and also appear in the Bonus filter.",
+  );
+
+  const ruleLoaderSource = readText("apps/web/src/rules/action-hotbar.ts");
+  const ruleLoaderCompiled = typescript.transpileModule(ruleLoaderSource, {
+    compilerOptions: {
+      module: typescript.ModuleKind.ES2022,
+      target: typescript.ScriptTarget.ES2022,
+    },
+    fileName: "apps/web/src/rules/action-hotbar.ts",
+  }).outputText;
+  expect(
+    ruleLoaderCompiled.includes("requiredCommonActionSlugs.every"),
+    "Common-action completeness must require every baseline action slug.",
   );
 }
 

@@ -21,7 +21,8 @@ hotbar data.
 ## Availability model
 
 - Cantrips remain available without a slot pool.
-- Prepared levelled spells are available only while a matching slot remains.
+- Prepared levelled spells use the lowest available slot at or above the
+  spell's level.
 - Known but unprepared spells remain visible but clearly unavailable.
 - Character abilities and contextual creation actions are reminders, not
   automated rules enforcement.
@@ -37,6 +38,9 @@ The client component owns only transient presentation state:
 - active action-group filter
 - selected detail card
 - pending and result states for slot mutations
+
+Spells remain in the Spells group and also appear in the Actions, Bonus, or
+Reactions group that matches their casting time.
 
 The server remains responsible for loading permission-filtered content and
 building the initial hotbar model. The action grid uses real buttons,

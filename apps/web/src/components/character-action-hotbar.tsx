@@ -66,7 +66,11 @@ export function CharacterActionHotbar({
   const visibleItems =
     activeFilter === "all"
       ? hotbar.items
-      : hotbar.items.filter((item) => item.category === activeFilter);
+      : hotbar.items.filter(
+          (item) =>
+            item.category === activeFilter ||
+            item.actionCategory === activeFilter,
+        );
   const selectedItem =
     visibleItems.find((item) => item.id === selectedItemId) ??
     visibleItems[0] ??

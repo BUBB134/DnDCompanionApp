@@ -3,6 +3,13 @@ import type { RuleSnippet } from "@dnd/types";
 import { listRuleSnippetsForUser } from "@/rules/repository";
 
 const commonActionTag = "common-action";
+const requiredCommonActionSlugs = [
+  "action-dash",
+  "action-disengage",
+  "action-dodge",
+  "action-help",
+  "action-hide",
+] as const;
 
 export async function loadCommonActionRulesForUser(
   userId: string,
@@ -18,7 +25,7 @@ export async function loadCommonActionRulesForUser(
       ),
     );
 
-    if (storedRules.length > 0) {
+    if (hasCompleteCommonActionCatalog(storedRules)) {
       return {
         loadNotice: null,
         rules: storedRules,
@@ -41,4 +48,10 @@ export async function loadCommonActionRulesForUser(
 
 export function filterCommonActionRules(rules: RuleSnippet[]) {
   return rules.filter((rule) => rule.tags?.includes(commonActionTag));
+}
+
+export function hasCompleteCommonActionCatalog(rules: RuleSnippet[]) {
+  const storedSlugs = new Set(rules.map((rule) => rule.slug));
+
+  return requiredCommonActionSlugs.every((slug) => storedSlugs.has(slug));
 }

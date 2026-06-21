@@ -19,6 +19,7 @@ export type ActionHotbarCategory =
   (typeof actionHotbarCategories)[number];
 
 export type CharacterActionHotbarItem = {
+  actionCategory: ActionHotbarCategory | null;
   available: boolean;
   category: ActionHotbarCategory;
   cost: string | null;
@@ -52,6 +53,7 @@ export function buildCharacterActionHotbar(
   const items = [
     ...commonActionRules.map(mapCommonActionRule),
     ...character.abilities.map((ability) => ({
+      actionCategory: classifyActionCategory(ability.trigger),
       available: true,
       category: classifyAbilityCategory(ability.trigger),
       cost: ability.trigger || null,
@@ -103,6 +105,7 @@ function mapCreationOptionItems(
 ): CharacterActionHotbarItem[] {
   const source = `${option.name} ${formatOptionCategory(option.category)}`;
   const actionItems = option.actions.map((action, index) => ({
+    actionCategory: "actions" as const,
     available: true,
     category: "actions" as const,
     cost: "Action",
@@ -120,6 +123,7 @@ function mapCreationOptionItems(
 
   if (option.traits.length > 0) {
     featureItems.push({
+      actionCategory: null,
       available: true,
       category: "features",
       cost: null,
@@ -137,6 +141,7 @@ function mapCreationOptionItems(
 
   if (option.quirks.length > 0) {
     featureItems.push({
+      actionCategory: null,
       available: true,
       category: "features",
       cost: null,
@@ -157,6 +162,7 @@ function mapCreationOptionItems(
 
 function mapCommonActionRule(rule: RuleSnippet): CharacterActionHotbarItem {
   return {
+    actionCategory: classifyRuleCategory(rule),
     available: true,
     category: classifyRuleCategory(rule),
     cost: rule.tags?.includes("reaction")
@@ -180,18 +186,18 @@ function mapSpell(
   spell: CharacterSpell,
   slots: CharacterSpellSlot[],
 ): CharacterActionHotbarItem {
-  const slot = slots.find((candidate) => candidate.level === spell.level);
-  const remainingSlots = slot ? slot.total - slot.used : 0;
   const isCantrip = spell.level === 0;
   const isPrepared = isCantrip || spell.preparation === "prepared";
-  const hasSlot = isCantrip || remainingSlots > 0;
+  const slot = isCantrip ? null : findLowestAvailableSlot(spell.level, slots);
+  const hasSlot = isCantrip || slot !== null;
   const unavailableReason = !isPrepared
     ? "This spell is known but not prepared."
     : !hasSlot
-      ? `No level ${spell.level} spell slots are available.`
+      ? `No level ${spell.level} or higher spell slots are available.`
       : null;
 
   return {
+    actionCategory: classifyActionCategory(spell.castingTime),
     available: unavailableReason === null,
     category: "spells",
     cost: spell.castingTime,
@@ -202,9 +208,9 @@ function mapSpell(
     resource: isCantrip
       ? "At will"
       : slot
-        ? `${remainingSlots} of ${slot.total} level ${spell.level} slots available`
-        : `No level ${spell.level} slot pool configured`,
-    slotLevel: isCantrip ? null : spell.level,
+        ? `${slot.total - slot.used} of ${slot.total} level ${slot.level} slots available`
+        : `No level ${spell.level} or higher slots available`,
+    slotLevel: slot?.level ?? null,
     source: `${spell.school} spell`,
     summary: spell.summary,
     unavailableReason,
@@ -214,6 +220,12 @@ function mapSpell(
 function classifyAbilityCategory(
   trigger: string | null | undefined,
 ): ActionHotbarCategory {
+  return classifyActionCategory(trigger) ?? "features";
+}
+
+function classifyActionCategory(
+  trigger: string | null | undefined,
+): ActionHotbarCategory | null {
   const normalizedTrigger = trigger?.toLowerCase() ?? "";
 
   if (normalizedTrigger.includes("bonus action")) {
@@ -224,7 +236,11 @@ function classifyAbilityCategory(
     return "reactions";
   }
 
-  return "features";
+  if (normalizedTrigger.includes("action")) {
+    return "actions";
+  }
+
+  return null;
 }
 
 function classifyRuleCategory(rule: RuleSnippet): ActionHotbarCategory {
@@ -255,6 +271,19 @@ function formatOptionCategory(
 
 function normalizeName(value: string) {
   return value.trim().replace(/\s+/g, " ").toLowerCase();
+}
+
+function findLowestAvailableSlot(
+  spellLevel: number,
+  slots: CharacterSpellSlot[],
+) {
+  return (
+    slots
+      .filter(
+        (slot) => slot.level >= spellLevel && slot.total - slot.used > 0,
+      )
+      .sort((left, right) => left.level - right.level)[0] ?? null
+  );
 }
 
 function deduplicateItems(items: CharacterActionHotbarItem[]) {
