@@ -4,12 +4,13 @@ import type {
   CampaignInviteSummary,
   RuleSnippet,
   SessionSummary,
-  Visibility,
 } from "@dnd/types";
-import { canAccessVisibility, isDungeonMaster } from "@dnd/types";
+import { isDungeonMaster } from "@dnd/types";
 import { EmptyState, StatusPill, Surface } from "@dnd/ui";
 import type { Route } from "next";
 import Link from "next/link";
+import type { ReactNode } from "react";
+import { openCampaignAction } from "@/campaigns/actions";
 import { CampaignInvitePanel } from "@/components/campaign-invite-panel";
 import { RuleCard } from "@/components/rule-card";
 
@@ -22,13 +23,23 @@ type CampaignShellProps = {
   rules: RuleSnippet[];
 };
 
-type CampaignAction = {
+type CampaignActionBase = {
   body: string;
-  href: Route;
   label: string;
   title: string;
-  visibility: Visibility;
 };
+
+type CampaignAction = CampaignActionBase &
+  (
+    | {
+        destination: Route;
+        href?: never;
+      }
+    | {
+        destination?: never;
+        href: Route;
+      }
+  );
 
 const entityTypeLabels: Record<CampaignEntitySummary["type"], string> = {
   faction: "Faction",
@@ -55,43 +66,29 @@ export function CampaignShell({
       body: latestSession
         ? "Return to the latest notes, recap, and unresolved hooks."
         : "Create the first session and start capturing the story.",
-      href: sessionHref,
+      destination: sessionHref,
       label: latestSession ? "Open latest session" : "Start first session",
       title: latestSession ? "Continue the story" : "Begin the story",
-      visibility: "player-safe",
     },
     {
       body: "Open character profiles, abilities, spells, and at-table actions.",
       href: `/campaigns/${campaign.id}/characters` as Route,
       label: "View characters",
       title: "Know what you can do",
-      visibility: "player-safe",
     },
     {
       body: "Find conditions and mechanics without breaking the flow of play.",
-      href: "/rules",
+      destination: "/rules",
       label: "Search rules",
       title: "Resolve a rule quickly",
-      visibility: "player-safe",
     },
     {
       body: "Recall the people, places, quests, factions, and items in this campaign.",
-      href: "/entities",
+      destination: "/entities",
       label: "Browse campaign memory",
       title: "Remember the world",
-      visibility: "player-safe",
-    },
-    {
-      body: "Keep private prep and DM-only context close without exposing it to players.",
-      href: "/sessions",
-      label: "Open DM notes",
-      title: "Prepare the next beat",
-      visibility: "dm-only",
     },
   ];
-  const visibleActions = campaignActions.filter((action) =>
-    canAccessVisibility(campaign.role, action.visibility),
-  );
 
   return (
     <div className="grid gap-5">
@@ -140,29 +137,13 @@ export function CampaignShell({
           </p>
         </div>
 
-        <div className="mt-5 grid gap-3 sm:grid-cols-2 2xl:grid-cols-5">
-          {visibleActions.map((action) => (
-            <Link
-              className="group flex min-h-44 flex-col rounded-xl border border-[#17161f]/10 bg-[#fffaf0] p-4 transition hover:-translate-y-0.5 hover:border-[#1f6f78]/45 hover:bg-white hover:shadow-md focus:outline-none focus:ring-2 focus:ring-[#1f6f78] focus:ring-offset-2"
-              href={action.href}
+        <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          {campaignActions.map((action) => (
+            <CampaignShortcut
+              action={action}
+              campaignId={campaign.id}
               key={action.title}
-            >
-              <div className="flex items-start justify-between gap-3">
-                <h3 className="font-semibold leading-6">{action.title}</h3>
-                <span
-                  aria-hidden="true"
-                  className="text-lg text-[#1f6f78] transition group-hover:translate-x-0.5"
-                >
-                  →
-                </span>
-              </div>
-              <p className="mt-2 flex-1 text-sm leading-6 text-[#4b4657]">
-                {action.body}
-              </p>
-              <span className="mt-4 text-sm font-semibold text-[#164f56]">
-                {action.label}
-              </span>
-            </Link>
+            />
           ))}
         </div>
       </Surface>
@@ -189,12 +170,13 @@ export function CampaignShell({
                         body="Open the session log to generate a player-safe recap from the saved notes."
                         title="No recap generated"
                       >
-                        <Link
+                        <CampaignContextButton
+                          campaignId={campaign.id}
                           className="inline-flex min-h-10 items-center rounded-md bg-[#17161f] px-3 py-2 text-sm font-semibold text-white transition hover:bg-[#2d2937] focus:outline-none focus:ring-2 focus:ring-[#8b2f39] focus:ring-offset-2"
-                          href={sessionHref}
+                          destination={sessionHref}
                         >
                           Open session notes
-                        </Link>
+                        </CampaignContextButton>
                       </EmptyState>
                     </div>
                   )}
@@ -253,12 +235,13 @@ export function CampaignShell({
                 body="Create the first session to capture notes, decisions, and open hooks. The dashboard will bring the latest story back here automatically."
                 title="The first session is ready when you are"
               >
-                <Link
+                <CampaignContextButton
+                  campaignId={campaign.id}
                   className="inline-flex min-h-11 items-center rounded-md bg-[#17161f] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#2d2937] focus:outline-none focus:ring-2 focus:ring-[#8b2f39] focus:ring-offset-2"
-                  href="/sessions"
+                  destination="/sessions"
                 >
                   Start first session
-                </Link>
+                </CampaignContextButton>
               </EmptyState>
             )}
 
@@ -313,12 +296,13 @@ export function CampaignShell({
                   body="NPCs, locations, factions, quests, and items will appear here once entity memory is added for this campaign."
                   title="No entities yet"
                 >
-                  <Link
+                  <CampaignContextButton
+                    campaignId={campaign.id}
                     className="inline-flex min-h-10 items-center rounded-md border border-[#1f6f78]/30 bg-white px-3 py-2 text-sm font-semibold text-[#164f56] transition hover:bg-[#e7f5f6] focus:outline-none focus:ring-2 focus:ring-[#1f6f78] focus:ring-offset-2"
-                    href="/entities"
+                    destination="/entities"
                   >
                     Add campaign memory
-                  </Link>
+                  </CampaignContextButton>
                 </EmptyState>
               ) : (
                 entities.map((entity) => (
@@ -369,12 +353,13 @@ export function CampaignShell({
                   body="Rules and abilities will appear here once session notes mention tracked conditions or mechanics."
                   title="No rules surfaced"
                 >
-                  <Link
+                  <CampaignContextButton
+                    campaignId={campaign.id}
                     className="inline-flex min-h-10 items-center rounded-md border border-[#1f6f78]/30 bg-white px-3 py-2 text-sm font-semibold text-[#164f56] transition hover:bg-[#e7f5f6] focus:outline-none focus:ring-2 focus:ring-[#1f6f78] focus:ring-offset-2"
-                    href="/rules"
+                    destination="/rules"
                   >
                     Search rules
-                  </Link>
+                  </CampaignContextButton>
                 </EmptyState>
               ) : (
                 rules.map((rule) => <RuleCard key={rule.id} rule={rule} />)
@@ -384,6 +369,81 @@ export function CampaignShell({
         </div>
       </section>
     </div>
+  );
+}
+
+const campaignShortcutClasses =
+  "group flex min-h-44 w-full flex-col rounded-xl border border-[#17161f]/10 bg-[#fffaf0] p-4 text-left transition hover:-translate-y-0.5 hover:border-[#1f6f78]/45 hover:bg-white hover:shadow-md focus:outline-none focus:ring-2 focus:ring-[#1f6f78] focus:ring-offset-2";
+
+function CampaignShortcut({
+  action,
+  campaignId,
+}: {
+  action: CampaignAction;
+  campaignId: string;
+}) {
+  const content = <CampaignShortcutContent action={action} />;
+
+  if (action.href) {
+    return (
+      <Link className={campaignShortcutClasses} href={action.href}>
+        {content}
+      </Link>
+    );
+  }
+
+  return (
+    <form action={openCampaignAction} className="h-full">
+      <input name="campaignId" type="hidden" value={campaignId} />
+      <input name="destination" type="hidden" value={action.destination} />
+      <button className={campaignShortcutClasses} type="submit">
+        {content}
+      </button>
+    </form>
+  );
+}
+
+function CampaignShortcutContent({ action }: { action: CampaignAction }) {
+  return (
+    <>
+      <span className="flex w-full items-start justify-between gap-3">
+        <span className="font-semibold leading-6">{action.title}</span>
+        <span
+          aria-hidden="true"
+          className="text-lg text-[#1f6f78] transition group-hover:translate-x-0.5"
+        >
+          →
+        </span>
+      </span>
+      <span className="mt-2 flex-1 text-sm leading-6 text-[#4b4657]">
+        {action.body}
+      </span>
+      <span className="mt-4 text-sm font-semibold text-[#164f56]">
+        {action.label}
+      </span>
+    </>
+  );
+}
+
+function CampaignContextButton({
+  campaignId,
+  children,
+  className,
+  destination,
+}: {
+  campaignId: string;
+  children: ReactNode;
+  className: string;
+  destination: Route;
+}) {
+  return (
+    <form action={openCampaignAction}>
+      <input name="campaignId" type="hidden" value={campaignId} />
+      <input name="destination" type="hidden" value={destination} />
+      <button className={className} type="submit">
+        {children}
+      </button>
+    </form>
   );
 }
 

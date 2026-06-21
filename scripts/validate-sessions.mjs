@@ -99,7 +99,9 @@ expect(
 );
 
 expect(
-  readText("apps/web/src/components/campaign-shell.tsx").includes('href: "/sessions"') &&
+  readText("apps/web/src/components/campaign-shell.tsx").includes(
+    "destination: sessionHref",
+  ) &&
     readText("apps/web/src/components/campaign-shell.tsx").includes(
       "Start first session",
     ),

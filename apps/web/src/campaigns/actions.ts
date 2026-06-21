@@ -5,6 +5,7 @@ import type { Route } from "next";
 import { revalidatePath } from "next/cache";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
+import { getSafeReturnPath } from "@/auth/session";
 import { getAuthSession, requireAuthSession } from "@/auth/server";
 import { setActiveCampaignId } from "@/campaigns/active-campaign";
 import {
@@ -59,6 +60,9 @@ export async function createCampaignAction(
 export async function openCampaignAction(formData: FormData) {
   const session = await requireAuthSession();
   const campaignId = getStringField(formData, "campaignId");
+  const destination = getCampaignToolDestination(
+    getStringField(formData, "destination"),
+  );
   let campaign: Awaited<ReturnType<typeof getDatabaseCampaignAccessForUser>> = null;
 
   if (!campaignId) {
@@ -76,7 +80,7 @@ export async function openCampaignAction(formData: FormData) {
   }
 
   await setActiveCampaignId(campaign.id);
-  redirect(`/campaigns/${campaign.id}`);
+  redirect(destination ?? `/campaigns/${campaign.id}`);
 }
 
 export async function generateCampaignInviteAction(
@@ -180,6 +184,23 @@ function getStringField(formData: FormData, fieldName: string) {
   const value = formData.get(fieldName);
 
   return typeof value === "string" ? value : "";
+}
+
+const campaignToolPaths = ["/entities", "/rules", "/sessions"] as const;
+
+function getCampaignToolDestination(value: string): Route | null {
+  if (!value) {
+    return null;
+  }
+
+  const destination = getSafeReturnPath(value);
+  const pathname = destination.split(/[?#]/)[0];
+
+  return campaignToolPaths.includes(
+    pathname as (typeof campaignToolPaths)[number],
+  )
+    ? (destination as Route)
+    : null;
 }
 
 async function createInviteUrl(token: string) {
