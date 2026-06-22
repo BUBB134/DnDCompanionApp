@@ -110,6 +110,7 @@ packages/
 ## Key Docs
 - `Agents.md`
 - `docs/product/PRD.md`
+- `docs/product/mvp-ux-direction.md`
 - `docs/engineering/architecture.md`
 - `docs/engineering/first-campaign-beta-readiness.md`
 - `docs/engineering/guided-character-creation.md`
