@@ -51,6 +51,13 @@ type AbilityCountRow = {
   ability_count: number;
 };
 
+export class CharacterPersistenceError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "CharacterPersistenceError";
+  }
+}
+
 export async function listCharacterSummariesForUser(
   userId: string,
   campaignId: string,
@@ -351,6 +358,7 @@ export async function createCharacterInTransaction(
   const characterId = requireCharacterId(
     result.rows[0],
     "You do not have access to create this character.",
+    CharacterPersistenceError,
   );
 
   await replaceAbilitySummaries(client, characterId, input);
@@ -420,6 +428,7 @@ async function updateCharacterWithClient(
   const savedCharacterId = requireCharacterId(
     result.rows[0],
     "This character changed after you opened it, or you no longer have edit access. Reload before saving again.",
+    CharacterPersistenceError,
   );
 
   await replaceAbilitySummaries(client, savedCharacterId, input);
@@ -602,7 +611,7 @@ async function ensureCharacterNameAvailable(
   );
 
   if (result.rows[0]) {
-    throw new Error(
+    throw new CharacterPersistenceError(
       `A character named "${name}" already exists in this campaign.`,
     );
   }
@@ -768,9 +777,10 @@ function parseJson(value: string): unknown {
 function requireCharacterId(
   row: CharacterIdRow | undefined,
   errorMessage: string,
+  ErrorType: new (message: string) => Error = Error,
 ) {
   if (!row) {
-    throw new Error(errorMessage);
+    throw new ErrorType(errorMessage);
   }
 
   return row.id;

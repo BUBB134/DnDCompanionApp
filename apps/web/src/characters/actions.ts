@@ -19,6 +19,7 @@ import {
   type CharacterFormValues,
 } from "@/characters/manage-character";
 import {
+  CharacterPersistenceError,
   createCharacterForUser,
   updateCharacterForUser,
 } from "@/characters/repository";
@@ -172,6 +173,10 @@ function getStringField(formData: FormData, fieldName: string) {
 }
 
 function formatCharacterPersistenceError(error: unknown) {
+  if (error instanceof CharacterPersistenceError) {
+    return error.message;
+  }
+
   console.error("Character persistence failed.", error);
 
   return "Unable to save this character right now. Please try again.";

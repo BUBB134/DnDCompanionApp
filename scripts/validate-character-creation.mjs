@@ -117,6 +117,9 @@ expect(
       'console.error("Character persistence failed.", error)',
     ) &&
     readText("apps/web/src/characters/actions.ts").includes(
+      "error instanceof CharacterPersistenceError",
+    ) &&
+    readText("apps/web/src/characters/actions.ts").includes(
       "Unable to save this character right now. Please try again.",
     ),
   "Character creation action must canonicalize guided choices and keep persistence diagnostics out of user-facing errors.",
@@ -411,6 +414,42 @@ if (typescript) {
       fullInsert.values[7] === "Sailor" &&
       fullInsert.values[13] === "dm-only",
     "Fully populated character persistence must retain every typed insert value.",
+  );
+
+  let duplicateNameError = null;
+
+  try {
+    await characterRepositoryModule.createCharacterInTransaction(
+      {
+        async query(text) {
+          if (
+            text.includes("select characters.id") &&
+            text.includes("regexp_replace")
+          ) {
+            return {
+              rows: [
+                {
+                  id: "33333333-3333-5333-8333-333333333333",
+                },
+              ],
+            };
+          }
+
+          return { rows: [] };
+        },
+      },
+      "22222222-2222-5222-8222-222222222222",
+      minimalCharacterInput,
+    );
+  } catch (error) {
+    duplicateNameError = error;
+  }
+
+  expect(
+    duplicateNameError instanceof
+      characterRepositoryModule.CharacterPersistenceError &&
+      duplicateNameError.message.includes("already exists"),
+    "Expected character persistence conflicts must retain safe, actionable messages.",
   );
 
   const validSelection =
