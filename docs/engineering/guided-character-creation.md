@@ -37,6 +37,14 @@ profile. Class ability reminders are converted to the existing
 Campaign membership, ownership, DM/player visibility, and redirect behavior
 remain enforced by the existing character repository and action.
 
+The character insert explicitly casts every positional value to its destination
+Postgres type. In particular, visibility parameter `$14` is cast to the
+`visibility` enum both when it is inserted and when the membership predicate
+checks for `player-safe`. Without those casts, Postgres inferred `$14` as the
+enum from the insert target and as `text` from the predicate, causing
+`inconsistent types deduced for parameter $14` before the character could be
+persisted.
+
 ## Draft recovery
 
 The browser stores an in-progress draft under
