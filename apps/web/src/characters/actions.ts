@@ -1,6 +1,5 @@
 "use server";
 
-import { formatDatabaseError } from "@dnd/db";
 import type { Route } from "next";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
@@ -20,6 +19,7 @@ import {
   type CharacterFormValues,
 } from "@/characters/manage-character";
 import {
+  CharacterPersistenceError,
   createCharacterForUser,
   updateCharacterForUser,
 } from "@/characters/repository";
@@ -85,7 +85,7 @@ export async function createCharacterAction(
     session.user.id,
     campaign,
     canonicalValues,
-    formatDatabaseError,
+    formatCharacterPersistenceError,
   );
 
   if (!result.ok) {
@@ -127,7 +127,7 @@ export async function updateCharacterAction(
     session.user.id,
     campaign,
     values,
-    formatDatabaseError,
+    formatCharacterPersistenceError,
   );
 
   if (result.ok) {
@@ -170,6 +170,16 @@ function getStringField(formData: FormData, fieldName: string) {
   const value = formData.get(fieldName);
 
   return typeof value === "string" ? value : "";
+}
+
+function formatCharacterPersistenceError(error: unknown) {
+  if (error instanceof CharacterPersistenceError) {
+    return error.message;
+  }
+
+  console.error("Character persistence failed.", error);
+
+  return "Unable to save this character right now. Please try again.";
 }
 
 function revalidateCharacterPaths(campaignId: string, characterId: string) {

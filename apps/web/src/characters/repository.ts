@@ -51,6 +51,13 @@ type AbilityCountRow = {
   ability_count: number;
 };
 
+export class CharacterPersistenceError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "CharacterPersistenceError";
+  }
+}
+
 export async function listCharacterSummariesForUser(
   userId: string,
   campaignId: string,
@@ -262,7 +269,7 @@ export async function createCharacterForUser(
   input: CharacterMutationInput,
 ) {
   return withDatabaseTransaction((client) =>
-    createCharacterWithClient(client, userId, input),
+    createCharacterInTransaction(client, userId, input),
   );
 }
 
@@ -292,7 +299,7 @@ export async function completeCharacterLevelUpForUser(
   );
 }
 
-async function createCharacterWithClient(
+export async function createCharacterInTransaction(
   client: DatabaseQueryable,
   userId: string,
   input: CharacterMutationInput,
@@ -325,24 +332,24 @@ async function createCharacterWithClient(
       select
         campaign_memberships.campaign_id,
         campaign_memberships.user_id,
-        $3,
-        $4,
-        $5,
-        $6,
-        $7,
-        $8,
-        $9,
-        $10,
-        $11,
-        $12,
-        $13,
-        $14
+        $3::text,
+        $4::text,
+        $5::text,
+        $6::integer,
+        $7::text,
+        $8::text,
+        $9::text,
+        $10::text,
+        $11::text,
+        $12::text,
+        $13::text,
+        $14::visibility
       from campaign_memberships
       where campaign_memberships.user_id = $1
         and campaign_memberships.campaign_id = $2
         and (
           campaign_memberships.role = 'dm'
-          or $14 = 'player-safe'
+          or $14::visibility = 'player-safe'::visibility
         )
       returning id
     `,
@@ -351,6 +358,7 @@ async function createCharacterWithClient(
   const characterId = requireCharacterId(
     result.rows[0],
     "You do not have access to create this character.",
+    CharacterPersistenceError,
   );
 
   await replaceAbilitySummaries(client, characterId, input);
@@ -420,6 +428,7 @@ async function updateCharacterWithClient(
   const savedCharacterId = requireCharacterId(
     result.rows[0],
     "This character changed after you opened it, or you no longer have edit access. Reload before saving again.",
+    CharacterPersistenceError,
   );
 
   await replaceAbilitySummaries(client, savedCharacterId, input);
@@ -602,7 +611,7 @@ async function ensureCharacterNameAvailable(
   );
 
   if (result.rows[0]) {
-    throw new Error(
+    throw new CharacterPersistenceError(
       `A character named "${name}" already exists in this campaign.`,
     );
   }
@@ -768,9 +777,10 @@ function parseJson(value: string): unknown {
 function requireCharacterId(
   row: CharacterIdRow | undefined,
   errorMessage: string,
+  ErrorType: new (message: string) => Error = Error,
 ) {
   if (!row) {
-    throw new Error(errorMessage);
+    throw new ErrorType(errorMessage);
   }
 
   return row.id;

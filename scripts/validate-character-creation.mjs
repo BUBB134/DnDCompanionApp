@@ -112,8 +112,17 @@ expect(
     ) &&
     readText("apps/web/src/characters/actions.ts").includes(
       "formatCharacterCreationAbilities",
+    ) &&
+    readText("apps/web/src/characters/actions.ts").includes(
+      'console.error("Character persistence failed.", error)',
+    ) &&
+    readText("apps/web/src/characters/actions.ts").includes(
+      "error instanceof CharacterPersistenceError",
+    ) &&
+    readText("apps/web/src/characters/actions.ts").includes(
+      "Unable to save this character right now. Please try again.",
     ),
-  "Character creation action must reload and canonicalize guided choices independently of client input.",
+  "Character creation action must canonicalize guided choices and keep persistence diagnostics out of user-facing errors.",
 );
 
 const repositoryText = readText(
@@ -284,6 +293,165 @@ if (typescript) {
     "Character creation must fall back when persisted catalog categories are incomplete.",
   );
 
+  const typesStubModuleUrl = moduleDataUrl("");
+  const manageCharacterStubModuleUrl = moduleDataUrl(`
+    export const CHARACTER_ABILITY_MAX_COUNT = 12;
+  `);
+  const characterRepositoryDbStubModuleUrl = moduleDataUrl(`
+    export async function queryDatabase() {
+      throw new Error("queryDatabase should not be called in this validation.");
+    }
+
+    export async function withDatabaseTransaction() {
+      throw new Error("withDatabaseTransaction should not be called in this validation.");
+    }
+  `);
+  const characterRepositoryModule = await import(
+    await transpileModuleToDataUrl(
+      "apps/web/src/characters/repository.ts",
+      [
+        ["@dnd/types", typesStubModuleUrl],
+        ["@dnd/db", characterRepositoryDbStubModuleUrl],
+        ["@/characters/manage-character", manageCharacterStubModuleUrl],
+      ],
+    ),
+  );
+  const minimalCharacterInput = {
+    abilities: [],
+    ancestry: null,
+    background: null,
+    backstory: "",
+    campaignId: "11111111-1111-5111-8111-111111111111",
+    className: null,
+    goals: "",
+    inventoryNotes: "",
+    level: 1,
+    name: "Mira Voss",
+    personalNotes: "",
+    relationships: "",
+    summary: "",
+    visibility: "player-safe",
+  };
+  const minimalPersistence = createCharacterPersistenceStub(
+    minimalCharacterInput,
+  );
+  const minimalCharacter =
+    await characterRepositoryModule.createCharacterInTransaction(
+      minimalPersistence.client,
+      "22222222-2222-5222-8222-222222222222",
+      minimalCharacterInput,
+    );
+  const minimalInsert = minimalPersistence.queries.find(({ text }) =>
+    text.includes("insert into characters"),
+  );
+
+  expect(
+    minimalCharacter.className === null &&
+      minimalCharacter.ancestry === null &&
+      minimalCharacter.background === null,
+    "Minimal character submissions must persist and reload nullable profile fields.",
+  );
+  expect(
+    minimalInsert?.text.includes("$5::text") &&
+      minimalInsert.text.includes("$7::text") &&
+      minimalInsert.text.includes("$8::text") &&
+      minimalInsert.text.includes("$14::visibility") &&
+      minimalInsert.text.includes(
+        "$14::visibility = 'player-safe'::visibility",
+      ),
+    "Character creation must give optional fields and visibility explicit Postgres types.",
+  );
+  expect(
+    minimalInsert?.values[4] === null &&
+      minimalInsert.values[6] === null &&
+      minimalInsert.values[7] === null &&
+      minimalInsert.values[13] === "player-safe",
+    "Minimal character persistence must preserve nullable values and player-safe visibility.",
+  );
+
+  const fullCharacterInput = {
+    ...minimalCharacterInput,
+    abilities: [
+      {
+        name: "Second Wind",
+        summary: "Regain a small pool of hit points.",
+        trigger: "Bonus action",
+      },
+    ],
+    ancestry: "Human",
+    background: "Sailor",
+    backstory: "Raised among the Ashen Coast privateers.",
+    className: "Fighter",
+    goals: "Open the drowned vault.",
+    inventoryNotes: "Tide key, rope, lantern.",
+    level: 3,
+    personalNotes: "Captain Thorn knows too much.",
+    relationships: "Owes Captain Thorn a favour.",
+    summary: "A practical fighter who reads the tides.",
+    visibility: "dm-only",
+  };
+  const fullPersistence = createCharacterPersistenceStub(fullCharacterInput);
+  const fullCharacter =
+    await characterRepositoryModule.createCharacterInTransaction(
+      fullPersistence.client,
+      "22222222-2222-5222-8222-222222222222",
+      fullCharacterInput,
+    );
+  const fullInsert = fullPersistence.queries.find(({ text }) =>
+    text.includes("insert into characters"),
+  );
+
+  expect(
+    fullCharacter.className === "Fighter" &&
+      fullCharacter.ancestry === "Human" &&
+      fullCharacter.background === "Sailor" &&
+      fullCharacter.abilities[0]?.name === "Second Wind",
+    "Fully populated character submissions must persist and reload profile details and abilities.",
+  );
+  expect(
+    fullInsert?.values[4] === "Fighter" &&
+      fullInsert.values[6] === "Human" &&
+      fullInsert.values[7] === "Sailor" &&
+      fullInsert.values[13] === "dm-only",
+    "Fully populated character persistence must retain every typed insert value.",
+  );
+
+  let duplicateNameError = null;
+
+  try {
+    await characterRepositoryModule.createCharacterInTransaction(
+      {
+        async query(text) {
+          if (
+            text.includes("select characters.id") &&
+            text.includes("regexp_replace")
+          ) {
+            return {
+              rows: [
+                {
+                  id: "33333333-3333-5333-8333-333333333333",
+                },
+              ],
+            };
+          }
+
+          return { rows: [] };
+        },
+      },
+      "22222222-2222-5222-8222-222222222222",
+      minimalCharacterInput,
+    );
+  } catch (error) {
+    duplicateNameError = error;
+  }
+
+  expect(
+    duplicateNameError instanceof
+      characterRepositoryModule.CharacterPersistenceError &&
+      duplicateNameError.message.includes("already exists"),
+    "Expected character persistence conflicts must retain safe, actionable messages.",
+  );
+
   const validSelection =
     creationProfileModule.resolveGuidedCharacterSelection(options, {
       ancestryOptionSlug: "human",
@@ -357,6 +525,69 @@ async function transpileModuleToDataUrl(path, replacements = []) {
 
 function moduleDataUrl(source) {
   return `data:text/javascript;base64,${Buffer.from(source).toString("base64")}`;
+}
+
+function createCharacterPersistenceStub(input) {
+  const characterId = "33333333-3333-5333-8333-333333333333";
+  const queries = [];
+
+  return {
+    client: {
+      async query(text, values = []) {
+        queries.push({ text, values });
+
+        if (
+          text.includes("select characters.id") &&
+          text.includes("regexp_replace")
+        ) {
+          return { rows: [] };
+        }
+
+        if (text.includes("insert into characters")) {
+          return { rows: [{ id: characterId }] };
+        }
+
+        if (text.includes("group by") && text.includes("access_level")) {
+          return {
+            rows: [
+              {
+                abilities: input.abilities.map((ability, index) => ({
+                  characterId,
+                  id: `ability-${index + 1}`,
+                  name: ability.name,
+                  summary: ability.summary,
+                  trigger: ability.trigger || null,
+                  visibility: "player-safe",
+                })),
+                access_level: "full",
+                ancestry: input.ancestry,
+                background: input.background,
+                backstory: input.backstory,
+                class_name: input.className,
+                goals: input.goals,
+                id: characterId,
+                inventory_notes: input.inventoryNotes,
+                is_owned_by_current_user: true,
+                level: input.level,
+                name: input.name,
+                owner_name: "Test User",
+                personal_notes: input.personalNotes,
+                progressions: [],
+                relationships: input.relationships,
+                role: "dm",
+                summary: input.summary,
+                updated_at: "2026-06-22T12:00:00.000Z",
+                visibility: input.visibility,
+              },
+            ],
+          };
+        }
+
+        return { rows: [] };
+      },
+    },
+    queries,
+  };
 }
 
 function resolveTypeScriptRuntimePath() {
