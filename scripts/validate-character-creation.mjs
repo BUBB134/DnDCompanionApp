@@ -112,8 +112,14 @@ expect(
     ) &&
     readText("apps/web/src/characters/actions.ts").includes(
       "formatCharacterCreationAbilities",
+    ) &&
+    readText("apps/web/src/characters/actions.ts").includes(
+      'console.error("Character persistence failed.", error)',
+    ) &&
+    readText("apps/web/src/characters/actions.ts").includes(
+      "Unable to save this character right now. Please try again.",
     ),
-  "Character creation action must reload and canonicalize guided choices independently of client input.",
+  "Character creation action must canonicalize guided choices and keep persistence diagnostics out of user-facing errors.",
 );
 
 const repositoryText = readText(

@@ -45,6 +45,10 @@ enum from the insert target and as `text` from the predicate, causing
 `inconsistent types deduced for parameter $14` before the character could be
 persisted.
 
+Character persistence failures are logged by the server with the original error
+for operational diagnosis. The form receives a stable retry message instead of
+raw Postgres details or prepared-statement diagnostics.
+
 ## Draft recovery
 
 The browser stores an in-progress draft under
