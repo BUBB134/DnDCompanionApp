@@ -9,16 +9,20 @@ export function getAuthProvider(source: EnvSource = process.env) {
   return readServerEnv(source).AUTH_PROVIDER;
 }
 
-export function getSupabaseAuthConfig(source: EnvSource = process.env) {
-  const env = readPublicEnv(source);
+export function getClerkAuthConfig(source: EnvSource = process.env) {
+  const publicEnv = readPublicEnv(source);
+  const serverEnv = readServerEnv(source);
 
-  if (!env.NEXT_PUBLIC_SUPABASE_URL || !env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
+  if (
+    !publicEnv.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY ||
+    !serverEnv.CLERK_SECRET_KEY
+  ) {
     return null;
   }
 
   return {
-    publishableKey: env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
-    url: env.NEXT_PUBLIC_SUPABASE_URL,
+    publishableKey: publicEnv.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY,
+    secretKey: serverEnv.CLERK_SECRET_KEY,
   };
 }
 
@@ -36,6 +40,6 @@ export function getAuthAppBaseUrl(source: EnvSource = process.env) {
     : "http://localhost:3000";
 }
 
-export function isSupabaseAuthConfigured(source: EnvSource = process.env) {
-  return Boolean(getSupabaseAuthConfig(source) && getAuthAppBaseUrl(source));
+export function isClerkAuthConfigured(source: EnvSource = process.env) {
+  return Boolean(getClerkAuthConfig(source) && getAuthAppBaseUrl(source));
 }

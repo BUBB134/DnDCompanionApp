@@ -10,12 +10,11 @@
     "typecheck": "tsc -p tsconfig.json --noEmit --pretty false"
   },
   "dependencies": {
+    "@clerk/nextjs": "^7.5.7",
     "@dnd/db": "file:../../packages/db",
     "@dnd/env": "file:../../packages/env",
     "@dnd/types": "file:../../packages/types",
     "@dnd/ui": "file:../../packages/ui",
-    "@supabase/ssr": "^0.12.0",
-    "@supabase/supabase-js": "^2.108.1",
     "@vercel/analytics": "^2.0.1",
     "@vercel/speed-insights": "^2.0.0",
     "next": "^16.2.2",

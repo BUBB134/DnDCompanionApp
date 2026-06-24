@@ -60,7 +60,8 @@ for (const snippet of [
   "revokeCampaignInviteAction",
   "acceptCampaignInviteAction",
   "headers()",
-  "sign-in?next",
+  "redirectToSignIn",
+  "getSafeReturnPath(tokenPath)",
 ]) {
   expect(actionsText.includes(snippet), `Invite actions are missing: ${snippet}`);
 }

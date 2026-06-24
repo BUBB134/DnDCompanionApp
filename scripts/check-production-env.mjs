@@ -2,7 +2,7 @@ import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 
 const appEnvironments = ["local", "preview", "production"];
-const authProviders = ["local", "supabase"];
+const authProviders = ["local", "clerk"];
 const groundingModes = ["disabled", "local", "retrieval"];
 const logLevels = ["debug", "error", "info", "warn"];
 const observabilityProviders = ["console", "sentry"];
@@ -13,6 +13,9 @@ const defaultSupabaseProjectRef = "egrmvhfroiumcodkotjv";
 const supabasePoolerHostSuffix = ".pooler.supabase.com";
 const supabaseAnonKeyPrefixes = ["sb_publishable_"];
 const supabaseServiceKeyPrefixes = ["sb_secret_"];
+const clerkPublishableKeyPrefixes = ["pk_test_", "pk_live_"];
+const clerkSecretKeyPrefixes = ["sk_test_", "sk_live_"];
+const productionAppOrigin = "https://thedndcompanion.com";
 const envFiles = [".env", ".env.local", "apps/web/.env.local"];
 
 const options = parseOptions(process.argv.slice(2));
@@ -72,47 +75,46 @@ function validateEnvironment(source, { requireSupabase, strict, supabaseProject 
 
   if (appEnvironment !== "local" || requireSupabase) {
     requireValue("DATABASE_URL", source.DATABASE_URL, issues);
-    requireValue("NEXT_PUBLIC_SUPABASE_URL", source.NEXT_PUBLIC_SUPABASE_URL, issues);
-    requireValue(
-      "NEXT_PUBLIC_SUPABASE_ANON_KEY",
-      source.NEXT_PUBLIC_SUPABASE_ANON_KEY,
-      issues,
-    );
   }
 
   if (appEnvironment !== "local") {
     requireValue("APP_BASE_URL", source.APP_BASE_URL, issues);
+    requireValue(
+      "NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY",
+      source.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY,
+      issues,
+    );
+    requireValue("CLERK_SECRET_KEY", source.CLERK_SECRET_KEY, issues);
 
-    if (authProvider !== "supabase") {
+    if (authProvider !== "clerk") {
       issues.push({
         key: "AUTH_PROVIDER",
-        message: "AUTH_PROVIDER must be supabase in preview and production.",
+        message: "AUTH_PROVIDER must be clerk in preview and production.",
       });
     }
   }
 
-  if (authProvider === "supabase") {
-    requireValue("NEXT_PUBLIC_SUPABASE_URL", source.NEXT_PUBLIC_SUPABASE_URL, issues);
+  if (authProvider === "clerk") {
     requireValue(
-      "NEXT_PUBLIC_SUPABASE_ANON_KEY",
-      source.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+      "NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY",
+      source.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY,
       issues,
     );
+    requireValue("CLERK_SECRET_KEY", source.CLERK_SECRET_KEY, issues);
   }
 
   if (strict) {
     requireValue("APP_BASE_URL", source.APP_BASE_URL, issues);
-    requireValue("NEXT_PUBLIC_SUPABASE_URL", source.NEXT_PUBLIC_SUPABASE_URL, issues);
     requireValue(
-      "NEXT_PUBLIC_SUPABASE_ANON_KEY",
-      source.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+      "NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY",
+      source.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY,
       issues,
     );
-    requireValue("SUPABASE_SERVICE_ROLE_KEY", source.SUPABASE_SERVICE_ROLE_KEY, issues);
+    requireValue("CLERK_SECRET_KEY", source.CLERK_SECRET_KEY, issues);
   }
 
   if (readValue(source.APP_BASE_URL).length > 0) {
-    validateAppBaseUrl("APP_BASE_URL", source.APP_BASE_URL, issues);
+    validateAppBaseUrl("APP_BASE_URL", source.APP_BASE_URL, appEnvironment, issues);
   }
 
   if (readValue(source.AUTH_SESSION_SECRET).length > 0) {
@@ -142,6 +144,20 @@ function validateEnvironment(source, { requireSupabase, strict, supabaseProject 
     source.NEXT_PUBLIC_SUPABASE_ANON_KEY,
     supabaseAnonKeyPrefixes,
     "a Supabase anon JWT or publishable key",
+    issues,
+  );
+  validateClerkKey(
+    "NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY",
+    source.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY,
+    clerkPublishableKeyPrefixes,
+    appEnvironment === "production" ? "pk_live_" : undefined,
+    issues,
+  );
+  validateClerkKey(
+    "CLERK_SECRET_KEY",
+    source.CLERK_SECRET_KEY,
+    clerkSecretKeyPrefixes,
+    appEnvironment === "production" ? "sk_live_" : undefined,
     issues,
   );
   validateSupabaseKey(
@@ -410,7 +426,7 @@ function validateUrl(key, value, issues) {
   }
 }
 
-function validateAppBaseUrl(key, value, issues) {
+function validateAppBaseUrl(key, value, appEnvironment, issues) {
   let parsedUrl;
 
   try {
@@ -438,6 +454,16 @@ function validateAppBaseUrl(key, value, issues) {
     issues.push({
       key,
       message: `${key} must be an origin without a path, query string, or hash.`,
+    });
+  }
+
+  if (
+    appEnvironment === "production" &&
+    parsedUrl.origin !== productionAppOrigin
+  ) {
+    issues.push({
+      key,
+      message: `${key} must be ${productionAppOrigin} in production.`,
     });
   }
 }
@@ -488,6 +514,27 @@ function validateSupabaseKey(
     issues.push({
       key,
       message: `${key} must be ${expectedDescription}.`,
+    });
+  }
+}
+
+function validateClerkKey(key, value, allowedPrefixes, requiredPrefix, issues) {
+  if (readValue(value).length === 0) {
+    return;
+  }
+
+  if (hasPlaceholderSecret(value) || !hasAllowedPrefix(value, allowedPrefixes)) {
+    issues.push({
+      key,
+      message: `${key} must be a valid Clerk API key.`,
+    });
+    return;
+  }
+
+  if (requiredPrefix && !value.startsWith(requiredPrefix)) {
+    issues.push({
+      key,
+      message: `${key} must use a Clerk production key beginning with ${requiredPrefix}.`,
     });
   }
 }

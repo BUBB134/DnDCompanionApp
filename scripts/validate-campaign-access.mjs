@@ -186,7 +186,9 @@ expect(
   "Campaign shell should expose a DM-only section for role-based visibility behavior.",
 );
 expect(
-  readText("apps/web/src/app/sign-in/page.tsx").includes("player-safe view"),
+  readText("apps/web/src/app/sign-in/[[...sign-in]]/page.tsx").includes(
+    "player-safe view",
+  ),
   "Sign-in page should document how to exercise the local membership bootstrap.",
 );
 expect(

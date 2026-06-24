@@ -34,7 +34,7 @@ expect(manifest.includes("theme_color"), "Manifest must define a theme color.");
 expect(manifest.includes("icons"), "Manifest must include icon entries.");
 expect(!manifest.includes('src: "/icon1"'), "Manifest must not reference unsupported icon routes.");
 
-const middleware = readText("apps/web/src/middleware.ts");
+const middleware = readText("apps/web/src/proxy.ts");
 expect(
   middleware.includes("manifest.webmanifest"),
   "Middleware matcher must exempt the manifest route.",

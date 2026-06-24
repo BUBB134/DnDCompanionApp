@@ -1,31 +1,33 @@
 import { cookies } from "next/headers";
-import { redirect } from "next/navigation";
+import { auth, currentUser } from "@clerk/nextjs/server";
 import type { AuthSession } from "@dnd/types";
-import { getAuthProvider, getSupabaseAuthConfig } from "@/auth/config";
+import { cache } from "react";
+import { getAuthProvider, isClerkAuthConfigured } from "@/auth/config";
+import { resolveClerkAuthUser } from "@/auth/identity";
+import { redirectToSignIn } from "@/auth/redirect";
 import {
   AUTH_COOKIE_MAX_AGE_SECONDS,
   AUTH_COOKIE_NAME,
-  createSupabaseAuthSession,
+  createManagedAuthSession,
   decodeAuthSession,
   encodeAuthSession,
 } from "@/auth/session";
-import { createSupabaseServerClient } from "@/auth/supabase/server";
 
-export async function getAuthSession() {
-  if (getAuthProvider() === "supabase") {
-    return getSupabaseAuthSession();
+export const getAuthSession = cache(async () => {
+  if (getAuthProvider() === "clerk") {
+    return getClerkAuthSession();
   }
 
   const cookieStore = await cookies();
 
   return decodeAuthSession(cookieStore.get(AUTH_COOKIE_NAME)?.value);
-}
+});
 
 export async function requireAuthSession() {
   const session = await getAuthSession();
 
   if (!session) {
-    redirect("/sign-in");
+    redirectToSignIn();
   }
 
   return session;
@@ -59,17 +61,55 @@ export async function clearAuthSessionCookie() {
   });
 }
 
-async function getSupabaseAuthSession() {
-  if (!getSupabaseAuthConfig()) {
+async function getClerkAuthSession() {
+  if (!isClerkAuthConfigured()) {
     return null;
   }
 
-  const supabase = await createSupabaseServerClient();
-  const { data, error } = await supabase.auth.getClaims();
+  const { sessionClaims, userId } = await auth();
 
-  if (error || !data?.claims) {
+  if (!userId) {
     return null;
   }
 
-  return createSupabaseAuthSession(data.claims);
+  const user = await currentUser();
+
+  if (!user || user.id !== userId) {
+    return null;
+  }
+
+  const email = getPrimaryEmail(user);
+
+  if (!email) {
+    return null;
+  }
+
+  const authUser = await resolveClerkAuthUser({
+    clerkUserId: user.id,
+    email,
+    name: getClerkDisplayName(user, email),
+  });
+
+  return createManagedAuthSession(authUser, sessionClaims.exp);
+}
+
+function getPrimaryEmail(user: NonNullable<Awaited<ReturnType<typeof currentUser>>>) {
+  const primaryEmail = user.emailAddresses.find(
+    (emailAddress) => emailAddress.id === user.primaryEmailAddressId,
+  );
+
+  return primaryEmail?.emailAddress ?? user.emailAddresses[0]?.emailAddress ?? null;
+}
+
+function getClerkDisplayName(
+  user: NonNullable<Awaited<ReturnType<typeof currentUser>>>,
+  email: string,
+) {
+  const name =
+    user.fullName ||
+    [user.firstName, user.lastName].filter(Boolean).join(" ") ||
+    user.username ||
+    email.split("@")[0];
+
+  return name || "Adventurer";
 }
