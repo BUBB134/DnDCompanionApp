@@ -51,7 +51,13 @@ function validateEnvironment(source, { requireSupabase, strict, supabaseProject 
     appEnvironments,
     inferAppEnvironment(source),
   );
-  const authProvider = pickValue(source.AUTH_PROVIDER, authProviders, "local");
+  const authProvider = pickValue(
+    source.AUTH_PROVIDER,
+    authProviders,
+    defaultAuthProvider(appEnvironment),
+  );
+  const allowPreviewManagedAuthConfiguration =
+    appEnvironment === "preview" && source.VERCEL_ENV === "preview" && !strict;
   const groundingMode = pickValue(source.AI_GROUNDING_MODE, groundingModes, "disabled");
   const observabilityProvider = pickValue(
     source.OBSERVABILITY_PROVIDER,
@@ -61,7 +67,9 @@ function validateEnvironment(source, { requireSupabase, strict, supabaseProject 
   const storageProvider = pickValue(source.STORAGE_PROVIDER, storageProviders, "none");
 
   validateEnumValue("NEXT_PUBLIC_APP_ENV", source.NEXT_PUBLIC_APP_ENV, appEnvironments, issues);
-  validateEnumValue("AUTH_PROVIDER", source.AUTH_PROVIDER, authProviders, issues);
+  if (!allowPreviewManagedAuthConfiguration) {
+    validateEnumValue("AUTH_PROVIDER", source.AUTH_PROVIDER, authProviders, issues);
+  }
   validateEnumValue("AI_GROUNDING_MODE", source.AI_GROUNDING_MODE, groundingModes, issues);
   validateEnumValue("LOG_LEVEL", source.LOG_LEVEL, logLevels, issues);
   validateEnumValue(
@@ -79,14 +87,17 @@ function validateEnvironment(source, { requireSupabase, strict, supabaseProject 
 
   if (appEnvironment !== "local") {
     requireValue("APP_BASE_URL", source.APP_BASE_URL, issues);
-    requireValue(
-      "NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY",
-      source.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY,
-      issues,
-    );
-    requireValue("CLERK_SECRET_KEY", source.CLERK_SECRET_KEY, issues);
 
-    if (authProvider !== "clerk") {
+    if (!allowPreviewManagedAuthConfiguration) {
+      requireValue(
+        "NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY",
+        source.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY,
+        issues,
+      );
+      requireValue("CLERK_SECRET_KEY", source.CLERK_SECRET_KEY, issues);
+    }
+
+    if (authProvider !== "clerk" && !allowPreviewManagedAuthConfiguration) {
       issues.push({
         key: "AUTH_PROVIDER",
         message: "AUTH_PROVIDER must be clerk in preview and production.",
@@ -94,7 +105,7 @@ function validateEnvironment(source, { requireSupabase, strict, supabaseProject 
     }
   }
 
-  if (authProvider === "clerk") {
+  if (authProvider === "clerk" && !allowPreviewManagedAuthConfiguration) {
     requireValue(
       "NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY",
       source.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY,
@@ -200,6 +211,10 @@ function validateEnvironment(source, { requireSupabase, strict, supabaseProject 
   }
 
   return issues;
+}
+
+function defaultAuthProvider(appEnvironment) {
+  return appEnvironment === "local" ? "local" : "clerk";
 }
 
 function parseOptions(args) {

@@ -31,18 +31,42 @@ export async function resolveClerkAuthUser(
   return withDatabaseTransaction(async (client) => {
     const existingIdentity = await client.query<UserRow>(
       `
-        update users
-        set email = $2,
-            name = $3,
-            updated_at = now()
+        select id, email, name
+        from users
         where clerk_user_id = $1
-        returning id, email, name
+        for update
       `,
-      [clerkUserId, email, name],
+      [clerkUserId],
     );
 
     if (existingIdentity.rows[0]) {
-      return mapUser(existingIdentity.rows[0]);
+      const linkedIdentity = existingIdentity.rows[0];
+      const existingEmailOwner = await client.query<{ id: string }>(
+        `
+          select id
+          from users
+          where email = $1
+            and id <> $2
+          for update
+        `,
+        [email, linkedIdentity.id],
+      );
+      const nextEmail = existingEmailOwner.rows[0]
+        ? linkedIdentity.email
+        : email;
+      const updatedIdentity = await client.query<UserRow>(
+        `
+          update users
+          set email = $2,
+              name = $3,
+              updated_at = now()
+          where id = $1
+          returning id, email, name
+        `,
+        [linkedIdentity.id, nextEmail, name],
+      );
+
+      return mapUser(updatedIdentity.rows[0] ?? linkedIdentity);
     }
 
     const linkedUser = await client.query<UserRow>(

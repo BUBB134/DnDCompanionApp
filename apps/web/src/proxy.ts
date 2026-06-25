@@ -50,7 +50,7 @@ export default async function proxy(
 
 export const config = {
   matcher: [
-    "/((?!_next/static|_next/image|api/auth/session|api/health|apple-icon|brand-mark.svg|favicon.ico|icon|manifest.webmanifest).*)",
+    "/((?!_next/static|_next/image|api/health|apple-icon|brand-mark.svg|favicon.ico|icon|manifest.webmanifest).*)",
   ],
 };
 

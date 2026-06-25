@@ -24,6 +24,12 @@ Managed auth requires:
 `AUTH_SESSION_SECRET` is retained only for the local signed-cookie provider. It
 is not used by Clerk.
 
+Vercel preview builds run the non-strict environment check. If Clerk preview
+keys have not been provisioned yet, the build can still complete, but non-local
+runtime defaults to the Clerk provider and renders the explicit configuration
+error state instead of exposing local contributor sign-in. Production and
+`--strict` checks still fail until Clerk is fully configured.
+
 ## Vercel and Clerk setup
 
 1. Install or connect Clerk through Vercel Marketplace, or create matching Clerk
@@ -77,8 +83,9 @@ Migration `0014_clerk_user_identity.sql` adds:
 At request time, a signed-in Clerk user is resolved into an app `AuthUser`:
 
 1. Read the verified Clerk user ID and primary email.
-2. If a `users.clerk_user_id` row already exists, update its email/name from
-   Clerk and return the app UUID.
+2. If a `users.clerk_user_id` row already exists, update its name from Clerk,
+   update its email when the new primary email is not already owned by another
+   app user row, and return the app UUID.
 3. Otherwise insert a new user row, or link an existing row with the same email
    if it has not already been linked to a different Clerk subject.
 4. Use the returned app UUID for all campaign membership and invite checks.

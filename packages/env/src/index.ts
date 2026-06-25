@@ -82,7 +82,11 @@ export function readServerEnv(source: EnvSource): ServerEnv {
   return {
     AI_GROUNDING_MODE: pickValue(source.AI_GROUNDING_MODE, groundingModes, "disabled"),
     APP_BASE_URL: emptyToUndefined(source.APP_BASE_URL),
-    AUTH_PROVIDER: pickValue(source.AUTH_PROVIDER, authProviders, "local"),
+    AUTH_PROVIDER: pickValue(
+      source.AUTH_PROVIDER,
+      authProviders,
+      defaultAuthProvider(source),
+    ),
     AUTH_SESSION_SECRET: emptyToUndefined(source.AUTH_SESSION_SECRET),
     BLOB_READ_WRITE_TOKEN: emptyToUndefined(source.BLOB_READ_WRITE_TOKEN),
     CLERK_SECRET_KEY: emptyToUndefined(source.CLERK_SECRET_KEY),
@@ -103,6 +107,10 @@ export function readServerEnv(source: EnvSource): ServerEnv {
     SUPABASE_SERVICE_ROLE_KEY: emptyToUndefined(source.SUPABASE_SERVICE_ROLE_KEY),
     VERCEL_ENV: emptyToUndefined(source.VERCEL_ENV),
   };
+}
+
+function defaultAuthProvider(source: EnvSource): AuthProvider {
+  return inferAppEnvironment(source) === "local" ? "local" : "clerk";
 }
 
 export function isNonLocalAppEnvironment(appEnvironment: AppEnvironment) {
