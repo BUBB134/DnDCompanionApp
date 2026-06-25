@@ -38,13 +38,13 @@ Preview and production must carry the same Supabase project identity in Vercel a
 
 | Variable | Local | Preview | Production | Notes |
 | --- | --- | --- | --- | --- |
-| `APP_BASE_URL` | `http://localhost:3000` | Preview origin | Production origin | Use the same origins in Supabase Auth URL allow-lists. Keep this as an origin only, without a path. |
-| `NEXT_PUBLIC_SUPABASE_URL` | Optional but recommended | Required | Required | Must be `https://egrmvhfroiumcodkotjv.supabase.co`. |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Optional until browser Supabase clients ship | Required | Required | Supabase publishable key (`sb_publishable_...`) or legacy public anon JWT. RLS controls access; do not use it for privileged server work. |
-| `SUPABASE_SERVICE_ROLE_KEY` | Optional for local admin scripts | Required | Required | Supabase secret key (`sb_secret_...`) or legacy service role JWT. Never expose to client components, docs, logs, or screenshots. |
+| `APP_BASE_URL` | `http://localhost:3000` | Preview origin | `https://thedndcompanion.com` | Clerk and deployment checks use this as an origin only, without a path. |
+| `NEXT_PUBLIC_SUPABASE_URL` | Optional | Optional | Optional | Must be `https://egrmvhfroiumcodkotjv.supabase.co` if a browser Supabase client is introduced. |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Optional until browser Supabase clients ship | Optional | Optional | Supabase publishable key (`sb_publishable_...`) or legacy public anon JWT. RLS controls access; do not use it for privileged server work. |
+| `SUPABASE_SERVICE_ROLE_KEY` | Optional for local admin scripts | Optional | Optional | Supabase secret key (`sb_secret_...`) or legacy service role JWT. Never expose to client components, docs, logs, or screenshots. |
 | `DATABASE_URL` | Required for Supabase-backed local dev | Required | Required | Direct or pooler Postgres URL targeting project `egrmvhfroiumcodkotjv` with `sslmode=require`. |
 
-Auth callback routes are not implemented yet because the MVP auth provider is still local signed sessions. When Supabase Auth is added, keep callback URLs under each environment's `APP_BASE_URL` origin and add them to Supabase's redirect allow-list before enabling the provider.
+Authentication is handled by Clerk. Supabase is used here for Postgres, migrations, and optional future public/service keys only.
 
 ## Preview and production
 
@@ -53,15 +53,15 @@ Configure the same secret names in Vercel and in the protected GitHub environmen
 | Variable | Recommended value |
 | --- | --- |
 | `APP_BASE_URL` | Preview or production app origin |
-| `NEXT_PUBLIC_SUPABASE_URL` | `https://egrmvhfroiumcodkotjv.supabase.co` |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Environment-specific Supabase publishable key or anon JWT |
-| `SUPABASE_SERVICE_ROLE_KEY` | Environment-specific Supabase secret key or service role JWT |
+| `NEXT_PUBLIC_SUPABASE_URL` | Optional `https://egrmvhfroiumcodkotjv.supabase.co` if browser Supabase clients ship |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Optional environment-specific Supabase publishable key or anon JWT |
+| `SUPABASE_SERVICE_ROLE_KEY` | Optional environment-specific Supabase secret key or service role JWT |
 | `DATABASE_URL` | Supabase direct or pooler Postgres URL with `sslmode=require` |
 | `DATABASE_POOL_MAX` | `3` for preview, `5` for production until traffic requires tuning |
 | `DATABASE_CONNECTION_TIMEOUT_MS` | `10000` |
 | `DATABASE_IDLE_TIMEOUT_MS` | `30000` |
-| `AUTH_PROVIDER` | `supabase` in preview/production; `local` remains available for contributor bootstrap accounts |
-| `AUTH_SESSION_SECRET` | Optional local-provider cookie secret; not used by Supabase Auth |
+| `AUTH_PROVIDER` | `clerk` in preview/production; `local` remains available for contributor bootstrap accounts |
+| `AUTH_SESSION_SECRET` | Optional local-provider cookie secret; not used by Clerk |
 
 Use separate preview and production databases, branches, or Supabase projects when destructive preview testing becomes necessary. Never point throwaway preview testing at production data.
 

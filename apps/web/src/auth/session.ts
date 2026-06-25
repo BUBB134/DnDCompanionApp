@@ -25,7 +25,6 @@ const PROTECTED_RETURN_PATHS = [
   "/invite",
   "/rules",
   "/sessions",
-  "/update-password",
 ] as const;
 const SIGNED_SESSION_TOKEN_PREFIX = "local-v2.";
 const UNSIGNED_SESSION_TOKEN_PREFIX = "local-v1.";
@@ -33,13 +32,6 @@ const UNSIGNED_SESSION_TOKEN_PREFIX = "local-v1.";
 type LocalSessionInput = {
   email?: string;
   name?: string;
-};
-
-type SupabaseAuthClaims = {
-  email?: unknown;
-  exp?: unknown;
-  sub?: unknown;
-  user_metadata?: unknown;
 };
 
 export type ProtectedReturnPath = `/${string}`;
@@ -143,30 +135,17 @@ export async function hasAuthSessionCookie(
   return (await decodeAuthSession(cookieValue, now, source)) !== null;
 }
 
-export function createSupabaseAuthSession(
-  claims: SupabaseAuthClaims,
+export function createManagedAuthSession(
+  user: AuthSession["user"],
+  expiresAtSeconds: unknown,
 ): AuthSession | null {
-  const email =
-    typeof claims.email === "string"
-      ? normalizeLocalAuthEmail(claims.email)
-      : null;
-  const expiresAt =
-    typeof claims.exp === "number" && Number.isFinite(claims.exp)
-      ? new Date(claims.exp * 1000).toISOString()
-      : null;
-  const userId = typeof claims.sub === "string" ? claims.sub : null;
-
-  if (!email || !expiresAt || !userId) {
+  if (typeof expiresAtSeconds !== "number" || !Number.isFinite(expiresAtSeconds)) {
     return null;
   }
 
   return {
-    expiresAt,
-    user: {
-      email,
-      id: userId,
-      name: getSupabaseDisplayName(claims.user_metadata, email),
-    },
+    expiresAt: new Date(expiresAtSeconds * 1000).toISOString(),
+    user,
   };
 }
 
@@ -294,24 +273,6 @@ function normalizeDecodedAuthSession(session: AuthSession): AuthSession {
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
-}
-
-function getSupabaseDisplayName(metadata: unknown, email: string) {
-  if (isRecord(metadata)) {
-    for (const key of ["display_name", "full_name", "name"]) {
-      const value = metadata[key];
-
-      if (typeof value === "string") {
-        const normalizedName = normalizeLocalAuthName(value);
-
-        if (normalizedName) {
-          return normalizedName;
-        }
-      }
-    }
-  }
-
-  return email.split("@")[0] || "Adventurer";
 }
 
 function toBase64Url(value: string) {

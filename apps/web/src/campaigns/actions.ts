@@ -5,6 +5,7 @@ import type { Route } from "next";
 import { revalidatePath } from "next/cache";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
+import { redirectToSignIn } from "@/auth/redirect";
 import { getSafeReturnPath } from "@/auth/session";
 import { getAuthSession, requireAuthSession } from "@/auth/server";
 import { setActiveCampaignId } from "@/campaigns/active-campaign";
@@ -160,7 +161,7 @@ export async function acceptCampaignInviteAction(formData: FormData) {
   const session = await getAuthSession();
 
   if (!session) {
-    redirect(`/sign-in?next=${encodeURIComponent(tokenPath)}`);
+    redirectToSignIn({ next: getSafeReturnPath(tokenPath) });
   }
 
   let result: Awaited<ReturnType<typeof acceptCampaignInviteForUser>>;

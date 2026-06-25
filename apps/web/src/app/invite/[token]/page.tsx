@@ -1,4 +1,5 @@
 import { EmptyState, StatusPill, Surface } from "@dnd/ui";
+import type { Route } from "next";
 import Link from "next/link";
 import { getAuthSession } from "@/auth/server";
 import { acceptCampaignInviteAction } from "@/campaigns/actions";
@@ -120,7 +121,7 @@ function ReadyInviteContent({
         ) : (
           <Link
             className="inline-flex min-h-11 items-center rounded-md bg-[#17161f] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#2d2937] focus:outline-none focus:ring-2 focus:ring-[#8b2f39] focus:ring-offset-2"
-            href={`/sign-in?next=${encodeURIComponent(`/invite/${token}`)}`}
+            href={getInviteSignInHref(token)}
           >
             Sign in to join
           </Link>
@@ -182,6 +183,10 @@ function formatInviteDate(value: string) {
     dateStyle: "medium",
     timeStyle: "short",
   }).format(new Date(value));
+}
+
+function getInviteSignInHref(token: string): Route {
+  return `/sign-in?next=${encodeURIComponent(`/invite/${token}`)}` as Route;
 }
 
 function getForcedInviteStatus(status: string | string[] | undefined) {

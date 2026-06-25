@@ -6,9 +6,11 @@ import { signOutAction } from "@/auth/actions";
 import { AuthStatusNotice } from "@/auth/status-notice";
 import { isDatabaseCampaignId } from "@/campaigns/database-id";
 import { AppShellNavigation } from "@/components/app-shell-navigation";
+import { ClerkAccountControls } from "@/components/clerk-account-controls";
 
 type ProtectedAppShellProps = {
   appEnv: string;
+  authProvider: "clerk" | "local";
   campaign: Campaign | null;
   children: React.ReactNode;
   session: AuthSession;
@@ -40,6 +42,7 @@ const baseNavigationItems = [
 
 export function ProtectedAppShell({
   appEnv,
+  authProvider,
   campaign,
   children,
   session,
@@ -100,14 +103,18 @@ export function ProtectedAppShell({
                     )}
                     <StatusPill tone="gold">Env: {appEnv}</StatusPill>
                   </div>
-                  <form action={signOutAction} className="sm:shrink-0">
-                    <button
-                      className="min-h-10 w-full rounded-md border border-[#17161f]/15 bg-white px-3 py-2 text-sm font-semibold transition hover:border-[#8b2f39] focus:outline-none focus:ring-2 focus:ring-[#8b2f39] focus:ring-offset-2 sm:w-auto"
-                      type="submit"
-                    >
-                      Sign out
-                    </button>
-                  </form>
+                  {authProvider === "clerk" ? (
+                    <ClerkAccountControls />
+                  ) : (
+                    <form action={signOutAction} className="sm:shrink-0">
+                      <button
+                        className="min-h-10 w-full rounded-md border border-[#17161f]/15 bg-white px-3 py-2 text-sm font-semibold transition hover:border-[#8b2f39] focus:outline-none focus:ring-2 focus:ring-[#8b2f39] focus:ring-offset-2 sm:w-auto"
+                        type="submit"
+                      >
+                        Sign out
+                      </button>
+                    </form>
+                  )}
                 </div>
               </div>
             </div>

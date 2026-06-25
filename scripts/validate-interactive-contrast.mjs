@@ -126,7 +126,7 @@ function expect(condition, message) {
 }
 
 function readText(path) {
-  return readFileSync(join(rootDir, path), "utf8");
+  return readFileSync(join(rootDir, path), "utf8").replace(/\r\n/gu, "\n");
 }
 
 function relativePath(path) {

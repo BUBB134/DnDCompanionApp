@@ -1,4 +1,5 @@
 import { readPublicEnv } from "@dnd/env";
+import { getAuthProvider } from "@/auth/config";
 import { requireAuthSession } from "@/auth/server";
 import { getCurrentCampaignAccess } from "@/campaigns/bootstrap";
 import { ProtectedAppShell } from "@/components/protected-app-shell";
@@ -16,7 +17,12 @@ export default async function ProtectedLayout({ children }: ProtectedLayoutProps
   const campaign = await getCurrentCampaignAccess(session);
 
   return (
-    <ProtectedAppShell appEnv={env.NEXT_PUBLIC_APP_ENV} campaign={campaign} session={session}>
+    <ProtectedAppShell
+      appEnv={env.NEXT_PUBLIC_APP_ENV}
+      authProvider={getAuthProvider()}
+      campaign={campaign}
+      session={session}
+    >
       {children}
     </ProtectedAppShell>
   );

@@ -164,8 +164,16 @@ async function checkSignInRoute(signInUrl, checkOptions) {
     fail(`Sign-in route returned HTTP ${response.status}.`);
   }
 
-  if (!body.includes("<form") || !body.includes('name="email"')) {
+  const renderedClerkAuth = body.includes('data-auth-provider="clerk"');
+  const renderedLocalAuth =
+    body.includes("<form") && body.includes('name="email"');
+
+  if (!renderedClerkAuth && !renderedLocalAuth) {
     fail("Sign-in route did not render the expected sign-in form.");
+    return;
+  }
+
+  if (renderedClerkAuth) {
     return;
   }
 

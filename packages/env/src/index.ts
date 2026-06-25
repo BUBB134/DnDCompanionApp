@@ -1,5 +1,5 @@
 export type AppEnvironment = "local" | "preview" | "production";
-export type AuthProvider = "local" | "supabase";
+export type AuthProvider = "clerk" | "local";
 export type GroundingMode = "disabled" | "local" | "retrieval";
 export type LogLevel = "debug" | "error" | "info" | "warn";
 export type ObservabilityProvider = "console" | "sentry";
@@ -9,6 +9,7 @@ export type EnvSource = Record<string, string | undefined>;
 
 export type PublicEnv = {
   NEXT_PUBLIC_APP_ENV: AppEnvironment;
+  NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY?: string;
   NEXT_PUBLIC_SUPABASE_ANON_KEY?: string;
   NEXT_PUBLIC_SUPABASE_URL?: string;
   NEXT_PUBLIC_SENTRY_DSN?: string;
@@ -20,6 +21,7 @@ export type ServerEnv = {
   AUTH_PROVIDER: AuthProvider;
   AUTH_SESSION_SECRET?: string;
   BLOB_READ_WRITE_TOKEN?: string;
+  CLERK_SECRET_KEY?: string;
   DATABASE_CONNECTION_TIMEOUT_MS?: string;
   DATABASE_IDLE_TIMEOUT_MS?: string;
   DATABASE_POOL_MAX?: string;
@@ -40,7 +42,7 @@ export type RuntimeEnvValidationIssue = {
 };
 
 const appEnvironments = ["local", "preview", "production"] as const;
-const authProviders = ["local", "supabase"] as const;
+const authProviders = ["local", "clerk"] as const;
 const groundingModes = ["disabled", "local", "retrieval"] as const;
 const logLevels = ["debug", "error", "info", "warn"] as const;
 const observabilityProviders = ["console", "sentry"] as const;
@@ -54,6 +56,9 @@ const supabaseDirectHost = `db.${supabaseProjectRef}.supabase.co`;
 const supabasePoolerHostSuffix = ".pooler.supabase.com";
 const supabaseAnonKeyPrefixes = ["sb_publishable_"] as const;
 const supabaseServiceKeyPrefixes = ["sb_secret_"] as const;
+const clerkPublishableKeyPrefixes = ["pk_test_", "pk_live_"] as const;
+const clerkSecretKeyPrefixes = ["sk_test_", "sk_live_"] as const;
+const productionAppOrigin = "https://thedndcompanion.com";
 
 export function readPublicEnv(source: EnvSource): PublicEnv {
   return {
@@ -61,6 +66,9 @@ export function readPublicEnv(source: EnvSource): PublicEnv {
       source.NEXT_PUBLIC_APP_ENV,
       appEnvironments,
       inferAppEnvironment(source),
+    ),
+    NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: emptyToUndefined(
+      source.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY,
     ),
     NEXT_PUBLIC_SUPABASE_ANON_KEY: emptyToUndefined(
       source.NEXT_PUBLIC_SUPABASE_ANON_KEY,
@@ -74,9 +82,14 @@ export function readServerEnv(source: EnvSource): ServerEnv {
   return {
     AI_GROUNDING_MODE: pickValue(source.AI_GROUNDING_MODE, groundingModes, "disabled"),
     APP_BASE_URL: emptyToUndefined(source.APP_BASE_URL),
-    AUTH_PROVIDER: pickValue(source.AUTH_PROVIDER, authProviders, "local"),
+    AUTH_PROVIDER: pickValue(
+      source.AUTH_PROVIDER,
+      authProviders,
+      defaultAuthProvider(source),
+    ),
     AUTH_SESSION_SECRET: emptyToUndefined(source.AUTH_SESSION_SECRET),
     BLOB_READ_WRITE_TOKEN: emptyToUndefined(source.BLOB_READ_WRITE_TOKEN),
+    CLERK_SECRET_KEY: emptyToUndefined(source.CLERK_SECRET_KEY),
     DATABASE_CONNECTION_TIMEOUT_MS: emptyToUndefined(source.DATABASE_CONNECTION_TIMEOUT_MS),
     DATABASE_IDLE_TIMEOUT_MS: emptyToUndefined(source.DATABASE_IDLE_TIMEOUT_MS),
     DATABASE_POOL_MAX: emptyToUndefined(source.DATABASE_POOL_MAX),
@@ -94,6 +107,10 @@ export function readServerEnv(source: EnvSource): ServerEnv {
     SUPABASE_SERVICE_ROLE_KEY: emptyToUndefined(source.SUPABASE_SERVICE_ROLE_KEY),
     VERCEL_ENV: emptyToUndefined(source.VERCEL_ENV),
   };
+}
+
+function defaultAuthProvider(source: EnvSource): AuthProvider {
+  return inferAppEnvironment(source) === "local" ? "local" : "clerk";
 }
 
 export function isNonLocalAppEnvironment(appEnvironment: AppEnvironment) {
@@ -121,41 +138,43 @@ export function validateRuntimeEnv(source: EnvSource): RuntimeEnvValidationIssue
 
   if (isNonLocalAppEnvironment(publicEnv.NEXT_PUBLIC_APP_ENV)) {
     requireValue("DATABASE_URL", serverEnv.DATABASE_URL, issues);
-    requireValue(
-      "NEXT_PUBLIC_SUPABASE_URL",
-      publicEnv.NEXT_PUBLIC_SUPABASE_URL,
-      issues,
-    );
-    requireValue(
-      "NEXT_PUBLIC_SUPABASE_ANON_KEY",
-      publicEnv.NEXT_PUBLIC_SUPABASE_ANON_KEY,
-      issues,
-    );
     requireValue("APP_BASE_URL", serverEnv.APP_BASE_URL, issues);
+    requireValue(
+      "NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY",
+      publicEnv.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY,
+      issues,
+    );
+    requireValue("CLERK_SECRET_KEY", serverEnv.CLERK_SECRET_KEY, issues);
 
-    if (serverEnv.AUTH_PROVIDER !== "supabase") {
+    if (serverEnv.AUTH_PROVIDER !== "clerk") {
       issues.push({
         key: "AUTH_PROVIDER",
-        message: "AUTH_PROVIDER must be supabase in preview and production.",
+        message: "AUTH_PROVIDER must be clerk in preview and production.",
       });
     }
   }
 
-  if (serverEnv.AUTH_PROVIDER === "supabase") {
+  if (serverEnv.AUTH_PROVIDER === "clerk") {
     requireValue(
-      "NEXT_PUBLIC_SUPABASE_URL",
-      publicEnv.NEXT_PUBLIC_SUPABASE_URL,
+      "NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY",
+      publicEnv.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY,
       issues,
     );
-    requireValue(
-      "NEXT_PUBLIC_SUPABASE_ANON_KEY",
-      publicEnv.NEXT_PUBLIC_SUPABASE_ANON_KEY,
-      issues,
-    );
+    requireValue("CLERK_SECRET_KEY", serverEnv.CLERK_SECRET_KEY, issues);
   }
 
   if (serverEnv.APP_BASE_URL) {
     validateAppBaseUrl("APP_BASE_URL", serverEnv.APP_BASE_URL, issues);
+
+    if (
+      publicEnv.NEXT_PUBLIC_APP_ENV === "production" &&
+      serverEnv.APP_BASE_URL.replace(/\/$/u, "") !== productionAppOrigin
+    ) {
+      issues.push({
+        key: "APP_BASE_URL",
+        message: `APP_BASE_URL must be ${productionAppOrigin} in production.`,
+      });
+    }
   }
 
   if (
@@ -190,6 +209,20 @@ export function validateRuntimeEnv(source: EnvSource): RuntimeEnvValidationIssue
     publicEnv.NEXT_PUBLIC_SUPABASE_ANON_KEY,
     supabaseAnonKeyPrefixes,
     "a Supabase anon JWT or publishable key",
+    issues,
+  );
+  validateClerkKey(
+    "NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY",
+    publicEnv.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY,
+    clerkPublishableKeyPrefixes,
+    publicEnv.NEXT_PUBLIC_APP_ENV === "production" ? "pk_live_" : undefined,
+    issues,
+  );
+  validateClerkKey(
+    "CLERK_SECRET_KEY",
+    serverEnv.CLERK_SECRET_KEY,
+    clerkSecretKeyPrefixes,
+    publicEnv.NEXT_PUBLIC_APP_ENV === "production" ? "sk_live_" : undefined,
     issues,
   );
   validateSupabaseKey(
@@ -485,6 +518,33 @@ function validateSupabaseKey(
     issues.push({
       key,
       message: `${key} must be ${expectedDescription}.`,
+    });
+  }
+}
+
+function validateClerkKey(
+  key: string,
+  value: string | undefined,
+  allowedPrefixes: readonly string[],
+  requiredPrefix: string | undefined,
+  issues: RuntimeEnvValidationIssue[],
+) {
+  if (!value) {
+    return;
+  }
+
+  if (hasPlaceholderSecret(value) || !hasAllowedPrefix(value, allowedPrefixes)) {
+    issues.push({
+      key,
+      message: `${key} must be a valid Clerk API key.`,
+    });
+    return;
+  }
+
+  if (requiredPrefix && !value.startsWith(requiredPrefix)) {
+    issues.push({
+      key,
+      message: `${key} must use a Clerk production key beginning with ${requiredPrefix}.`,
     });
   }
 }

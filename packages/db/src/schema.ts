@@ -38,11 +38,15 @@ export const baselineSchemaStatements = [
   `create type visibility as enum (${quoteValues(visibilities)});`,
   `create table users (
     id uuid primary key default gen_random_uuid(),
+    clerk_user_id text,
     email text not null unique,
     name text not null,
     created_at timestamptz not null default now(),
     updated_at timestamptz not null default now()
   );`,
+  `create unique index users_clerk_user_id_unique_idx
+    on users (clerk_user_id)
+    where clerk_user_id is not null;`,
   `create table campaigns (
     id uuid primary key default gen_random_uuid(),
     name text not null,
