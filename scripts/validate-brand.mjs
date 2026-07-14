@@ -26,6 +26,13 @@ expect(
 );
 expect(layout.includes("openGraph"), "Root metadata must define Open Graph branding.");
 expect(layout.includes("twitter"), "Root metadata must define social-card branding.");
+expect(
+  !layout.includes("alternates:"),
+  "Root metadata must not canonicalize every application route to the homepage.",
+);
+
+const twitterImage = readText("apps/web/src/app/twitter-image.tsx");
+expect(twitterImage.includes("OpenGraphImage"), "Twitter cards must reuse the branded social image.");
 
 const manifest = readText("apps/web/src/app/manifest.ts");
 expect(manifest.includes("name: PRODUCT_NAME"), "PWA manifest must use the full product name.");
@@ -43,7 +50,7 @@ const publicUiFiles = [
 
 for (const path of publicUiFiles) {
   expect(
-    !readText(path).includes('"D&D Companion"'),
+    !readText(path).includes("D&D Companion"),
     `${path} must not use the legacy product name.`,
   );
 }

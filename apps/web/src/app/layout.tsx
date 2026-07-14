@@ -35,9 +35,6 @@ export const metadata: Metadata = {
     template: `%s | ${PRODUCT_SHORT_NAME}`,
   },
   description: PRODUCT_DESCRIPTION,
-  alternates: {
-    canonical: "/",
-  },
   manifest: "/manifest.webmanifest",
   appleWebApp: {
     capable: true,
