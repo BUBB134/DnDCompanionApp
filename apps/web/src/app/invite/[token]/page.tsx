@@ -1,7 +1,9 @@
 import { EmptyState, StatusPill, Surface } from "@dnd/ui";
 import type { Route } from "next";
+import Image from "next/image";
 import Link from "next/link";
 import { getAuthSession } from "@/auth/server";
+import { PRODUCT_MARK_PATH, PRODUCT_NAME } from "@/brand";
 import { acceptCampaignInviteAction } from "@/campaigns/actions";
 import { getCampaignInvite, type CampaignInviteLookup } from "@/campaigns/invites";
 
@@ -91,7 +93,7 @@ function ReadyInviteContent({
           <p className="text-sm font-semibold uppercase tracking-wide text-[#8b2f39]">
             Campaign invite
           </p>
-          <h1 className="mt-2 text-3xl font-semibold leading-tight">
+          <h1 className="font-brand-display mt-2 text-3xl font-semibold leading-tight">
             Join {campaign.name}
           </h1>
           <p className="mt-3 max-w-2xl text-sm leading-6 text-[#4b4657]">
@@ -173,7 +175,25 @@ function UnavailableInviteContent({
 function InvitePageFrame({ children }: { children: React.ReactNode }) {
   return (
     <main className="grid min-h-screen place-items-center bg-[#f7f1e5] p-4 text-[#17161f] sm:p-6">
-      <div className="w-full max-w-2xl">{children}</div>
+      <div className="w-full max-w-2xl">
+        <div className="mb-4 flex items-center gap-3 px-1">
+          <Image
+            alt=""
+            className="h-11 w-11 rounded-lg"
+            height={88}
+            priority
+            src={PRODUCT_MARK_PATH}
+            width={88}
+          />
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#8b2f39]">
+              {PRODUCT_NAME}
+            </p>
+            <p className="font-brand-display text-lg font-semibold">Join the table</p>
+          </div>
+        </div>
+        {children}
+      </div>
     </main>
   );
 }

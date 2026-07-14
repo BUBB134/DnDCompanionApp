@@ -1,6 +1,8 @@
-# D&D Companion
+# The DnD Companion
 
-Responsive web MVP for campaign memory, session recaps, contextual rules/ability surfacing, and grounded AI Q&A for D&D groups.
+The DnD Companion is a responsive campaign companion for memory, session recaps, contextual rules and ability surfacing, and grounded AI Q&A for D&D groups.
+
+The canonical public origin is [thedndcompanion.com](https://thedndcompanion.com). Use **The DnD Companion** on primary product surfaces and **DnD Companion** only where space is constrained. The interim visual identity and contributor naming rules are documented in [`docs/product/brand-foundation.md`](docs/product/brand-foundation.md).
 
 ## MVP Pillars
 - Campaign memory

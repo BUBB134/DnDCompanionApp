@@ -1,15 +1,6 @@
 import Image from "next/image";
-import { Inter, Playfair_Display } from "next/font/google";
 import type { ReactNode } from "react";
-
-const authSans = Inter({
-  subsets: ["latin"],
-  variable: "--font-auth-sans",
-});
-const authDisplay = Playfair_Display({
-  subsets: ["latin"],
-  variable: "--font-auth-display",
-});
+import { PRODUCT_MARK_PATH, PRODUCT_NAME } from "@/brand";
 
 const firstCampaignSteps = [
   {
@@ -35,13 +26,13 @@ type AuthPageFrameProps = {
 
 export function AuthPageFrame({
   children,
-  eyebrow = "The DnD Companion",
+  eyebrow = PRODUCT_NAME,
   lead,
   title,
 }: AuthPageFrameProps) {
   return (
     <main
-      className={`${authSans.variable} ${authDisplay.variable} grid min-h-screen bg-[#121416] px-4 py-6 font-[family-name:var(--font-auth-sans)] text-[#e2e2e5] sm:px-6`}
+      className="grid min-h-screen bg-[#121416] px-4 py-6 text-[#e2e2e5] sm:px-6"
     >
       <section className="mx-auto flex w-full max-w-6xl flex-col justify-center gap-8 lg:grid lg:grid-cols-[minmax(0,1fr)_minmax(360px,460px)] lg:items-center">
         <div className="max-w-2xl">
@@ -50,13 +41,13 @@ export function AuthPageFrame({
             className="h-16 w-16 rounded-lg border border-[#4d4635] bg-[#1e2022] p-2"
             height={128}
             priority
-            src="/brand-mark.svg"
+            src={PRODUCT_MARK_PATH}
             width={128}
           />
           <p className="mt-6 text-xs font-semibold uppercase tracking-[0.2em] text-[#d4af37]">
             {eyebrow}
           </p>
-          <h1 className="mt-3 font-[family-name:var(--font-auth-display)] text-4xl font-semibold leading-tight tracking-[-0.02em] text-[#f2e0c3] sm:text-5xl">
+          <h1 className="font-brand-display mt-3 text-4xl font-semibold leading-tight tracking-[-0.02em] text-[#f2e0c3] sm:text-5xl">
             {title}
           </h1>
           <p className="mt-4 max-w-xl text-base leading-7 text-[#d0c5af]">
