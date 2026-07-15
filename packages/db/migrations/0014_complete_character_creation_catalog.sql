@@ -3,11 +3,11 @@ with options(slug, name, category, display_order, magic_capable, feature, summar
   values
     ('barbarian','Barbarian','class',50,false,'Rage','A fierce warrior who turns battle focus into strength and staying power.'),
     ('bard','Bard','class',60,true,'Bardic Inspiration','A performer, diplomat, and spellcaster who helps allies shine.'),
-    ('druid','Druid','class',70,true,'Wild Shape','A keeper of primal magic who adapts through spells and animal forms.'),
+    ('druid','Druid','class',70,true,'Druidic','A keeper of primal magic who adapts through spells and animal forms.'),
     ('monk','Monk','class',80,false,'Martial Arts','A disciplined combatant who relies on speed, focus, and precise technique.'),
     ('paladin','Paladin','class',90,true,'Lay on Hands','An oath-bound champion who protects allies with steel and sacred power.'),
     ('ranger','Ranger','class',100,true,'Favored Enemy','A watchful hunter and guide who excels beyond the safety of roads.'),
-    ('sorcerer','Sorcerer','class',110,true,'Metamagic','An innate spellcaster who bends a focused magical gift in unusual ways.'),
+    ('sorcerer','Sorcerer','class',110,true,'Sorcerous Origin','An innate spellcaster who bends a focused magical gift in unusual ways.'),
     ('warlock','Warlock','class',120,true,'Pact Magic','A pact-bound spellcaster shaped by potent magic and lasting invocations.'),
     ('gnome','Gnome','ancestry',50,false,'Ancestral Talents','Clever and curious, with a knack for invention and subtle magic.'),
     ('half-elf','Half-Elf','ancestry',60,false,'Ancestral Talents','Adaptable and perceptive, carrying both human and elven heritage.'),
@@ -22,10 +22,18 @@ insert into character_creation_options (
 )
 select
   slug, name, category, summary, summary, summary,
-  array['Distinctive','Resourceful','Adventurous'],
-  array[feature,'Support the party with your strengths'],
-  array['Core training','Practical expertise'],
-  array['Carries a tradition into every adventure'],
+  case when category = 'class'
+    then jsonb_build_array('Adventurous','Capable','Distinctive')
+    else jsonb_build_array('Distinctive','Resourceful','Connected') end,
+  case when category = 'class'
+    then jsonb_build_array(feature,'Support the party with class expertise')
+    else jsonb_build_array('Draw on ancestral talents','Bring a distinct perspective to the party') end,
+  case when category = 'class'
+    then jsonb_build_array('Class weapons and tools','Class saving throws')
+    else jsonb_build_array('Ancestral resilience','Cultural knowledge') end,
+  case when category = 'class'
+    then jsonb_build_array('Approaches danger through class training')
+    else jsonb_build_array('Carries a tradition from home') end,
   case when category = 'class'
     then jsonb_build_array(
       jsonb_build_object('name', feature, 'summary', 'A defining feature ready for character reminders and the action hotbar.', 'trigger', 'Class feature')
