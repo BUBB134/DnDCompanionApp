@@ -15,6 +15,7 @@ const requiredFiles = [
   "apps/web/src/sessions/note-draft.ts",
   "apps/web/src/sessions/note-document.ts",
   "apps/web/src/sessions/repository.ts",
+  "apps/web/src/recaps/action-state.ts",
   "docs/engineering/session-note-first-test.md",
   "packages/db/migrations/0002_session_entity_tags.sql",
   "packages/db/migrations/0004_session_note_document.sql",
@@ -26,6 +27,17 @@ for (const file of requiredFiles) {
 }
 
 const sessionsPage = readText("apps/web/src/app/(protected)/sessions/page.tsx");
+const recapActionsText = readText("apps/web/src/recaps/actions.ts");
+const recapActionStateText = readText("apps/web/src/recaps/action-state.ts");
+const recapGeneratorText = readText(
+  "apps/web/src/components/session-recap-generator.tsx",
+);
+expect(
+  !recapActionsText.includes("export const initialSessionRecapActionState") &&
+    recapActionStateText.includes("export const initialSessionRecapActionState") &&
+    recapGeneratorText.includes('from "@/recaps/action-state"'),
+  "Session recap state must stay outside the use-server action module so the sessions route can load.",
+);
 for (const expectedText of [
   "listSessionsForUser",
   "SessionCreateForm",

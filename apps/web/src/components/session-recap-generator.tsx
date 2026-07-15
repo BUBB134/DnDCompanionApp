@@ -2,10 +2,8 @@
 
 import { useActionState } from "react";
 import { useFormStatus } from "react-dom";
-import {
-  generateSessionRecapAction,
-  initialSessionRecapActionState,
-} from "@/recaps/actions";
+import { initialSessionRecapActionState } from "@/recaps/action-state";
+import { generateSessionRecapAction } from "@/recaps/actions";
 
 export function SessionRecapGenerator({
   campaignId,

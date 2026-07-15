@@ -5,17 +5,8 @@ import { revalidatePath } from "next/cache";
 import { requireAuthSession } from "@/auth/server";
 import { getCurrentCampaignAccess } from "@/campaigns/bootstrap";
 import { isDatabaseCampaignId } from "@/campaigns/database-id";
+import type { SessionRecapActionState } from "@/recaps/action-state";
 import { generateSessionRecapForUser } from "@/recaps/service";
-
-export type SessionRecapActionState = {
-  error: string | null;
-  success: string | null;
-};
-
-export const initialSessionRecapActionState: SessionRecapActionState = {
-  error: null,
-  success: null,
-};
 
 export async function generateSessionRecapAction(
   _previousState: SessionRecapActionState,
