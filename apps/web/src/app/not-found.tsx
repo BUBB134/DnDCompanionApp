@@ -1,13 +1,16 @@
 import Link from "next/link";
+import { PRODUCT_NAME } from "@/brand";
 
 export default function NotFound() {
   return (
     <main className="flex min-h-screen items-center justify-center bg-[#f7f1e5] p-6 text-[#17161f]">
       <section className="w-full max-w-md rounded-lg border border-[#17161f]/15 bg-white p-6 shadow-sm">
         <p className="text-sm font-semibold uppercase tracking-wide text-[#1f6f78]">
-          Not found
+          {PRODUCT_NAME} · Not found
         </p>
-        <h1 className="mt-3 text-2xl font-semibold">This campaign page is not available.</h1>
+        <h1 className="font-brand-display mt-3 text-2xl font-semibold">
+          This campaign page is not available.
+        </h1>
         <p className="mt-3 text-sm text-[#4b4657]">
           The campaign may not exist, or the signed-in user may not have membership
           access to view it.

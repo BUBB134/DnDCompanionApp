@@ -18,7 +18,7 @@ export const arcaneClerkAppearance = {
     },
     headerTitle: {
       color: "#e2e2e5",
-      fontFamily: "var(--font-auth-display), serif",
+      fontFamily: "var(--font-brand-display), Georgia, serif",
       letterSpacing: "-0.02em",
     },
     rootBox: {
@@ -43,8 +43,8 @@ export const arcaneClerkAppearance = {
     colorPrimaryForeground: "#3c2f00",
     colorRing: "#e9c349",
     colorShadow: "rgba(10, 11, 15, 0.5)",
-    fontFamily: "var(--font-auth-sans), Inter, system-ui, sans-serif",
-    fontFamilyButtons: "var(--font-auth-sans), Inter, system-ui, sans-serif",
+    fontFamily: "var(--font-brand-sans), Inter, system-ui, sans-serif",
+    fontFamilyButtons: "var(--font-brand-sans), Inter, system-ui, sans-serif",
     spacing: "1rem",
   },
 } as const;

@@ -89,9 +89,9 @@ for (const snippet of [
 
 const authFrame = readText("apps/web/src/components/auth-page-frame.tsx");
 expect(
-  authFrame.includes("The DnD Companion") &&
+  authFrame.includes("PRODUCT_NAME") &&
     authFrame.includes("First campaign path") &&
-    authFrame.includes("Playfair_Display"),
+    authFrame.includes("font-brand-display"),
   "Auth pages must use the branded Stitch-inspired frame.",
 );
 

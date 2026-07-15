@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next";
+import { Inter, Playfair_Display } from "next/font/google";
 import { connection } from "next/server";
 import { ClerkProvider } from "@clerk/nextjs";
 import { Analytics } from "@vercel/analytics/next";
@@ -7,23 +8,56 @@ import { arcaneClerkAppearance } from "@/auth/appearance";
 import { getAuthProvider, getClerkAuthConfig } from "@/auth/config";
 import { AuthProvider } from "@/auth/provider";
 import { getAuthSession } from "@/auth/server";
+import {
+  PRODUCT_DESCRIPTION,
+  PRODUCT_MARK_PATH,
+  PRODUCT_NAME,
+  PRODUCT_ORIGIN,
+  PRODUCT_SHORT_NAME,
+} from "@/brand";
 import { reportRuntimeEnvironmentIssues } from "@/env/runtime";
 import "./globals.css";
 
+const brandSans = Inter({
+  subsets: ["latin"],
+  variable: "--font-brand-sans",
+});
+const brandDisplay = Playfair_Display({
+  subsets: ["latin"],
+  variable: "--font-brand-display",
+});
+
 export const metadata: Metadata = {
-  applicationName: "D&D Companion",
-  title: "D&D Companion",
-  description: "Campaign memory and table support for D&D groups.",
+  metadataBase: new URL(PRODUCT_ORIGIN),
+  applicationName: PRODUCT_NAME,
+  title: {
+    default: PRODUCT_NAME,
+    template: `%s | ${PRODUCT_SHORT_NAME}`,
+  },
+  description: PRODUCT_DESCRIPTION,
   manifest: "/manifest.webmanifest",
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
-    title: "D&D Companion",
+    title: PRODUCT_SHORT_NAME,
   },
   icons: {
-    icon: [{ url: "/brand-mark.svg", type: "image/svg+xml" }],
+    icon: [{ url: PRODUCT_MARK_PATH, type: "image/svg+xml" }],
     apple: [{ url: "/apple-icon", sizes: "180x180", type: "image/png" }],
-    shortcut: ["/brand-mark.svg"],
+    shortcut: [PRODUCT_MARK_PATH],
+  },
+  openGraph: {
+    description: PRODUCT_DESCRIPTION,
+    locale: "en_GB",
+    siteName: PRODUCT_NAME,
+    title: PRODUCT_NAME,
+    type: "website",
+    url: "/",
+  },
+  twitter: {
+    card: "summary_large_image",
+    description: PRODUCT_DESCRIPTION,
+    title: PRODUCT_NAME,
   },
 };
 
@@ -51,7 +85,7 @@ export default async function RootLayout({
   );
 
   return (
-    <html lang="en">
+    <html lang="en" className={`${brandSans.variable} ${brandDisplay.variable}`}>
       <body>
         {clerkConfig ? (
           <ClerkProvider

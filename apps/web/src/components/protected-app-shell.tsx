@@ -7,6 +7,7 @@ import { AuthStatusNotice } from "@/auth/status-notice";
 import { isDatabaseCampaignId } from "@/campaigns/database-id";
 import { AppShellNavigation } from "@/components/app-shell-navigation";
 import { ClerkAccountControls } from "@/components/clerk-account-controls";
+import { PRODUCT_MARK_PATH, PRODUCT_NAME, PRODUCT_TAGLINE } from "@/brand";
 
 type ProtectedAppShellProps = {
   appEnv: string;
@@ -72,16 +73,18 @@ export function ProtectedAppShell({
                   className="h-12 w-12 rounded-lg"
                   height={96}
                   priority
-                  src="/brand-mark.svg"
+                  src={PRODUCT_MARK_PATH}
                   width={96}
                 />
                 <div>
                   <p className="text-xs font-semibold uppercase tracking-wide text-[#8b2f39]">
-                    D&D Companion
+                    {PRODUCT_NAME}
                   </p>
-                  <h1 className="text-2xl font-semibold leading-tight">Your campaign table</h1>
+                  <h1 className="font-brand-display text-2xl font-semibold leading-tight">
+                    Your campaign table
+                  </h1>
                   <p className="mt-1 text-sm text-[#625d6d]">
-                    Remember the story. Find what matters. Keep playing.
+                    {PRODUCT_TAGLINE}
                   </p>
                 </div>
               </div>

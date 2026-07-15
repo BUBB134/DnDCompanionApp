@@ -96,7 +96,7 @@ function LocalSignInForm({
       <input name="next" type="hidden" value={nextPath} />
       <div className="flex flex-col gap-5">
         <div>
-          <h2 className="font-[family-name:var(--font-auth-display)] text-2xl font-semibold text-[#f2e0c3]">
+          <h2 className="font-brand-display text-2xl font-semibold text-[#f2e0c3]">
             Local contributor sign-in
           </h2>
           <p className="mt-1 text-sm leading-6 text-[#d0c5af]">
@@ -152,7 +152,7 @@ function LocalSignInForm({
 function ConfigurationCard({ appBaseUrl }: { appBaseUrl: string | null }) {
   return (
     <section className="rounded-xl border border-[#4d4635] bg-[#1e2022] p-5 text-sm leading-6 text-[#d0c5af] shadow-[0_28px_80px_rgba(10,11,15,0.38)] sm:p-6">
-      <h2 className="font-[family-name:var(--font-auth-display)] text-2xl font-semibold text-[#f2e0c3]">
+      <h2 className="font-brand-display text-2xl font-semibold text-[#f2e0c3]">
         Clerk is not configured yet
       </h2>
       <p className="mt-3">

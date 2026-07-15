@@ -1,4 +1,4 @@
-# D&D Companion App — Project Definition (v2)
+# The DnD Companion — Project Definition (v2)
 
 ## 1. Product one-liner
 
@@ -347,7 +347,7 @@ Session note: "Ogre knocks you prone" → "prone" becomes tappable → shows:
 
 ## 16. Example pitch
 
-"D&D Companion is a campaign memory and session assistant that keeps track of your world, sessions, and characters, then uses AI to give grounded recaps, answer questions, and surface the rules and abilities you need in the moment."
+"The DnD Companion is a campaign memory and session assistant that keeps track of your world, sessions, and characters, then uses AI to give grounded recaps, answer questions, and surface the rules and abilities you need in the moment."
 
 ## 17. Release boundary
 
