@@ -35,12 +35,17 @@ const campaignShell = readText("apps/web/src/components/campaign-shell.tsx");
 for (const expectedText of [
   "Latest session",
   "The first session is ready when you are",
-  "Entities",
-  "No entities yet",
+  "Active quests",
+  "No active quests yet",
+  "Recent entities",
+  "No recent entities yet",
   "Table shortcuts",
   "Open latest session",
   "Start first session",
   "Browse campaign memory",
+  "Ask campaign context",
+  "Gather Ask context",
+  "Grounded Ask is tracked by DND-15",
   "Player-safe dashboard",
   "DM brief",
 ]) {
@@ -66,6 +71,13 @@ expect(
 );
 
 const campaignActions = readText("apps/web/src/campaigns/actions.ts");
+
+expect(
+  campaignShell.includes("activeQuests") &&
+    campaignShell.includes("recentEntities") &&
+    campaignShell.includes("CampaignEntityCard"),
+  "Campaign dashboard must derive explicit active quest and recent entity widgets from visible campaign memory.",
+);
 expect(
   campaignActions.includes("getCampaignToolDestination") &&
     campaignActions.includes('["/entities", "/rules", "/sessions"]') &&
