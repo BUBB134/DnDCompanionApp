@@ -61,6 +61,12 @@ export function CampaignShell({
   const sessionHref = latestSession
     ? (`/sessions#session-${latestSession.id}` as Route)
     : "/sessions";
+  const activeQuests = entities
+    .filter((entity) => entity.type === "quest")
+    .slice(0, 3);
+  const recentEntities = entities
+    .filter((entity) => entity.type !== "quest")
+    .slice(0, 4);
   const campaignActions: readonly CampaignAction[] = [
     {
       body: latestSession
@@ -81,6 +87,12 @@ export function CampaignShell({
       destination: "/rules",
       label: "Search rules",
       title: "Resolve a rule quickly",
+    },
+    {
+      body: "Grounded Ask is tracked by DND-15. Until that lands, start from visible campaign memory and rules sources.",
+      destination: "/entities",
+      label: "Gather Ask context",
+      title: "Ask campaign context",
     },
     {
       body: "Recall the people, places, quests, factions, and items in this campaign.",
@@ -137,7 +149,7 @@ export function CampaignShell({
           </p>
         </div>
 
-        <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
           {campaignActions.map((action) => (
             <CampaignShortcut
               action={action}
@@ -287,14 +299,41 @@ export function CampaignShell({
         <div className="grid gap-5">
           <Surface className="p-5">
             <div className="flex items-center justify-between gap-3">
-              <h2 className="text-lg font-semibold">Entities</h2>
-              <StatusPill tone="gold">{entities.length} visible</StatusPill>
+              <h2 className="text-lg font-semibold">Active quests</h2>
+              <StatusPill tone="gold">{activeQuests.length} visible</StatusPill>
             </div>
             <div className="mt-4 grid gap-3">
-              {entities.length === 0 ? (
+              {activeQuests.length === 0 ? (
                 <EmptyState
-                  body="NPCs, locations, factions, quests, and items will appear here once entity memory is added for this campaign."
-                  title="No entities yet"
+                  body="Create quest entities or tag quest hooks in session notes so the dashboard can surface what the table is pursuing."
+                  title="No active quests yet"
+                >
+                  <CampaignContextButton
+                    campaignId={campaign.id}
+                    className="inline-flex min-h-10 items-center rounded-md border border-[#1f6f78]/30 bg-white px-3 py-2 text-sm font-semibold text-[#164f56] transition hover:bg-[#e7f5f6] focus:outline-none focus:ring-2 focus:ring-[#1f6f78] focus:ring-offset-2"
+                    destination="/entities"
+                  >
+                    Add a quest
+                  </CampaignContextButton>
+                </EmptyState>
+              ) : (
+                activeQuests.map((quest) => (
+                  <CampaignEntityCard entity={quest} key={quest.id} />
+                ))
+              )}
+            </div>
+          </Surface>
+
+          <Surface className="p-5">
+            <div className="flex items-center justify-between gap-3">
+              <h2 className="text-lg font-semibold">Recent entities</h2>
+              <StatusPill tone="teal">{recentEntities.length} visible</StatusPill>
+            </div>
+            <div className="mt-4 grid gap-3">
+              {recentEntities.length === 0 ? (
+                <EmptyState
+                  body="NPCs, locations, factions, and items will appear here after campaign memory is added or linked from notes."
+                  title="No recent entities yet"
                 >
                   <CampaignContextButton
                     campaignId={campaign.id}
@@ -305,23 +344,8 @@ export function CampaignShell({
                   </CampaignContextButton>
                 </EmptyState>
               ) : (
-                entities.map((entity) => (
-                  <article
-                    className="rounded-lg border border-[#17161f]/10 bg-[#fffaf0] p-4"
-                    id={`entity-${entity.id}`}
-                    key={entity.id}
-                  >
-                    <div className="flex flex-wrap items-center gap-2">
-                      <h3 className="font-semibold">{entity.name}</h3>
-                      <StatusPill tone="teal">{entityTypeLabels[entity.type]}</StatusPill>
-                      <StatusPill tone={entity.visibility === "dm-only" ? "red" : "gold"}>
-                        {entity.visibility === "dm-only" ? "DM only" : "Player safe"}
-                      </StatusPill>
-                    </div>
-                    <p className="mt-2 text-sm leading-6 text-[#4b4657]">
-                      {entity.summary}
-                    </p>
-                  </article>
+                recentEntities.map((entity) => (
+                  <CampaignEntityCard entity={entity} key={entity.id} />
                 ))
               )}
             </div>
@@ -422,6 +446,26 @@ function CampaignShortcutContent({ action }: { action: CampaignAction }) {
         {action.label}
       </span>
     </>
+  );
+}
+
+function CampaignEntityCard({ entity }: { entity: CampaignEntitySummary }) {
+  return (
+    <article
+      className="rounded-lg border border-[#17161f]/10 bg-[#fffaf0] p-4"
+      id={`entity-${entity.id}`}
+    >
+      <div className="flex flex-wrap items-center gap-2">
+        <h3 className="font-semibold">{entity.name}</h3>
+        <StatusPill tone="teal">{entityTypeLabels[entity.type]}</StatusPill>
+        <StatusPill tone={entity.visibility === "dm-only" ? "red" : "gold"}>
+          {entity.visibility === "dm-only" ? "DM only" : "Player safe"}
+        </StatusPill>
+      </div>
+      <p className="mt-2 text-sm leading-6 text-[#4b4657]">
+        {entity.summary}
+      </p>
+    </article>
   );
 }
 
