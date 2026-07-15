@@ -157,6 +157,20 @@ if (typescript) {
   );
   const creationProfileModule = await import(creationProfileModuleUrl);
   const options = contentModule.coreCharacterCreationOptions;
+  const legacyCatalogSlugs = new Set([
+    "fighter", "rogue", "cleric", "wizard",
+    "human", "elf", "dwarf", "halfling",
+    "acolyte", "criminal", "sage", "soldier",
+    "steadfast-guardian", "curious-outsider", "unproven-champion",
+    "bright-hearted-wanderer",
+  ]);
+  const legacyCatalog = options.filter((option) =>
+    legacyCatalogSlugs.has(option.slug),
+  );
+  expect(
+    !creationProfileModule.hasCompleteCharacterCreationCatalog(legacyCatalog),
+    "The legacy 4-class/4-ancestry seed must fall back to the expanded catalog.",
+  );
 
   expect(
     creationProfileModule.resolveOptionalRoleplayTraitSlug(

@@ -12,11 +12,27 @@ const requiredOptionCategories: readonly CharacterCreationOptionCategory[] = [
   "roleplay-trait",
 ];
 
+const requiredClassOptionSlugs = [
+  "barbarian", "bard", "cleric", "druid", "fighter", "monk",
+  "paladin", "ranger", "rogue", "sorcerer", "warlock", "wizard",
+] as const;
+
+const requiredAncestryOptionSlugs = [
+  "dragonborn", "dwarf", "elf", "gnome", "half-elf", "half-orc",
+  "halfling", "human", "tiefling",
+] as const;
+
 export function hasCompleteCharacterCreationCatalog(
   options: CharacterCreationOption[],
 ) {
-  return requiredOptionCategories.every((category) =>
-    options.some((option) => option.category === category),
+  const optionSlugs = new Set(options.map((option) => option.slug));
+
+  return (
+    requiredOptionCategories.every((category) =>
+      options.some((option) => option.category === category),
+    ) &&
+    requiredClassOptionSlugs.every((slug) => optionSlugs.has(slug)) &&
+    requiredAncestryOptionSlugs.every((slug) => optionSlugs.has(slug))
   );
 }
 

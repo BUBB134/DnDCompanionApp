@@ -306,4 +306,21 @@ export const coreCharacterCreationOptions = [
     summary: "A bright-hearted wanderer who keeps the group moving when courage runs thin.",
     traits: ["Warm", "Resilient", "Emotionally perceptive"],
   }),
+  ...([
+    ["barbarian","Barbarian",false,"Rage","A fierce warrior who turns battle focus into strength and staying power."],
+    ["bard","Bard",true,"Bardic Inspiration","A performer, diplomat, and spellcaster who helps allies shine."],
+    ["druid","Druid",true,"Druidic","A keeper of primal magic who adapts through spells and animal forms."],
+    ["monk","Monk",false,"Martial Arts","A disciplined combatant who relies on speed, focus, and precise technique."],
+    ["paladin","Paladin",true,"Lay on Hands","An oath-bound champion who protects allies with steel and sacred power."],
+    ["ranger","Ranger",true,"Favored Enemy","A watchful hunter and guide who excels beyond the safety of roads."],
+    ["sorcerer","Sorcerer",true,"Sorcerous Origin","An innate spellcaster who bends a focused magical gift in unusual ways."],
+    ["warlock","Warlock",true,"Pact Magic","A pact-bound spellcaster shaped by potent magic and lasting invocations."],
+  ] as const).map(([slug,name,magicCapable,feature,summary],index) => option({ abilities: [{ name: feature, summary: `A defining ${name} feature ready for character reminders and the action hotbar.`, trigger: "Class feature" }, ...(magicCapable ? [{ name: "Spellcasting", summary: "Use class magic through the character spellbook.", trigger: "Uses spells and spell slots" }] : [])], actions: [feature, "Support the party with class expertise"], category: "class", displayOrder: 50 + index * 10, flavour: summary, gameplay: summary, magicCapable, name, proficiencies: ["Class weapons and tools", "Class saving throws"], quirks: ["Approaches danger through class training"], slug, summary, traits: ["Adventurous", "Capable", "Distinctive"] })),
+  ...([
+    ["gnome","Gnome","Clever and curious, with a knack for invention and subtle magic."],
+    ["half-elf","Half-Elf","Adaptable and perceptive, carrying both human and elven heritage."],
+    ["half-orc","Half-Orc","Powerful and enduring, with a reputation that often arrives first."],
+    ["dragonborn","Dragonborn","Dragon-blooded and imposing, with elemental power close at hand."],
+    ["tiefling","Tiefling","Marked by infernal heritage, with innate magic and a memorable presence."],
+  ] as const).map(([slug,name,summary],index) => option({ abilities: [], actions: ["Draw on ancestral talents", "Bring a distinct perspective to the party"], category: "ancestry", displayOrder: 50 + index * 10, flavour: summary, gameplay: summary, magicCapable: false, name, proficiencies: ["Ancestral resilience", "Cultural knowledge"], quirks: ["Carries a tradition from home"], slug, summary, traits: ["Distinctive", "Resourceful", "Connected"] })),
 ] satisfies Array<CharacterCreationOption & { displayOrder: number }>;
