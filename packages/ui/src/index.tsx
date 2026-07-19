@@ -1,10 +1,12 @@
 import type { ReactNode } from "react";
 
 type Tone = "gold" | "red" | "teal";
+type SurfaceTone = "panel" | "paper" | "private" | "shared";
 
 type SurfaceProps = {
   children: ReactNode;
   className?: string;
+  tone?: SurfaceTone;
 };
 
 type StatusPillProps = {
@@ -18,17 +20,32 @@ type EmptyStateProps = {
   title: string;
 };
 
-const toneClasses: Record<Tone, string> = {
-  gold: "border-[#c3943e]/45 bg-[#fff7de] text-[#5c4212]",
-  red: "border-[#8b2f39]/25 bg-[#f9e8ea] text-[#6f2430]",
-  teal: "border-[#1f6f78]/25 bg-[#e7f5f6] text-[#164f56]",
+type SectionHeadingProps = {
+  body?: string;
+  children?: ReactNode;
+  eyebrow?: string;
+  title: string;
 };
 
-export function Surface({ children, className }: SurfaceProps) {
+const toneClasses: Record<Tone, string> = {
+  gold: "border-arcane-gold/45 bg-arcane-gold-soft text-arcane-gold-deep",
+  red: "border-arcane-oxblood/25 bg-arcane-oxblood-soft text-arcane-oxblood-deep",
+  teal: "border-arcane-teal/25 bg-arcane-teal-soft text-arcane-teal-deep",
+};
+
+const surfaceClasses: Record<SurfaceTone, string> = {
+  panel: "border-arcane-ink/10 bg-arcane-surface/92",
+  paper: "border-arcane-gold/20 bg-arcane-parchment/92",
+  private: "border-arcane-oxblood/25 bg-arcane-oxblood-soft",
+  shared: "border-arcane-teal/25 bg-arcane-teal-soft",
+};
+
+export function Surface({ children, className, tone = "panel" }: SurfaceProps) {
   return (
     <section
       className={joinClasses(
-        "rounded-lg border border-[#17161f]/10 bg-white/90 shadow-sm",
+        "rounded-xl border shadow-[var(--arcane-shadow-panel)]",
+        surfaceClasses[tone],
         className,
       )}
     >
@@ -52,17 +69,17 @@ export function StatusPill({ children, tone = "teal" }: StatusPillProps) {
 
 export function EmptyState({ body, children, title }: EmptyStateProps) {
   return (
-    <div className="rounded-xl border border-dashed border-[#17161f]/20 bg-[#fffaf0]/70 p-5">
+    <div className="rounded-xl border border-dashed border-arcane-ink/20 bg-arcane-parchment/70 p-5">
       <div className="flex items-start gap-3">
         <span
           aria-hidden="true"
-          className="mt-0.5 inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-[#c3943e]/35 bg-white text-sm font-bold text-[#8b2f39]"
+          className="mt-0.5 inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-arcane-gold/35 bg-arcane-surface text-sm font-bold text-arcane-oxblood"
         >
           ✦
         </span>
         <div className="min-w-0">
           <p className="font-semibold">{title}</p>
-          <p className="mt-1 text-sm leading-6 text-[#4b4657]">{body}</p>
+          <p className="mt-1 text-sm leading-6 text-arcane-muted">{body}</p>
         </div>
       </div>
       {children ? <div className="mt-4 flex flex-wrap gap-2">{children}</div> : null}
@@ -70,7 +87,34 @@ export function EmptyState({ body, children, title }: EmptyStateProps) {
   );
 }
 
+export function SectionHeading({
+  body,
+  children,
+  eyebrow,
+  title,
+}: SectionHeadingProps) {
+  return (
+    <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+      <div>
+        {eyebrow ? (
+          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-arcane-oxblood">
+            {eyebrow}
+          </p>
+        ) : null}
+        <h2 className="font-brand-display mt-1 text-2xl font-semibold leading-tight text-arcane-ink">
+          {title}
+        </h2>
+        {body ? (
+          <p className="mt-2 max-w-3xl text-sm leading-6 text-arcane-muted">
+            {body}
+          </p>
+        ) : null}
+      </div>
+      {children ? <div className="shrink-0">{children}</div> : null}
+    </div>
+  );
+}
+
 function joinClasses(...classes: Array<string | false | null | undefined>) {
   return classes.filter(Boolean).join(" ");
 }
-

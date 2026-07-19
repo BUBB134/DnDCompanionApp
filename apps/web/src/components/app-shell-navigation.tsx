@@ -49,8 +49,8 @@ export function AppShellNavigation({
       aria-label={mobile ? "Primary mobile navigation" : "Primary navigation"}
       className={
         mobile
-          ? "rounded-2xl border border-[#17161f]/10 bg-white/95 p-2 shadow-xl backdrop-blur"
-          : "rounded-2xl border border-[#17161f]/10 bg-white/85 p-3 shadow-sm"
+          ? "rounded-2xl border border-arcane-ink/10 bg-arcane-surface/95 p-2 shadow-[var(--arcane-shadow-raised)] backdrop-blur"
+          : "rounded-2xl border border-arcane-ink/10 bg-arcane-surface/85 p-3 shadow-[var(--arcane-shadow-panel)]"
       }
     >
       <div
@@ -64,14 +64,14 @@ export function AppShellNavigation({
           const isActive = item.href === activeHref;
 
           const baseClasses = mobile
-            ? "flex min-h-12 min-w-[5.5rem] shrink-0 items-center justify-center rounded-xl border px-3 py-2 text-center text-xs font-semibold leading-tight transition focus:outline-none focus:ring-2 focus:ring-[#1f6f78] focus:ring-offset-2"
-            : "rounded-xl border px-3 py-3 transition focus:outline-none focus:ring-2 focus:ring-[#1f6f78] focus:ring-offset-2";
+            ? "flex min-h-12 min-w-[5.5rem] shrink-0 items-center justify-center rounded-xl border px-3 py-2 text-center text-xs font-semibold leading-tight transition"
+            : "rounded-xl border px-3 py-3 transition";
 
           const stateClasses = isActive
-            ? "border-[#17161f] bg-[#17161f] text-white shadow-sm"
+            ? "border-arcane-ink bg-arcane-ink text-white shadow-sm"
             : mobile
-              ? "border-transparent bg-[#f7f1e5] text-[#17161f] hover:border-[#1f6f78]/25 hover:bg-[#e7f5f6]"
-              : "border-transparent text-[#17161f] hover:border-[#1f6f78]/20 hover:bg-[#e7f5f6]";
+              ? "border-transparent bg-arcane-canvas text-arcane-ink hover:border-arcane-teal/25 hover:bg-arcane-teal-soft"
+              : "border-transparent text-arcane-ink hover:border-arcane-teal/20 hover:bg-arcane-teal-soft";
 
           return (
             <Link
@@ -85,7 +85,7 @@ export function AppShellNavigation({
               {mobile ? null : (
                 <span
                   className={`mt-1 block text-xs leading-5 ${
-                    isActive ? "text-white/75" : "text-[#625d6d]"
+                    isActive ? "text-white/75" : "text-arcane-subtle"
                   }`}
                 >
                   {item.description}

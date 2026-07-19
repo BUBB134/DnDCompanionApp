@@ -29,9 +29,7 @@ const appShellNavigation = readText(
   "apps/web/src/components/app-shell-navigation.tsx",
 );
 expect(
-  appShellNavigation.includes(
-    '"border-[#17161f] bg-[#17161f] text-white shadow-sm"',
-  ),
+  appShellNavigation.includes('"border-arcane-ink bg-arcane-ink text-white shadow-sm"'),
   "Active app-shell navigation links must pair the ink background with white text.",
 );
 
@@ -45,6 +43,7 @@ expect(
 
 const darkBackgroundClasses = [
   "bg-black",
+  "bg-arcane-ink",
   "bg-[#17161f]",
   "bg-[#2d2937]",
   "bg-[#6f2430]",
