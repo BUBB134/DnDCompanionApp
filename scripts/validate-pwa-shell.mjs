@@ -55,9 +55,10 @@ expect(
   navigation.includes('aria-current={isActive ? "page" : undefined}'),
   "Shell navigation must expose the active page for accessibility.",
 );
+const hasHighContrastActiveState =
+  navigation.includes("border-arcane-ink bg-arcane-ink text-white");
 expect(
-  navigation.includes("description") &&
-    navigation.includes("border-[#17161f] bg-[#17161f] text-white"),
+  navigation.includes("description") && hasHighContrastActiveState,
   "Shell navigation must provide route context and a high-contrast active state.",
 );
 

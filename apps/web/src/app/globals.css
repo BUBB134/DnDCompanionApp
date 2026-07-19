@@ -2,8 +2,50 @@
 @source "../../../../packages/ui/src";
 
 :root {
-  color: #17161f;
-  background: #f7f1e5;
+  --arcane-ink: #17161f;
+  --arcane-ink-soft: #2d2937;
+  --arcane-canvas: #f7f1e5;
+  --arcane-parchment: #fffaf0;
+  --arcane-surface: #ffffff;
+  --arcane-text-muted: #4b4657;
+  --arcane-text-subtle: #625d6d;
+  --arcane-gold: #c3943e;
+  --arcane-gold-deep: #5c4212;
+  --arcane-gold-soft: #fff7de;
+  --arcane-teal: #1f6f78;
+  --arcane-teal-deep: #164f56;
+  --arcane-teal-soft: #e7f5f6;
+  --arcane-oxblood: #8b2f39;
+  --arcane-oxblood-deep: #6f2430;
+  --arcane-oxblood-soft: #f9e8ea;
+  --arcane-radius-control: 0.5rem;
+  --arcane-radius-panel: 0.75rem;
+  --arcane-radius-dominant: 1rem;
+  --arcane-shadow-panel: 0 1px 2px rgb(23 22 31 / 0.08);
+  --arcane-shadow-raised: 0 18px 48px rgb(23 22 31 / 0.12);
+  --arcane-motion-fast: 180ms;
+
+  color: var(--arcane-ink);
+  background: var(--arcane-canvas);
+}
+
+@theme inline {
+  --color-arcane-ink: var(--arcane-ink);
+  --color-arcane-ink-soft: var(--arcane-ink-soft);
+  --color-arcane-canvas: var(--arcane-canvas);
+  --color-arcane-parchment: var(--arcane-parchment);
+  --color-arcane-surface: var(--arcane-surface);
+  --color-arcane-muted: var(--arcane-text-muted);
+  --color-arcane-subtle: var(--arcane-text-subtle);
+  --color-arcane-gold: var(--arcane-gold);
+  --color-arcane-gold-deep: var(--arcane-gold-deep);
+  --color-arcane-gold-soft: var(--arcane-gold-soft);
+  --color-arcane-teal: var(--arcane-teal);
+  --color-arcane-teal-deep: var(--arcane-teal-deep);
+  --color-arcane-teal-soft: var(--arcane-teal-soft);
+  --color-arcane-oxblood: var(--arcane-oxblood);
+  --color-arcane-oxblood-deep: var(--arcane-oxblood-deep);
+  --color-arcane-oxblood-soft: var(--arcane-oxblood-soft);
 }
 
 * {
@@ -18,8 +60,9 @@ body {
   min-height: 100%;
   margin: 0;
   background:
-    linear-gradient(135deg, rgba(31, 111, 120, 0.08), transparent 32%),
-    #f7f1e5;
+    radial-gradient(circle at 12% 0%, rgb(195 148 62 / 0.12), transparent 25rem),
+    linear-gradient(135deg, rgb(31 111 120 / 0.08), transparent 32%),
+    var(--arcane-canvas);
   font-family: var(--font-brand-sans), Arial, Helvetica, sans-serif;
 }
 
@@ -50,10 +93,32 @@ body {
     filter: brightness(0.9);
   }
 
+  button,
+  a,
+  input,
+  select,
+  textarea {
+    transition-duration: var(--arcane-motion-fast);
+  }
+
   button:focus-visible,
-  input:where([type="button"], [type="reset"], [type="submit"]):focus-visible {
-    outline: 2px solid #1f6f78;
+  input:focus-visible,
+  select:focus-visible,
+  textarea:focus-visible,
+  a:focus-visible {
+    outline: 2px solid var(--arcane-teal);
     outline-offset: 2px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
   }
 }
 

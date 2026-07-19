@@ -6,7 +6,7 @@ import type {
   SessionSummary,
 } from "@dnd/types";
 import { isDungeonMaster } from "@dnd/types";
-import { EmptyState, StatusPill, Surface } from "@dnd/ui";
+import { EmptyState, SectionHeading, StatusPill, Surface } from "@dnd/ui";
 import type { Route } from "next";
 import Link from "next/link";
 import type { ReactNode } from "react";
@@ -104,14 +104,14 @@ export function CampaignShell({
 
   return (
     <div className="grid gap-5">
-      <section className="flex flex-col gap-4 rounded-lg border border-[#17161f]/10 bg-white/85 p-4 shadow-sm sm:flex-row sm:items-center sm:justify-between">
+      <Surface className="flex flex-col gap-4 p-4 sm:flex-row sm:items-center sm:justify-between sm:p-5" tone="paper">
         <div>
-          <p className="text-sm font-semibold uppercase tracking-wide text-[#8b2f39]">
+          <p className="text-sm font-semibold uppercase tracking-wide text-arcane-oxblood">
             Active campaign
           </p>
-          <h2 className="mt-1 text-2xl font-semibold leading-tight">{campaign.name}</h2>
+          <h2 className="font-brand-display mt-1 text-2xl font-semibold leading-tight">{campaign.name}</h2>
           {campaign.summary ? (
-            <p className="mt-2 max-w-2xl text-sm leading-6 text-[#4b4657]">
+            <p className="mt-2 max-w-2xl text-sm leading-6 text-arcane-muted">
               {campaign.summary}
             </p>
           ) : null}
@@ -128,26 +128,18 @@ export function CampaignShell({
           ) : null}
         </div>
         <StatusPill tone="teal">Role: {campaign.role.toUpperCase()}</StatusPill>
-      </section>
+      </Surface>
 
       <Surface className="overflow-hidden p-5 sm:p-6">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#8b2f39]">
-              Table shortcuts
-            </p>
-            <h2 className="mt-2 text-2xl font-semibold leading-tight">
-              What do you need right now?
-            </h2>
-            <p className="mt-2 max-w-3xl text-sm leading-6 text-[#4b4657]">
-              Move from campaign context to notes, characters, rules, and memory in
-              one tap.
-            </p>
-          </div>
-          <p className="text-sm font-medium text-[#625d6d]">
+        <SectionHeading
+          body="Move from campaign context to notes, characters, rules, and memory in one tap."
+          eyebrow="Table shortcuts"
+          title="What do you need right now?"
+        >
+          <p className="text-sm font-medium text-arcane-subtle">
             Campaign → session → notes → memory
           </p>
-        </div>
+        </SectionHeading>
 
         <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
           {campaignActions.map((action) => (

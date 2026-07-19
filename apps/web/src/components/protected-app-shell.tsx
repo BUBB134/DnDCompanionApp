@@ -62,9 +62,9 @@ export function ProtectedAppShell({
     : baseNavigationItems;
 
   return (
-    <main className="min-h-screen px-3 py-4 text-[#17161f] sm:px-6 lg:px-8">
+    <main className="min-h-screen px-3 py-4 text-arcane-ink sm:px-6 lg:px-8">
       <div className="mx-auto flex w-full max-w-7xl flex-col gap-4 pb-6 sm:gap-5">
-        <header className="rounded-2xl border border-[#17161f]/10 bg-white/90 shadow-sm">
+        <header className="rounded-2xl border border-arcane-ink/10 bg-arcane-surface/92 shadow-[var(--arcane-shadow-panel)] backdrop-blur">
           <div className="flex flex-col gap-4 p-4 sm:p-5">
             <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
               <div className="flex items-center gap-3 sm:gap-4">
@@ -77,13 +77,13 @@ export function ProtectedAppShell({
                   width={96}
                 />
                 <div>
-                  <p className="text-xs font-semibold uppercase tracking-wide text-[#8b2f39]">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-arcane-oxblood">
                     {PRODUCT_NAME}
                   </p>
                   <h1 className="font-brand-display text-2xl font-semibold leading-tight">
                     Your campaign table
                   </h1>
-                  <p className="mt-1 text-sm text-[#625d6d]">
+                  <p className="mt-1 text-sm text-arcane-subtle">
                     {PRODUCT_TAGLINE}
                   </p>
                 </div>
@@ -111,7 +111,7 @@ export function ProtectedAppShell({
                   ) : (
                     <form action={signOutAction} className="sm:shrink-0">
                       <button
-                        className="min-h-10 w-full rounded-md border border-[#17161f]/15 bg-white px-3 py-2 text-sm font-semibold transition hover:border-[#8b2f39] focus:outline-none focus:ring-2 focus:ring-[#8b2f39] focus:ring-offset-2 sm:w-auto"
+                        className="min-h-11 w-full rounded-lg border border-arcane-ink/15 bg-arcane-surface px-3 py-2 text-sm font-semibold transition hover:border-arcane-oxblood sm:w-auto"
                         type="submit"
                       >
                         Sign out
