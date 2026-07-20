@@ -11,6 +11,7 @@ const requiredFiles = [
   "apps/web/src/recaps/service.ts",
   "docs/engineering/session-recap-generation.md",
   "packages/db/migrations/0008_session_recap_grounding.sql",
+  "packages/db/migrations/0015_session_recap_continuity.sql",
 ];
 
 for (const file of requiredFiles) {
@@ -22,6 +23,8 @@ for (const expectedText of [
   "SessionRecapGrounding",
   "recapGrounding",
   "CampaignMemoryGrounding",
+  "SessionRecapFormat",
+  "sessionRecapFormats",
 ]) {
   expect(
     campaignTypesText.includes(expectedText),
@@ -38,13 +41,25 @@ expect(
   "Session recaps must persist grounding metadata in Postgres.",
 );
 
+const continuityMigrationText = readText(
+  "packages/db/migrations/0015_session_recap_continuity.sql",
+);
+expect(
+  continuityMigrationText.includes("recap_format text") &&
+    continuityMigrationText.includes("sessions_recap_format_check") &&
+    continuityMigrationText.includes("'quick', 'detailed'"),
+  "Session continuity recaps must persist and constrain the selected format.",
+);
+
 const repositoryText = readText("apps/web/src/sessions/repository.ts");
 for (const expectedText of [
   "getSessionForUserById",
   "updateSessionRecapForUser",
   "campaign_memberships.user_id = $1",
-  "recap_grounding = $5::jsonb",
-  "sessions.updated_at = $6::timestamptz",
+  "recap_format = $5",
+  "recap_grounding = $6::jsonb",
+  "unresolved_hooks = $7::jsonb",
+  "sessions.updated_at = $8::timestamptz",
   "mapRecapGrounding",
 ]) {
   expect(
@@ -61,6 +76,9 @@ for (const expectedText of [
   'AI_GROUNDING_MODE === "retrieval"',
   'AI_GROUNDING_MODE === "local"',
   "updateSessionRecapForUser",
+  "mergeUnresolvedHooks",
+  `"session-recap"`,
+  `"session-hook"`,
 ]) {
   expect(
     serviceText.includes(expectedText),
@@ -79,6 +97,9 @@ for (const expectedText of [
   "supportsGpt5RequestControls",
   "SESSION_RECAP_MAX_NOTES_LENGTH",
   "sessions.notes",
+  `"json_schema"`,
+  "unresolvedHooks",
+  "recapFormat",
 ]) {
   expect(
     generationText.includes(expectedText),
@@ -92,6 +113,7 @@ for (const expectedText of [
   "getCurrentCampaignAccess",
   "generateSessionRecapForUser",
   'revalidatePath("/sessions")',
+  "recapFormat",
 ]) {
   expect(
     actionText.includes(expectedText),
@@ -107,6 +129,8 @@ for (const expectedText of [
   "Previously on",
   "recapGrounding",
   "Sources (",
+  "recapFormat",
+  "Detailed recap",
 ]) {
   expect(
     sessionsPageText.includes(expectedText),
@@ -266,10 +290,77 @@ if (typescriptPath) {
   );
 
   const localRecap = generation.createLocalSessionRecap(session);
+  const detailedLocalRecap = generation.createLocalSessionRecap(
+    session,
+    "detailed",
+  );
   expect(
     localRecap.recap.includes("recovered the tide key") &&
-      localRecap.grounding[0]?.sourcePath === "sessions.notes",
-    "Local recap generation must summarize and cite saved session notes.",
+      localRecap.grounding[0]?.sourcePath === "sessions.notes" &&
+      localRecap.recapFormat === "quick" &&
+      detailedLocalRecap.recapFormat === "detailed" &&
+      detailedLocalRecap.recap.length >= localRecap.recap.length,
+    "Local recap generation must summarize and cite saved notes in quick and detailed formats.",
+  );
+
+  const priorContinuity = [
+    {
+      ...documents[0],
+      body: "The salt-stained map still points beneath the harbor.",
+      grounding: {
+        label: "The harbor bargain",
+        sourceId: "session-prior",
+        sourcePath: "sessions.recap",
+        sourceType: "session-recap",
+      },
+      id: "session-recap:session-prior",
+      sourceId: "session-prior",
+      sourceType: "session-recap",
+      title: "The harbor bargain recap",
+      updatedAt: "2026-06-09T20:00:00.000Z",
+    },
+    {
+      ...documents[0],
+      body: "Decode the salt-stained map.",
+      grounding: {
+        label: "The harbor bargain",
+        sourceId: "session-prior",
+        sourcePath: "sessions.unresolved_hooks[0]",
+        sourceType: "session-hook",
+      },
+      id: "session-hook:session-prior:0",
+      sourceId: "session-prior",
+      sourceType: "session-hook",
+      title: "The harbor bargain unresolved hook",
+      updatedAt: "2026-06-09T20:00:00.000Z",
+    },
+    {
+      ...documents[0],
+      body: "The hidden saboteur is the harbor master.",
+      id: "session-hook:session-secret:0",
+      sourceId: "session-secret",
+      sourceType: "session-hook",
+      title: "Secret hook",
+      visibility: "dm-only",
+    },
+  ];
+  const continuitySources = generation.selectSessionRecapSources(
+    session,
+    [...documents, ...priorContinuity],
+    "detailed",
+  );
+  const mergedHooks = generation.mergeUnresolvedHooks(
+    ["Decode the salt-stained map"],
+    ["decode the salt-stained map", "Ask Captain Thorn about the vault"],
+  );
+
+  expect(
+    continuitySources.some((source) => source.sourceType === "session-recap") &&
+      continuitySources.some((source) => source.sourceType === "session-hook") &&
+      continuitySources.every((source) => source.visibility === "player-safe") &&
+      !continuitySources.some((source) => source.sourceId === "session-secret") &&
+      mergedHooks.length === 2,
+    "Continuity recaps must include relevant prior context, exclude DM-only memory, and deduplicate hooks.",
   );
 
   let requestBody = null;
@@ -293,7 +384,10 @@ if (typescriptPath) {
                 {
                   content: [
                     {
-                      text: "The party recovered the tide key and returned to the lighthouse after Captain Thorn refused to open the drowned door.",
+                      text: JSON.stringify({
+                        recap: "The party recovered the tide key and returned to the lighthouse after Captain Thorn refused to open the drowned door.",
+                        unresolvedHooks: ["Ask Captain Thorn why he refused."],
+                      }),
                       type: "output_text",
                     },
                   ],
@@ -327,7 +421,9 @@ if (typescriptPath) {
         source.excerpt.includes("later voyage"),
       ) &&
       remoteRecap.grounding.length === 2 &&
-      remoteRecap.recap.includes("tide key"),
+      remoteRecap.recap.includes("tide key") &&
+      remoteRecap.recapFormat === "quick" &&
+      remoteRecap.unresolvedHooks[0]?.includes("Captain Thorn"),
     "OpenAI recap generation must cap output, preserve complete notes, and exclude backlink context.",
   );
 
@@ -341,7 +437,10 @@ if (typescriptPath) {
         ok: true,
         async json() {
           return {
-            output_text: "The party returned safely to the lighthouse.",
+            output_text: JSON.stringify({
+              recap: "The party returned safely to the lighthouse.",
+              unresolvedHooks: [],
+            }),
           };
         },
         status: 200,
@@ -353,7 +452,8 @@ if (typescriptPath) {
   expect(
     overrideRequestBody?.model === "gpt-4.1-mini" &&
       overrideRequestBody?.reasoning === undefined &&
-      overrideRequestBody?.text === undefined,
+      overrideRequestBody?.text?.format?.type === "json_schema" &&
+      overrideRequestBody?.text?.verbosity === undefined,
     "Non-GPT-5 model overrides must omit GPT-5-specific request controls.",
   );
 }

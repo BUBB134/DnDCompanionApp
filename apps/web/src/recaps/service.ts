@@ -1,6 +1,8 @@
 import { readServerEnv, type EnvSource } from "@dnd/env";
+import type { SessionRecapFormat } from "@dnd/types";
 import {
   createLocalSessionRecap,
+  mergeUnresolvedHooks,
   requestOpenAIRecap,
   selectSessionRecapSources,
 } from "@/recaps/generation";
@@ -14,6 +16,7 @@ export async function generateSessionRecapForUser(
   userId: string,
   campaignId: string,
   sessionId: string,
+  recapFormat: SessionRecapFormat,
   options: {
     env?: EnvSource;
     fetchImpl?: typeof fetch;
@@ -35,7 +38,13 @@ export async function generateSessionRecapForUser(
     createRecapRetrievalQuery(session),
     {
       limit: 20,
-      sourceTypes: ["character", "entity", "session-notes"],
+      sourceTypes: [
+        "character",
+        "entity",
+        "session-hook",
+        "session-notes",
+        "session-recap",
+      ],
     },
   );
 
@@ -52,13 +61,23 @@ export async function generateSessionRecapForUser(
         document.sourceId === session.id) ||
       retrievedDocumentIds.has(document.id),
   );
-  const sources = selectSessionRecapSources(session, sourceDocuments);
+  const sources = selectSessionRecapSources(
+    session,
+    sourceDocuments,
+    recapFormat,
+  );
   const env = readServerEnv(options.env ?? process.env);
   const generated =
     env.AI_GROUNDING_MODE === "retrieval"
-      ? await generateRetrievalRecap(env, session, sources, options.fetchImpl)
+      ? await generateRetrievalRecap(
+          env,
+          session,
+          sources,
+          recapFormat,
+          options.fetchImpl,
+        )
       : env.AI_GROUNDING_MODE === "local"
-        ? createLocalSessionRecap(session)
+        ? createLocalSessionRecap(session, recapFormat)
         : null;
 
   if (!generated) {
@@ -72,7 +91,9 @@ export async function generateSessionRecapForUser(
     campaignId,
     sessionId,
     generated.recap,
+    generated.recapFormat,
     generated.grounding,
+    mergeUnresolvedHooks(session.unresolvedHooks, generated.unresolvedHooks),
     session.updatedAt,
   );
 
@@ -87,6 +108,7 @@ async function generateRetrievalRecap(
   env: ReturnType<typeof readServerEnv>,
   session: NonNullable<Awaited<ReturnType<typeof getSessionForUserById>>>,
   sources: ReturnType<typeof selectSessionRecapSources>,
+  recapFormat: SessionRecapFormat,
   fetchImpl?: typeof fetch,
 ) {
   if (!env.OPENAI_API_KEY) {
@@ -99,6 +121,7 @@ async function generateRetrievalRecap(
     apiKey: env.OPENAI_API_KEY,
     fetchImpl,
     model: env.OPENAI_MODEL ?? "gpt-5.5",
+    recapFormat,
   });
 }
 
@@ -107,6 +130,8 @@ function createRecapRetrievalQuery(
 ) {
   return [
     session.title,
+    session.notes.slice(0, 1200),
+    ...session.unresolvedHooks,
     ...session.taggedEntities.map((entity) => entity.name),
     ...session.notesDocument.blocks.flatMap((block) =>
       block.references.map((reference) => reference.label),

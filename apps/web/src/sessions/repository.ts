@@ -2,6 +2,7 @@ import type {
   CampaignEntitySummary,
   CampaignSession,
   EntityType,
+  SessionRecapFormat,
   SessionRecapGrounding,
   SessionSummary,
   Visibility,
@@ -21,6 +22,7 @@ type SessionRow = {
   notes: string;
   notes_document: unknown;
   recap: string;
+  recap_format: string;
   recap_grounding: unknown;
   tagged_entities: unknown;
   title: string;
@@ -74,7 +76,9 @@ export async function updateSessionRecapForUser(
   campaignId: string,
   sessionId: string,
   recap: string,
+  recapFormat: SessionRecapFormat,
   recapGrounding: readonly SessionRecapGrounding[],
+  unresolvedHooks: readonly string[],
   expectedUpdatedAt: string,
 ) {
   const result = await queryDatabase<Pick<SessionRow, "id">>(
@@ -82,14 +86,16 @@ export async function updateSessionRecapForUser(
       update sessions
       set
         recap = $4,
-        recap_grounding = $5::jsonb,
+        recap_format = $5,
+        recap_grounding = $6::jsonb,
+        unresolved_hooks = $7::jsonb,
         updated_at = now()
       from campaign_memberships
       where sessions.id = $3
         and sessions.campaign_id = $2
         and campaign_memberships.campaign_id = sessions.campaign_id
         and campaign_memberships.user_id = $1
-        and sessions.updated_at = $6::timestamptz
+        and sessions.updated_at = $8::timestamptz
       returning sessions.id
     `,
     [
@@ -97,7 +103,9 @@ export async function updateSessionRecapForUser(
       campaignId,
       sessionId,
       recap,
+      recapFormat,
       JSON.stringify(recapGrounding),
+      JSON.stringify(unresolvedHooks),
       expectedUpdatedAt,
     ],
   );
@@ -348,6 +356,7 @@ function mapSessionSummaryRow(row: SessionRow): SessionSummary {
   return {
     id: row.id,
     recap: row.recap,
+    recapFormat: mapRecapFormat(row.recap_format),
     recapGrounding: mapRecapGrounding(row.recap_grounding),
     taggedEntities: mapTaggedEntities(row.tagged_entities),
     title: row.title,
@@ -361,6 +370,7 @@ function createSessionsQuery(extraWhereClause = "") {
         sessions.id,
         sessions.title,
         sessions.recap,
+        sessions.recap_format,
         sessions.recap_grounding,
         sessions.notes,
         sessions.notes_document,
@@ -399,6 +409,7 @@ function createSessionsQuery(extraWhereClause = "") {
         sessions.id,
         sessions.title,
         sessions.recap,
+        sessions.recap_format,
         sessions.recap_grounding,
         sessions.notes,
         sessions.notes_document,
@@ -437,6 +448,10 @@ function mapUnresolvedHooks(value: unknown): string[] {
   }
 
   return value.filter((hook): hook is string => typeof hook === "string");
+}
+
+function mapRecapFormat(value: string): SessionRecapFormat {
+  return value === "detailed" ? "detailed" : "quick";
 }
 
 function mapTaggedEntities(value: unknown): CampaignEntitySummary[] {

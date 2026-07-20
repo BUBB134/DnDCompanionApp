@@ -189,9 +189,18 @@ export default async function SessionsPage() {
                     </div>
 
                     <div className="mt-4 rounded-lg border border-[#1f6f78]/20 bg-white p-4">
-                      <p className="text-xs font-semibold uppercase tracking-wide text-[#1f6f78]">
-                        Previously on
-                      </p>
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <p className="text-xs font-semibold uppercase tracking-wide text-arcane-teal">
+                          Previously on
+                        </p>
+                        {campaignSession.recap ? (
+                          <StatusPill tone="teal">
+                            {campaignSession.recapFormat === "detailed"
+                              ? "Detailed recap"
+                              : "Quick recap"}
+                          </StatusPill>
+                        ) : null}
+                      </div>
                       {campaignSession.recap ? (
                         <p className="mt-2 text-sm leading-6 text-[#4b4657]">
                           {campaignSession.recap}
@@ -212,7 +221,7 @@ export default async function SessionsPage() {
                               (grounding) => (
                                 <li
                                   className="rounded-md border border-[#17161f]/10 bg-[#fffaf0] px-3 py-2 text-sm leading-6 text-[#4b4657]"
-                                  key={`${campaignSession.id}-recap-source-${grounding.sourceType}-${grounding.sourceId}`}
+                                  key={`${campaignSession.id}-recap-source-${grounding.sourceType}-${grounding.sourceId}-${grounding.sourcePath}`}
                                 >
                                   <span className="font-semibold text-[#17161f]">
                                     {grounding.label}
@@ -232,6 +241,7 @@ export default async function SessionsPage() {
                           campaignId={campaign.id}
                           hasNotes={Boolean(campaignSession.notes.trim())}
                           hasRecap={Boolean(campaignSession.recap.trim())}
+                          recapFormat={campaignSession.recapFormat}
                           sessionId={campaignSession.id}
                         />
                       ) : null}
@@ -257,8 +267,8 @@ export default async function SessionsPage() {
                           Unresolved hooks
                         </p>
                         <ul className="mt-3 grid gap-2 text-sm leading-6 text-[#4b4657]">
-                          {campaignSession.unresolvedHooks.map((hook, hookIndex) => (
-                            <li key={`${campaignSession.id}-hook-${hookIndex}`}>
+                          {campaignSession.unresolvedHooks.map((hook) => (
+                            <li key={`${campaignSession.id}-hook-${hook}`}>
                               {hook}
                             </li>
                           ))}
