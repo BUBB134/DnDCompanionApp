@@ -10,6 +10,7 @@ export {
   ruleSnippetCategories,
   sessionNoteBlockTypes,
   sessionNoteReferenceTypes,
+  sessionRecapFormats,
   spellPreparationStates,
   visibilities,
 } from "./campaign";
@@ -60,6 +61,7 @@ export type {
   SessionNoteDocument,
   SessionNoteReference,
   SessionNoteReferenceType,
+  SessionRecapFormat,
   SessionRecapGrounding,
   SessionSummary,
   SpellDefinition,

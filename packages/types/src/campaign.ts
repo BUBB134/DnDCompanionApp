@@ -23,6 +23,7 @@ export const sessionNoteBlockTypes = [
 export type SessionNoteBlockType = (typeof sessionNoteBlockTypes)[number];
 
 export const sessionNoteReferenceTypes = ["character", "entity", "rule"] as const;
+export const sessionRecapFormats = ["quick", "detailed"] as const;
 export const characterCreationOptionCategories = [
   "class",
   "ancestry",
@@ -32,6 +33,7 @@ export const characterCreationOptionCategories = [
 export const spellPreparationStates = ["known", "prepared"] as const;
 export type SessionNoteReferenceType =
   (typeof sessionNoteReferenceTypes)[number];
+export type SessionRecapFormat = (typeof sessionRecapFormats)[number];
 export type SpellPreparationState = (typeof spellPreparationStates)[number];
 
 export const campaignMemorySourceTypes = [
@@ -83,6 +85,7 @@ export type CampaignSetup = {
 export type SessionSummary = {
   id: string;
   recap: string;
+  recapFormat?: SessionRecapFormat;
   recapGrounding: SessionRecapGrounding[];
   taggedEntities: readonly CampaignEntitySummary[];
   title: string;

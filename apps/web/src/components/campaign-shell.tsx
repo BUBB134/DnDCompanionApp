@@ -158,14 +158,23 @@ export function CampaignShell({
             {latestSession ? (
               <>
                 <div className="flex flex-col gap-2">
-                  <p className="text-sm font-semibold uppercase tracking-wide text-[#1f6f78]">
-                    Latest session
-                  </p>
-                  <h2 className="max-w-3xl text-3xl font-semibold leading-tight sm:text-4xl">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <p className="text-sm font-semibold uppercase tracking-wide text-arcane-teal">
+                      Latest session
+                    </p>
+                    {latestSession.recap ? (
+                      <StatusPill tone="teal">
+                        {latestSession.recapFormat === "detailed"
+                          ? "Detailed recap"
+                          : "Quick recap"}
+                      </StatusPill>
+                    ) : null}
+                  </div>
+                  <h2 className="font-brand-display max-w-3xl text-3xl font-semibold leading-tight sm:text-4xl">
                     {latestSession.title}
                   </h2>
                   {latestSession.recap ? (
-                    <p className="max-w-3xl text-base leading-7 text-[#4b4657]">
+                    <p className="font-brand-display max-w-3xl text-base leading-7 text-arcane-muted">
                       {latestSession.recap}
                     </p>
                   ) : (
@@ -197,12 +206,12 @@ export function CampaignShell({
 
                 {latestSession.unresolvedHooks.length > 0 ? (
                   <div className="grid gap-3 sm:grid-cols-2">
-                    {latestSession.unresolvedHooks.map((hook, hookIndex) => (
+                    {latestSession.unresolvedHooks.map((hook) => (
                       <div
-                        className="rounded-lg border border-[#c3943e]/45 bg-[#fffaf0] p-4"
-                        key={`${latestSession.id}-hook-${hookIndex}`}
+                        className="rounded-lg border border-arcane-gold/45 bg-arcane-parchment p-4"
+                        key={`${latestSession.id}-hook-${hook}`}
                       >
-                        <p className="text-xs font-semibold uppercase tracking-wide text-[#8b2f39]">
+                        <p className="text-xs font-semibold uppercase tracking-wide text-arcane-oxblood">
                           Open hook
                         </p>
                         <p className="mt-2 text-sm font-medium">{hook}</p>

@@ -1,6 +1,7 @@
 "use server";
 
 import { formatDatabaseError } from "@dnd/db";
+import type { SessionRecapFormat } from "@dnd/types";
 import { revalidatePath } from "next/cache";
 import { requireAuthSession } from "@/auth/server";
 import { getCurrentCampaignAccess } from "@/campaigns/bootstrap";
@@ -16,6 +17,7 @@ export async function generateSessionRecapAction(
   const session = await requireAuthSession();
   const campaignId = getStringField(formData, "campaignId");
   const sessionId = getStringField(formData, "sessionId");
+  const recapFormat = getRecapFormat(formData);
 
   if (!isDatabaseCampaignId(campaignId) || !sessionId) {
     return {
@@ -38,6 +40,7 @@ export async function generateSessionRecapAction(
       session.user.id,
       campaign.id,
       sessionId,
+      recapFormat,
     );
   } catch (error) {
     return {
@@ -52,8 +55,14 @@ export async function generateSessionRecapAction(
 
   return {
     error: null,
-    success: "Recap generated from player-safe session sources.",
+    success: `${recapFormat === "detailed" ? "Detailed" : "Quick"} recap and open hooks generated from player-safe campaign memory.`,
   };
+}
+
+function getRecapFormat(formData: FormData): SessionRecapFormat {
+  return getStringField(formData, "recapFormat") === "detailed"
+    ? "detailed"
+    : "quick";
 }
 
 function getStringField(formData: FormData, fieldName: string) {

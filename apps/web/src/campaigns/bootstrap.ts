@@ -104,6 +104,7 @@ const bootstrapSessions: readonly CampaignSessionSummary[] = [
   {
     campaignId: "campaign-ashen-coast",
     id: "session-12",
+    recapFormat: "quick",
     recap:
       "The party recovered the drowned keeper's journal, knocked a smuggler prone in the flooded stair, and left one sealed vault unopened while Mira held concentration.",
     recapGrounding: [
